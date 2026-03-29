@@ -9,6 +9,8 @@ The app follows **Clean Architecture** with two Gradle modules:
 :app      — Android module, depends on :domain
 ```
 
+A new UI-oriented score renderer was added in the app layer. Domain state remains unchanged and is mapped to a dedicated UI state model before rendering.
+
 ## Module Structure
 
 ### `:domain`
@@ -18,12 +20,12 @@ Contains all business logic. Has zero Android dependencies.
 domain/
   model/
     NoteEvent.kt          — raw MIDI note-on event (midiNote, velocity, timestamp)
-    Exercise.kt           — sequence of chords to play, tracks current position
+    Exercise.kt           — sequence of expected note groups, tracks current position
     MatchResult.kt        — sealed class: Correct | Incorrect | TooEarly | TooLate | Waiting
     PracticeState.kt      — snapshot of an active session (exercise, score, lastResult)
     AppSettings.kt        — all user-configurable settings + HandMode enum
   usecase/
-    MatchNotesUseCase.kt      — compares played chord against expected, checks timing
+    MatchNotesUseCase.kt       — compares played chord against expected notes and checks timing
     GenerateExerciseUseCase.kt — creates Exercise for a given difficulty + hand mode
     PracticeSessionUseCase.kt  — stateful session: advances through exercise, accumulates score
 core/
@@ -41,14 +43,15 @@ app/
   SightReadingApp.kt      — @HiltAndroidApp entry point
   MainActivity.kt         — single Activity, hosts Compose NavHost
   core/midi/
-    AndroidMidiManager.kt — wraps android.media.midi, emits NoteEvent via SharedFlow
+    AndroidMidiManager.kt — wraps android.media.midi, emits domain NoteEvent via SharedFlow
   data/
     SettingsDataStore.kt  — reads/writes AppSettings to DataStore<Preferences>
     SettingsRepository.kt — exposes settings as Flow<AppSettings>
     ExerciseRepository.kt — delegates to GenerateExerciseUseCase
   di/
-    AppModule.kt          — Hilt @Module providing all use-case singletons
+    AppModule.kt          — Hilt @Module providing use-case singletons
   ui/
+    GrandStaffModels.kt   — UI state + render helpers (GameState/Chord/UI NoteEvent/NoteState)
     MainScreen.kt + MainViewModel.kt
     PracticeScreen.kt + PracticeViewModel.kt
     SettingsScreen.kt + SettingsViewModel.kt
@@ -60,21 +63,32 @@ app/
 USB MIDI keyboard
       │  android.media.midi
       ▼
-AndroidMidiManager          (SharedFlow<NoteEvent>)
+AndroidMidiManager           (SharedFlow<domain.NoteEvent>)
       │
       ▼
-ChordDetector               groups events within chordWindowMs
-      │  SharedFlow<List<NoteEvent>>
+ChordDetector                groups events within chordWindowMs
+      │  SharedFlow<List<domain.NoteEvent>>
       ▼
-PracticeViewModel           collects chords, calls PracticeSessionUseCase
+PracticeViewModel            collects chords, calls PracticeSessionUseCase
       │  StateFlow<PracticeState>
       ▼
-PracticeScreen              renders staff, current chord, feedback colour
+PracticeScreen               maps PracticeState -> ui.GameState
+      │
+      ▼
+GrandStaffCanvas             draws one Grand Staff + dynamic chords/notes/cursor via Canvas
 ```
+
+## UI Rendering Pipeline (Practice)
+
+1. `PracticeScreen` starts a session and tracks wall-clock time.
+2. Domain `PracticeState` is transformed into UI `GameState` (`toGameState` mapper).
+3. `HeaderCard` draws dynamic `levelTitle`, `elapsedTime` (mm:ss), and `score`.
+4. `GrandStaffCanvas` draws exactly one connected grand staff (treble + bass), chord labels, note glyphs, and time cursor.
+5. Bottom controls provide `Pause` and `Hint` actions.
 
 ## Dependency Injection
 
-Hilt is used with `SingletonComponent` for all app-scoped dependencies.
+Hilt is used with `SingletonComponent` for app-scoped dependencies.
 `AndroidMidiManager` is `@Singleton` injected into `PracticeViewModel`.
 Use-cases are provided via `AppModule` as singletons.
 Settings flow from `SettingsRepository` (DataStore-backed) into ViewModels.
