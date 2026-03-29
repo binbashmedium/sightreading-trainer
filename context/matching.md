@@ -2,7 +2,7 @@
 
 ## MatchNotesUseCase (`domain/usecase/MatchNotesUseCase.kt`)
 
-Stateless use-case. Called once per chord event to evaluate whether the player hit the right notes at the right time.
+Stateless use-case called for each detected chord event.
 
 ### Signature
 ```kotlin
@@ -16,63 +16,46 @@ fun execute(
 
 ### Matching Logic
 
-**Step 1 — Pitch matching (strict)**
-Extracts MIDI note numbers from `playedNotes`, sorts both lists, and compares:
-```
-played.sorted() == expected.sorted()  →  pitch match
-```
-If they differ → `MatchResult.Incorrect` (no timing check performed).
+1. **Pitch matching (strict)**
+   - Extract MIDI note numbers from played notes
+   - Compare sorted lists with expected notes
+   - Mismatch => `MatchResult.Incorrect`
 
-**Step 2 — Timing check (optional)**
-Only evaluated when `expectedTimeMs` is provided (beat-synchronised exercises).
-```
-delta = playedNotes[0].timestamp - expectedTimeMs
+2. **Timing check (optional)**
+   - Runs only when `expectedTimeMs` is provided
+   - `delta = playedNotes[0].timestamp - expectedTimeMs`
+   - `delta < -toleranceMs` => `TooEarly`
+   - `delta > toleranceMs` => `TooLate`
+   - otherwise => `Correct`
 
-delta < -toleranceMs  →  TooEarly
-delta >  toleranceMs  →  TooLate
-|delta| <= toleranceMs →  Correct
-```
-
-**Default tolerance:** 200 ms (configurable via `AppSettings.timingToleranceMs`).
-
-### MatchResult States
+## MatchResult States
 
 | State | Meaning |
 |---|---|
-| `Correct` | All notes match, timing within tolerance |
-| `Incorrect` | Wrong notes played (missing, extra, or wrong pitch) |
-| `TooEarly` | Correct notes but played too soon |
-| `TooLate` | Correct notes but played too late |
-| `Waiting` | Initial/idle state before any attempt |
+| `Correct` | Notes match, timing within tolerance |
+| `Incorrect` | Wrong/missing/extra pitch set |
+| `TooEarly` | Correct pitch set but too soon |
+| `TooLate` | Correct pitch set but too late |
+| `Waiting` | Initial/idle state |
 
-## PracticeSessionUseCase (`domain/usecase/PracticeSessionUseCase.kt`)
+## Practice Session Wrapper
 
-Stateful wrapper around `MatchNotesUseCase`. Owns an `Exercise` and advances through it.
+`PracticeSessionUseCase` stores session progress (`Exercise`, `score`, `totalAttempts`) and updates `PracticeState` after each processed chord.
 
-### Key Method
-```kotlin
-fun onChordPlayed(playedNotes: List<NoteEvent>): PracticeState
-```
-1. Gets `exercise.currentChord` (the expected notes for this step)
-2. Calls `MatchNotesUseCase.execute(...)`
-3. On `Correct`: increments `exercise.currentIndex` and `score`
-4. Always increments `totalAttempts`
-5. Returns updated `PracticeState`
+## UI Visualization Mapping
 
-### Score Calculation
-```
-score / totalAttempts × 100  →  accuracy percentage
-```
+In `PracticeScreen` the domain result is mapped to note states for rendering on the staff:
+- `Correct` → expected note glyphs turn green (`NoteState.CORRECT`)
+- `Incorrect` → expected glyphs can become red and wrong/extra notes are rendered as red notes on staff (`NoteState.WRONG`)
+- `TooLate` → expected note glyphs turn yellow (`NoteState.LATE`)
+- pending/unplayed notes remain black (`NoteState.NONE`)
 
-## Visual Feedback
+Color is applied directly to musical glyphs (noteheads/stems/flags), not overlays.
 
-`PracticeScreen` maps `MatchResult` to colour:
-- `Correct` → green
-- `Incorrect`, `TooEarly`, `TooLate` → red
-- `Waiting` → neutral
+## Cursor-time Evaluation Context
 
-The feedback is shown below the staff and resets when the next chord is expected.
+The UI also renders a red time cursor based on current beat. Notes left of cursor are interpreted as evaluated/past context; notes right of cursor are upcoming context.
 
-## Matching Modes (Future)
+## Future Matching Modes
 
-Currently only **strict** matching is implemented (exact note set equality). The architecture supports adding a **tolerant** mode (expected notes ⊆ played notes) by extending `MatchNotesUseCase` with a `mode` parameter.
+Only strict equality is currently implemented. A tolerant mode (`expected ⊆ played`) can be introduced by extending `MatchNotesUseCase` and the UI mapper.

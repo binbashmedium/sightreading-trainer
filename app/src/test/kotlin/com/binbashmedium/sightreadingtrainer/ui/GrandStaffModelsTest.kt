@@ -1,0 +1,53 @@
+package com.binbashmedium.sightreadingtrainer.ui
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class GrandStaffModelsTest {
+
+    @Test
+    fun `formatElapsedTime returns mm ss`() {
+        assertEquals("00:00", formatElapsedTime(0L))
+        assertEquals("01:05", formatElapsedTime(65_000L))
+        assertEquals("10:00", formatElapsedTime(600_000L))
+    }
+
+    @Test
+    fun `midiToGrandStaffY routes midi 60 and above to treble`() {
+        val trebleY = midiToGrandStaffY(
+            midi = 60,
+            trebleTopY = 100f,
+            bassTopY = 300f,
+            lineSpacing = 20f
+        )
+        val bassY = midiToGrandStaffY(
+            midi = 59,
+            trebleTopY = 100f,
+            bassTopY = 300f,
+            lineSpacing = 20f
+        )
+
+        assertTrue("treble note should be drawn above bass area", trebleY < bassY)
+    }
+
+    @Test
+    fun `durationToGlyphType maps supported durations`() {
+        assertEquals(NoteGlyphType.WHOLE, durationToGlyphType(4f))
+        assertEquals(NoteGlyphType.HALF, durationToGlyphType(2f))
+        assertEquals(NoteGlyphType.QUARTER, durationToGlyphType(1f))
+        assertEquals(NoteGlyphType.EIGHTH, durationToGlyphType(0.5f))
+        assertEquals(NoteGlyphType.SIXTEENTH, durationToGlyphType(0.25f))
+    }
+
+    @Test
+    fun `generateExampleGameState produces dynamic content`() {
+        val now = 1_700_000_000_000L
+        val state = generateExampleGameState(now)
+
+        assertTrue(state.levelTitle.startsWith("Level "))
+        assertTrue(state.notes.isNotEmpty())
+        assertTrue(state.chords.isNotEmpty())
+        assertTrue(state.score > 0)
+    }
+}
