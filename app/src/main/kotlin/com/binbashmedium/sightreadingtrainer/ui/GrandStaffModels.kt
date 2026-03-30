@@ -6,31 +6,28 @@ import kotlin.math.absoluteValue
 val KEY_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
 
 /**
- * Key signatures as (sharps, flats) pairs indexed by musicalKey (0=C … 11=B).
+ * Key signatures as (sharps, flats) pairs indexed by musicalKey (0=C ... 11=B).
  * C# uses 7 sharps; enharmonic spellings with flats follow standard conventions.
  */
 val KEY_SIGNATURES: Array<Pair<Int, Int>> = arrayOf(
-    0 to 0,  // C
-    7 to 0,  // C#
-    2 to 0,  // D
-    0 to 3,  // Eb
-    4 to 0,  // E
-    0 to 1,  // F
-    6 to 0,  // F#
-    1 to 0,  // G
-    0 to 4,  // Ab
-    3 to 0,  // A
-    0 to 2,  // Bb
-    5 to 0   // B
+    0 to 0,
+    7 to 0,
+    2 to 0,
+    0 to 3,
+    4 to 0,
+    0 to 1,
+    6 to 0,
+    1 to 0,
+    0 to 4,
+    3 to 0,
+    0 to 2,
+    5 to 0
 )
 
-// Accidental placement: diatonic steps for each sharp/flat in order, per staff.
-// Treble: E4=bottom line at diatonic step 30; each step = lineSpacing/2.
-val TREBLE_SHARP_STEPS = intArrayOf(38, 35, 39, 36, 33, 37, 34) // F5,C5,G5,D5,A4,E5,B4
-val TREBLE_FLAT_STEPS  = intArrayOf(34, 37, 33, 36, 32, 35, 31) // B4,E5,A4,D5,G4,C5,F4
-// Bass: G2=bottom line at diatonic step 18.
-val BASS_SHARP_STEPS   = intArrayOf(24, 21, 25, 22, 19, 23, 20) // F3,C3,G3,D3,A2,E3,B2
-val BASS_FLAT_STEPS    = intArrayOf(20, 23, 19, 22, 18, 21, 17) // B2,E3,A2,D3,G2,C3,F2
+val TREBLE_SHARP_STEPS = intArrayOf(38, 35, 39, 36, 33, 37, 34)
+val TREBLE_FLAT_STEPS = intArrayOf(34, 37, 33, 36, 32, 35, 31)
+val BASS_SHARP_STEPS = intArrayOf(24, 21, 25, 22, 19, 23, 20)
+val BASS_FLAT_STEPS = intArrayOf(20, 23, 19, 22, 18, 21, 17)
 
 const val TREBLE_BOTTOM_LINE_STEP = 30
 const val TREBLE_G_LINE_STEP = 32
@@ -38,6 +35,22 @@ const val TREBLE_TOP_LINE_STEP = 38
 const val BASS_BOTTOM_LINE_STEP = 18
 const val BASS_F_LINE_STEP = 24
 const val BASS_TOP_LINE_STEP = 26
+const val BASS_CLEF_LOWER_DOT_STEP = 23
+const val BASS_CLEF_UPPER_DOT_STEP = 25
+const val TREBLE_CLEF_BASELINE_OFFSET = 0.62f
+const val BASS_CLEF_BASELINE_OFFSET = 2.68f
+const val CLEF_AREA_WIDTH_RATIO = 3.25f
+const val POST_CLEF_GAP_RATIO = 2.15f
+const val ACCIDENTAL_SPACING_RATIO = 0.42f
+const val ACCIDENTAL_TEXT_SIZE_RATIO = 0.96f
+const val TREBLE_CLEF_TEXT_SIZE_RATIO = 4.6f
+const val BASS_CLEF_TEXT_SIZE_RATIO = 5.4f
+const val BASS_CLEF_BASELINE_FROM_TOP_RATIO = 0.84f
+const val BASS_CLEF_DOT_RADIUS_RATIO = 0.17f
+const val BASS_CLEF_DOT_X_OFFSET_RATIO = 1.02f
+const val BASS_CLEF_GLYPH_X_OFFSET_RATIO = 0.22f
+const val KEY_SIGNATURE_LEAD_IN_RATIO = 0.72f
+const val KEY_SIGNATURE_X_OFFSET_RATIO = 0.38f
 
 enum class NoteState {
     NONE,
@@ -74,6 +87,27 @@ data class GameState(
     val musicalKey: Int = 0
 )
 
+data class GrandStaffLayoutMetrics(
+    val clefAreaWidth: Float,
+    val postClefGap: Float,
+    val accidentalSpacing: Float,
+    val accidentalTextSize: Float,
+    val trebleClefTextSize: Float,
+    val keySignatureWidth: Float,
+    val keySignatureStartOffset: Float
+)
+
+data class BassClefGeometry(
+    val glyphX: Float,
+    val baselineY: Float,
+    val textSize: Float,
+    val topY: Float,
+    val dotCenterX: Float,
+    val upperDotY: Float,
+    val lowerDotY: Float,
+    val dotRadius: Float
+)
+
 fun formatElapsedTime(elapsedTimeMs: Long): String {
     val totalSeconds = (elapsedTimeMs / 1_000L).coerceAtLeast(0L)
     val minutes = totalSeconds / 60L
@@ -81,26 +115,13 @@ fun formatElapsedTime(elapsedTimeMs: Long): String {
     return "%02d:%02d".format(minutes, seconds)
 }
 
-/**
- * Returns the diatonic step number for a MIDI note.
- * C-1 (MIDI 0) = step 0; C4 (MIDI 60) = step 28; E4 (MIDI 64) = step 30.
- *
- * Mapping: C=0, D=1, E=2, F=3, G=4, A=5, B=6 within each octave.
- */
 fun midiToDiatonicStep(midi: Int): Int {
     val noteClassToStep = intArrayOf(0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6)
     val noteIdx = noteClassToStep[midi % 12]
-    val octave = (midi / 12) - 1  // MIDI 60 = C4 → octave 4
+    val octave = (midi / 12) - 1
     return octave * 7 + noteIdx
 }
 
-/**
- * Converts a MIDI number to a canvas Y coordinate on the grand staff.
- *
- * Treble reference: E4 (diatonic step 30) = bottom line = trebleTopY + 4*lineSpacing.
- * Bass reference:   G2 (diatonic step 18) = bottom line = bassTopY  + 4*lineSpacing.
- * Each diatonic step = lineSpacing/2 vertically.
- */
 fun midiToGrandStaffY(
     midi: Int,
     staff: StaffType,
@@ -126,10 +147,53 @@ fun staffForExercise(midi: Int, handMode: HandMode): StaffType = when (handMode)
     HandMode.BOTH -> if (midi >= 60) StaffType.TREBLE else StaffType.BASS
 }
 
-/**
- * Returns the diatonic steps at which ledger lines should be drawn below the staff.
- * staffBottomStep: diatonic step of the lowest staff line.
- */
+fun trebleClefBaselineY(anchorY: Float, lineSpacing: Float): Float =
+    anchorY + lineSpacing * TREBLE_CLEF_BASELINE_OFFSET
+
+fun bassClefBaselineY(anchorY: Float, lineSpacing: Float): Float =
+    anchorY + lineSpacing * BASS_CLEF_BASELINE_OFFSET
+
+fun grandStaffLayoutMetrics(lineSpacing: Float, numAccidentals: Int): GrandStaffLayoutMetrics {
+    val accidentalSpacing = lineSpacing * ACCIDENTAL_SPACING_RATIO
+    return GrandStaffLayoutMetrics(
+        clefAreaWidth = lineSpacing * CLEF_AREA_WIDTH_RATIO,
+        postClefGap = lineSpacing * POST_CLEF_GAP_RATIO,
+        accidentalSpacing = accidentalSpacing,
+        accidentalTextSize = lineSpacing * ACCIDENTAL_TEXT_SIZE_RATIO,
+        trebleClefTextSize = lineSpacing * TREBLE_CLEF_TEXT_SIZE_RATIO,
+        keySignatureWidth = keySignatureWidth(numAccidentals, lineSpacing),
+        keySignatureStartOffset = lineSpacing * KEY_SIGNATURE_X_OFFSET_RATIO
+    )
+}
+
+fun keySignatureWidth(numAccidentals: Int, lineSpacing: Float): Float {
+    if (numAccidentals <= 0) return 0f
+    val accidentalSpacing = lineSpacing * ACCIDENTAL_SPACING_RATIO
+    return (numAccidentals - 1) * accidentalSpacing + lineSpacing * KEY_SIGNATURE_LEAD_IN_RATIO
+}
+
+fun bassClefGeometry(
+    clefX: Float,
+    trebleTopY: Float,
+    bassTopY: Float,
+    lineSpacing: Float
+): BassClefGeometry {
+    val topY = staffLineYForStep(BASS_TOP_LINE_STEP, StaffType.BASS, trebleTopY, bassTopY, lineSpacing)
+    val lowerDotY = staffLineYForStep(BASS_CLEF_LOWER_DOT_STEP, StaffType.BASS, trebleTopY, bassTopY, lineSpacing)
+    val upperDotY = staffLineYForStep(BASS_CLEF_UPPER_DOT_STEP, StaffType.BASS, trebleTopY, bassTopY, lineSpacing)
+    val textSize = lineSpacing * BASS_CLEF_TEXT_SIZE_RATIO
+    return BassClefGeometry(
+        glyphX = clefX + lineSpacing * BASS_CLEF_GLYPH_X_OFFSET_RATIO,
+        baselineY = topY + textSize * BASS_CLEF_BASELINE_FROM_TOP_RATIO,
+        textSize = textSize,
+        topY = topY,
+        dotCenterX = clefX + lineSpacing * BASS_CLEF_DOT_X_OFFSET_RATIO,
+        upperDotY = upperDotY,
+        lowerDotY = lowerDotY,
+        dotRadius = lineSpacing * BASS_CLEF_DOT_RADIUS_RATIO
+    )
+}
+
 fun ledgerStepsBelow(noteDiatonicStep: Int, staffBottomStep: Int): List<Int> {
     val lines = mutableListOf<Int>()
     var l = staffBottomStep - 2
@@ -140,10 +204,6 @@ fun ledgerStepsBelow(noteDiatonicStep: Int, staffBottomStep: Int): List<Int> {
     return lines
 }
 
-/**
- * Returns the diatonic steps at which ledger lines should be drawn above the staff.
- * staffTopStep: diatonic step of the highest staff line.
- */
 fun ledgerStepsAbove(noteDiatonicStep: Int, staffTopStep: Int): List<Int> {
     val lines = mutableListOf<Int>()
     var l = staffTopStep + 2
@@ -163,11 +223,11 @@ fun beatToX(
 fun durationToGlyphType(duration: Float): NoteGlyphType {
     val normalized = duration.absoluteValue
     return when {
-        normalized >= 4f   -> NoteGlyphType.WHOLE
-        normalized >= 2f   -> NoteGlyphType.HALF
-        normalized >= 1f   -> NoteGlyphType.QUARTER
+        normalized >= 4f -> NoteGlyphType.WHOLE
+        normalized >= 2f -> NoteGlyphType.HALF
+        normalized >= 1f -> NoteGlyphType.QUARTER
         normalized >= 0.5f -> NoteGlyphType.EIGHTH
-        else               -> NoteGlyphType.SIXTEENTH
+        else -> NoteGlyphType.SIXTEENTH
     }
 }
 
@@ -177,4 +237,85 @@ enum class NoteGlyphType {
     QUARTER,
     EIGHTH,
     SIXTEENTH
+}
+
+private val SCALE_DEGREES = listOf(0, 2, 4, 5, 7, 9, 11)
+private val ROMAN_NUMERALS = listOf("I", "ii", "iii", "IV", "V", "vi", "vii")
+private val CHORD_QUALITIES = mapOf(
+    listOf(0, 4, 7) to "M",
+    listOf(0, 3, 7) to "m",
+    listOf(0, 3, 6) to "dim",
+    listOf(0, 4, 7, 11) to "M7",
+    listOf(0, 4, 7, 10) to "7",
+    listOf(0, 3, 7, 10) to "m7",
+    listOf(0, 3, 6, 10) to "m7b5",
+    listOf(0, 2, 4, 7, 11) to "M9",
+    listOf(0, 2, 4, 7, 10) to "9",
+    listOf(0, 2, 3, 7, 10) to "m9"
+)
+
+private data class DetectedChord(
+    val rootPitchClass: Int,
+    val quality: String
+)
+
+fun formatChordLabel(notes: List<Int>, musicalKey: Int): String {
+    if (notes.isEmpty()) return "?"
+    if (notes.size == 1) return noteName(notes.first())
+    if (notes.size == 2) return notes.joinToString(" - ") { noteName(it) }
+
+    val detected = detectChord(notes)
+    if (detected != null) {
+        val rootName = KEY_NAMES[detected.rootPitchClass]
+        val roman = romanNumeralForChord(detected.rootPitchClass, detected.quality, musicalKey)
+        return if (roman != null) "$rootName${detected.quality} ($roman)" else "$rootName${detected.quality}"
+    }
+
+    return notes.joinToString(" - ") { noteName(it) }
+}
+
+fun chordQualitySuffix(notes: List<Int>): String = detectChord(notes)?.quality.orEmpty()
+
+fun romanNumeralForChord(rootPitchClass: Int, quality: String, musicalKey: Int): String? {
+    val degreeOffset = (rootPitchClass - musicalKey + 12) % 12
+    val degreeIndex = SCALE_DEGREES.indexOf(degreeOffset)
+    if (degreeIndex == -1) return null
+
+    val baseRoman = when (quality) {
+        "dim" -> "vii°"
+        "m7b5" -> "viiø7"
+        else -> ROMAN_NUMERALS[degreeIndex]
+    }
+
+    return when (quality) {
+        "M7" -> "${baseRoman}maj7"
+        "7", "m7" -> "${baseRoman}7"
+        "M9" -> "${baseRoman}maj9"
+        "9", "m9" -> "${baseRoman}9"
+        else -> baseRoman
+    }
+}
+
+private fun detectChord(notes: List<Int>): DetectedChord? {
+    val pitchClasses = notes
+        .map { ((it % 12) + 12) % 12 }
+        .distinct()
+        .sorted()
+
+    for (candidateRoot in pitchClasses) {
+        val intervals = pitchClasses
+            .map { (it - candidateRoot + 12) % 12 }
+            .distinct()
+            .sorted()
+        val quality = CHORD_QUALITIES[intervals] ?: continue
+        return DetectedChord(candidateRoot, quality)
+    }
+
+    return null
+}
+
+fun noteName(midi: Int): String {
+    val pitchClass = ((midi % 12) + 12) % 12
+    val octave = (midi / 12) - 1
+    return "${KEY_NAMES[pitchClass]}$octave"
 }

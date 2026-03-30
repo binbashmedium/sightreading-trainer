@@ -7,21 +7,22 @@ data class AppSettings(
     val midiDeviceName: String = "",
     val timingToleranceMs: Int = 200,
     val chordWindowMs: Int = 50,
-    val difficulty: Int = 1,
     val exerciseLength: Int = 8,
+    val exerciseTypes: Set<ExerciseContentType> = setOf(ExerciseContentType.SINGLE_NOTES),
     val handMode: HandMode = HandMode.RIGHT,
     val soundEnabled: Boolean = true,
-    val musicalKey: Int = 0
+    val selectedKeys: Set<Int> = setOf(0)
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }
+enum class ExerciseContentType { SINGLE_NOTES, OCTAVES, THIRDS, FIFTHS, SIXTHS, TRIADS, SEVENTHS, NINTHS, CLUSTERED_CHORDS }
 ```
 
 ## Persistence
 
 Settings are persisted using Jetpack DataStore (`Preferences`).
 
-- `SettingsDataStore` maps preference keys to fields, including `musical_key` and `exercise_length`.
+- `SettingsDataStore` maps preference keys to fields, including the selected key pool and `exercise_length`.
 - `SettingsRepository` exposes `Flow<AppSettings>` and the save API.
 - `SettingsViewModel` and other consumers collect from the repository flow.
 
@@ -35,17 +36,17 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 
 ### Exercise generation
 `GenerateExerciseUseCase` uses:
-- `difficulty` (1-5)
+- a multi-select pool of exercise content types
 - `exerciseLength`
 - `handMode`
-- `musicalKey` (0-11)
+- `selectedKeys` (0-11 pool; one key is chosen per exercise)
 
 ## SettingsScreen UI
 
 The screen includes:
-- difficulty slider
+- exercise-type multi-select chips
 - exercise-length slider
-- key signature chips
+- multi-select key chips
 - hand-mode chips
 - timing tolerance slider
 - chord-window slider
@@ -54,4 +55,6 @@ The screen includes:
 
 ## UI Notes
 
-`musicalKey` and `handMode` are embedded into `Exercise` at generation time so the practice screen can keep rendering the correct staff assignment and title even if settings change mid-session.
+The chosen generated key and `handMode` are embedded into `Exercise` at generation time so the practice screen can keep rendering the correct staff assignment, key signature, and title even if settings change mid-session.
+
+Single-note generation is allowed to include larger melodic skips such as fifth-based motion; the exercise-type chips are not restricted to scalar-only movement. Clustered chord voicings are also selectable as their own exercise content type.

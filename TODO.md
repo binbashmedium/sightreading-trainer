@@ -18,6 +18,23 @@
 
 ## Done (recent)
 
+- [x] **Bass-clef glyph restored** - the broken custom bass-clef body was replaced with a proper glyph renderer while keeping the F-line dot anchors.
+- [x] **Validation screenshots organized** - device-validation captures now live under `validation/` instead of the repo root.
+- [x] **Bass clef geometry anchored** - the bass clef now uses explicit geometry so the dots center around the F line and the top reaches the A line.
+- [x] **Clef/key proportion tests** - unit tests now verify bass-clef dot placement, top reach, and key-signature proportions relative to the clefs.
+- [x] **Clustered chords + broader note motion** - exercises now include clustered chord voicings and single-note material with wider leap patterns including fifth-based motion.
+- [x] **Final verification + deployment** - all tests passed, the debug APK was rebuilt, deployed to the VASOUN L10, and revalidated with a fresh screenshot.
+- [x] **Final clef/layout validation pass** - bass clef was lowered and enlarged again, the lead-in gap before the first note was increased, and the updated renderer was revalidated on-device against the `mocks/` references.
+- [x] **Bass clef placement** - bass clef baseline offset was corrected so it sits on the proper F anchor line.
+- [x] **Exercise type multi-selection** - the old 5-level difficulty model was removed and replaced with multi-select exercise content types.
+- [x] **Mixed-type exercise generation** - exercises now combine all selected note/chord types in one session.
+- [x] **Chord labels only for actual chords** - single notes show note names, intervals show note pairs, and harmonic labels are reserved for real chords.
+- [x] **Regression coverage for exercise-type generation** - tests now cover mixed content selection, non-chord labels, and the revised bass-clef anchor.
+- [x] **Correct clef anchors** - treble and bass clef baseline math now uses explicit anchor helpers so the treble curl sits on G and the bass clef anchors to F.
+- [x] **Functional chord labels** - rendered chord names now use harmonic labels such as `CM (I)`, `CM7 (Imaj7)`, and `G9 (V9)`.
+- [x] **Extended chord generation** - selected exercise types now include sevenths and ninths in addition to single notes, intervals, and triads.
+- [x] **Multi-key selection pool** - settings now support selecting multiple keys; each new exercise chooses one generated key from that pool.
+- [x] **Regression coverage for keys/chords/clefs** - tests now cover clef baseline helpers, harmonic chord labels, selected-key generation, and richer chord vocabulary.
 - [x] **Clef placement/layout** - staff lines now extend beneath the clefs; treble and bass clefs are anchored to the G4 and F3 staff lines with dedicated left-side spacing before notes begin.
 - [x] **Configurable exercise length** - `AppSettings.exerciseLength` is persisted in DataStore, exposed in Settings, and applied across exercise generation.
 - [x] **Hand-aware exercise generation** - left-hand exercises now render on the bass staff, and both-hand exercises generate material that spans both staves.
@@ -34,6 +51,6 @@
 - [x] **Per-beat match coloring** - `PracticeState.resultByBeat: Map<Int, MatchResult>` stores the result per chord index; `toGameState` reads it for accurate colouring.
 - [x] **Static cursor (input-driven)** - cursor is fixed at `exercise.currentIndex * 2f`; advances only when a chord is played.
 - [x] **BPM display + fluency scoring** - BPM calculated from inter-chord timing; fluency bonus of up to +10 pts added to the base +10 pts per correct chord.
-- [x] **Randomized note generation** - all levels shuffle notes each call via `kotlin.random.Random`.
-- [x] **All 12 musical keys** - `AppSettings.musicalKey` (0-11) transposes all exercises; key selector added to SettingsScreen; key name shown in practice header.
+- [x] **Randomized note generation** - generated material is shuffled each call before the selected exercise types are mixed into a session.
+- [x] **All 12 musical keys** - selected key pools determine which generated key is used for each exercise; key selection is available in SettingsScreen.
 - [x] **Reload button** - single "New Exercise" button replaces Pause + Hint; calls `PracticeViewModel.reloadSession()`.

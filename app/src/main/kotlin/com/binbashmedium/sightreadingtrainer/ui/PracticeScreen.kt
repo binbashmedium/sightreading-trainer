@@ -225,18 +225,14 @@ fun GrandStaffCanvas(
         val trebleTopY = lineSpacing * 2.5f
         val bassTopY = lineSpacing * 10f
 
-        val staffStartX = lineSpacing * 0.5f
-        val clefAreaWidth = lineSpacing * 3.6f
-        val postClefGap = lineSpacing * 0.9f
-
         val (sharps, flats) = KEY_SIGNATURES.getOrElse(gameState.musicalKey) { 0 to 0 }
         val numAccidentals = sharps + flats
-        val accidentalSpacing = lineSpacing * 0.8f
-        val keySigWidth = if (numAccidentals > 0) {
-            numAccidentals * accidentalSpacing + lineSpacing * 0.6f
-        } else {
-            0f
-        }
+        val layout = grandStaffLayoutMetrics(lineSpacing, numAccidentals)
+        val staffStartX = lineSpacing * 0.5f
+        val clefAreaWidth = layout.clefAreaWidth
+        val postClefGap = layout.postClefGap
+        val accidentalSpacing = layout.accidentalSpacing
+        val keySigWidth = layout.keySignatureWidth
 
         val startX = staffStartX + clefAreaWidth + postClefGap + keySigWidth
         val beatWidth = max(
@@ -274,15 +270,16 @@ fun GrandStaffCanvas(
 
         val trebleClefPaint = Paint().asFrameworkPaint().apply {
             color = android.graphics.Color.BLACK
-            textSize = lineSpacing * 5.4f
-            isAntiAlias = true
-        }
-        val bassClefPaint = Paint().asFrameworkPaint().apply {
-            color = android.graphics.Color.BLACK
-            textSize = lineSpacing * 3.5f
+            textSize = layout.trebleClefTextSize
             isAntiAlias = true
         }
         val clefX = staffStartX + lineSpacing * 0.35f
+        val bassClefGeometry = bassClefGeometry(clefX, trebleTopY, bassTopY, lineSpacing)
+        val bassClefPaint = Paint().asFrameworkPaint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = bassClefGeometry.textSize
+            isAntiAlias = true
+        }
         val trebleAnchorY = staffLineYForStep(
             TREBLE_G_LINE_STEP,
             StaffType.TREBLE,
@@ -290,23 +287,26 @@ fun GrandStaffCanvas(
             bassTopY,
             lineSpacing
         )
-        val bassAnchorY = staffLineYForStep(
-            BASS_F_LINE_STEP,
-            StaffType.BASS,
-            trebleTopY,
-            bassTopY,
-            lineSpacing
+        drawContext.canvas.nativeCanvas.drawText("\uD834\uDD1E", clefX, trebleClefBaselineY(trebleAnchorY, lineSpacing), trebleClefPaint)
+        drawContext.canvas.nativeCanvas.drawText("\uD834\uDD22", bassClefGeometry.glyphX, bassClefGeometry.baselineY, bassClefPaint)
+        drawCircle(
+            color = black,
+            radius = bassClefGeometry.dotRadius,
+            center = Offset(bassClefGeometry.dotCenterX, bassClefGeometry.upperDotY)
         )
-        drawContext.canvas.nativeCanvas.drawText("\uD834\uDD1E", clefX, trebleAnchorY + lineSpacing * 1.7f, trebleClefPaint)
-        drawContext.canvas.nativeCanvas.drawText("\uD834\uDD22", clefX + lineSpacing * 0.15f, bassAnchorY + lineSpacing * 0.9f, bassClefPaint)
+        drawCircle(
+            color = black,
+            radius = bassClefGeometry.dotRadius,
+            center = Offset(bassClefGeometry.dotCenterX, bassClefGeometry.lowerDotY)
+        )
 
         if (numAccidentals > 0) {
             val accidentalPaint = Paint().asFrameworkPaint().apply {
                 color = android.graphics.Color.BLACK
-                textSize = lineSpacing * 1.6f
+                textSize = layout.accidentalTextSize
                 isAntiAlias = true
             }
-            val keySigX0 = staffStartX + clefAreaWidth + lineSpacing * 0.15f
+            val keySigX0 = staffStartX + clefAreaWidth - layout.keySignatureStartOffset
             val symbol = if (sharps > 0) "\u266F" else "\u266D"
             val trebleSteps = if (sharps > 0) TREBLE_SHARP_STEPS else TREBLE_FLAT_STEPS
             val bassSteps = if (sharps > 0) BASS_SHARP_STEPS else BASS_FLAT_STEPS
@@ -424,10 +424,14 @@ fun GrandStaffCanvas(
 private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toGameState(nowMs: Long): GameState {
     val elapsed = (nowMs - startTimeMs).coerceAtLeast(0L)
     val keyName = KEY_NAMES.getOrElse(exercise.musicalKey) { "C" }
-    val levelDesc = when (exercise.expectedNotes.firstOrNull()?.size) {
-        1 -> "Single Notes"
-        2 -> "Intervals"
-        3 -> "Triads / Progression"
+    val sizes = exercise.expectedNotes.map { it.size }.distinct().sorted()
+    val levelDesc = when {
+        sizes.size > 1 -> "Mixed Practice"
+        sizes.singleOrNull() == 1 -> "Single Notes"
+        sizes.singleOrNull() == 2 -> "Intervals"
+        sizes.singleOrNull() == 3 -> "Triads"
+        sizes.singleOrNull() == 4 -> "Sevenths"
+        sizes.singleOrNull() == 5 -> "Ninths"
         else -> "Practice"
     }
     val levelTitle = "$keyName - $levelDesc"
@@ -452,7 +456,7 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
 
     val chords = exercise.expectedNotes.mapIndexed { idx, notes ->
         Chord(
-            name = chordNameFromMidi(notes),
+            name = formatChordLabel(notes, exercise.musicalKey),
             notes = notes,
             startBeat = idx.toFloat() * 2f
         )
@@ -468,18 +472,6 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
         currentBeat = exercise.currentIndex.toFloat() * 2f,
         musicalKey = exercise.musicalKey
     )
-}
-
-private fun chordNameFromMidi(notes: List<Int>): String {
-    if (notes.isEmpty()) return "?"
-    val names = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
-    val root = names[((notes.minOrNull() ?: 60) % 12 + 12) % 12]
-    return when (notes.size) {
-        1 -> root
-        2 -> "$root int"
-        3 -> "$root triad"
-        else -> "$root ${notes.size}n"
-    }
 }
 
 fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameState {
@@ -514,14 +506,14 @@ fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameStat
 
     val chords = progression.mapIndexed { idx, chordNotes ->
         Chord(
-            name = chordNameFromMidi(chordNotes),
+            name = formatChordLabel(chordNotes, 0),
             notes = chordNotes,
             startBeat = idx * 2f
         )
     }
 
     return GameState(
-        levelTitle = "C - Triads / Progression",
+        levelTitle = "C - Mixed Practice",
         elapsedTime = (phase * 1_000L) + (nowMs % 1_000L),
         score = 100 + (phase * 15),
         bpm = if (phase > 1) 60f + phase * 2f else 0f,

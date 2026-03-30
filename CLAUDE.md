@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
+Always first update the TODO.md with the tasks to do before doing the task. Keep the TODO.md always consistent with the current progress.
 ## Build & Test Commands
 
 ```bash

@@ -34,8 +34,9 @@ fun MainScreen(
 
         Spacer(Modifier.height(32.dp))
 
-        Text("Difficulty: Level ${settings.difficulty}")
         Text("Length: ${settings.exerciseLength}")
+        Text("Types: ${settings.exerciseTypes.sortedBy { it.ordinal }.joinToString(", ") { it.name.replace('_', ' ') }}")
+        Text("Keys: ${settings.selectedKeys.sorted().joinToString(", ") { KEY_NAMES[it] }}")
         Text("Hand: ${settings.handMode.name}")
 
         Spacer(Modifier.height(32.dp))

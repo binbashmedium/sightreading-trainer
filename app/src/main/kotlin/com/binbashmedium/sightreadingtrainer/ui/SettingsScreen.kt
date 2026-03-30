@@ -15,6 +15,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.binbashmedium.sightreadingtrainer.R
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 
 @Composable
@@ -37,13 +38,25 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
 
         // Difficulty (1–5)
-        Text("${stringResource(R.string.difficulty)}: Level ${settings.difficulty}")
-        Slider(
-            value = settings.difficulty.toFloat(),
-            onValueChange = { viewModel.updateSettings(settings.copy(difficulty = it.toInt())) },
-            valueRange = 1f..5f,
-            steps = 3
-        )
+        Text("Exercise Types")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ExerciseContentType.entries.forEach { type ->
+                FilterChip(
+                    selected = type in settings.exerciseTypes,
+                    onClick = {
+                        val updatedTypes = settings.exerciseTypes.toMutableSet().apply {
+                            if (contains(type)) {
+                                if (size > 1) remove(type)
+                            } else {
+                                add(type)
+                            }
+                        }
+                        viewModel.updateSettings(settings.copy(exerciseTypes = updatedTypes))
+                    },
+                    label = { Text(type.name.replace('_', ' ')) }
+                )
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
 
@@ -57,16 +70,25 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Key signature
-        Text("Key: ${KEY_NAMES.getOrElse(settings.musicalKey) { "C" }}")
+        // Key signature pool
+        Text("Keys: ${settings.selectedKeys.sorted().joinToString(", ") { KEY_NAMES.getOrElse(it) { "C" } }}")
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             itemsIndexed(KEY_NAMES) { index, keyName ->
                 FilterChip(
-                    selected = settings.musicalKey == index,
-                    onClick = { viewModel.updateSettings(settings.copy(musicalKey = index)) },
+                    selected = index in settings.selectedKeys,
+                    onClick = {
+                        val updatedKeys = settings.selectedKeys.toMutableSet().apply {
+                            if (contains(index)) {
+                                if (size > 1) remove(index)
+                            } else {
+                                add(index)
+                            }
+                        }
+                        viewModel.updateSettings(settings.copy(selectedKeys = updatedKeys))
+                    },
                     label = { Text(keyName) }
                 )
             }

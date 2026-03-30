@@ -16,19 +16,24 @@ data class Exercise(
 
 ## GenerateExerciseUseCase (`domain/usecase/GenerateExerciseUseCase.kt`)
 
-Creates an `Exercise` from current `AppSettings` using `difficulty`, `handMode`, `musicalKey`, and `exerciseLength`.
+Creates an `Exercise` from current `AppSettings` using selected exercise content types, `handMode`, a selected-key pool, and `exerciseLength`.
 
-Notes are transposed by `musicalKey` semitones from C. Pattern material is shuffled and then repeated or trimmed until it reaches the target `exerciseLength`.
+The generator chooses one key from the selected key pool, transposes the material by that key, then shuffles/repeats/trims until it reaches the target `exerciseLength`.
 
-### Difficulty levels
+### Exercise type pool
 
-| Level | Content | Notes per chord | Count |
-|---|---|---|---|
-| 1 | Single notes from the diatonic scale in the selected hand(s) | 1 | Configurable via `exerciseLength` |
-| 2 | Octaves in one hand, or split octaves across both hands | 2 | Configurable via `exerciseLength` |
-| 3 | Diatonic thirds in the selected hand(s) | 2 | Configurable via `exerciseLength` |
-| 4 | Diatonic triads in the selected hand(s) | 3 | Configurable via `exerciseLength` |
-| 5 | Common 4-chord progression material repeated/trimmed to the target length | 3 | Configurable via `exerciseLength` |
+The generator builds each exercise from a selected pool of content types, for example:
+- single notes
+- octaves
+- thirds
+- fifths
+- sixths
+- triads
+- sevenths
+- ninths
+- clustered chords
+
+If multiple types are selected, the generated exercise mixes them together. For example, selecting single notes and triads produces an exercise that contains both.
 
 ### Hand-mode behavior
 
@@ -98,9 +103,11 @@ The clefs are anchored to:
 
 Ledger lines are drawn by `ledgerStepsBelow` / `ledgerStepsAbove`.
 
+Current status: the bass clef uses a standard glyph again, with explicit dots still anchored around the F line. Device validation screenshots remain under `validation/`.
+
 ## Key Signature Rendering
 
-`KEY_SIGNATURES[musicalKey]` returns `(sharps, flats)`.
+`KEY_SIGNATURES[musicalKey]` returns `(sharps, flats)` for the generated key used by the current exercise.
 Accidental glyphs are drawn at standard treble/bass staff positions using:
 - `TREBLE_SHARP_STEPS`, `TREBLE_FLAT_STEPS`
 - `BASS_SHARP_STEPS`, `BASS_FLAT_STEPS`
@@ -108,7 +115,7 @@ Accidental glyphs are drawn at standard treble/bass staff positions using:
 ## Mapping from Domain to UI State
 
 `PracticeScreen.toGameState(nowMs)` maps `PracticeState` to `GameState`:
-- `levelTitle` = `"$keyName - $levelDesc"`
+- `levelTitle` reflects the generated key chosen from the selected key pool
 - `elapsedTime` = wall-clock elapsed since session start
 - `score` and `bpm` come directly from `PracticeState`
 - note colors come from `PracticeState.resultByBeat[beatIndex]`
@@ -118,6 +125,16 @@ Accidental glyphs are drawn at standard treble/bass staff positions using:
 
 Any played chord, correct or wrong, advances `exercise.currentIndex` by 1.
 When `exercise.isComplete == true`, `PracticeScreen` shows a `SessionCompleteOverlay` with the final score, BPM, and a "New Exercise" button.
+
+## Chord Labels
+
+Rendered chord labels should use harmonic names and roman numerals only when the notes form an actual chord, for example:
+- `CM (I)`
+- `Dm7 (ii7)`
+- `GM9 (V9)`
+
+Single notes should render as note names only and should not show harmonic chord labels.
+Clustered chord voicings and inversions should still resolve to their harmonic chord labels rather than falling back to raw note names.
 
 ## Extending Exercises
 

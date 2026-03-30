@@ -20,14 +20,14 @@ Contains all business logic. Has zero Android dependencies.
 domain/
   model/
     NoteEvent.kt          - raw MIDI note-on event (midiNote, velocity, timestamp)
-    Exercise.kt           - sequence of expected note groups, current position + musicalKey + handMode
+    Exercise.kt           - sequence of expected note groups, current position + generated musicalKey + handMode
     MatchResult.kt        - sealed class: Correct | Incorrect | TooEarly | TooLate | Waiting
     PracticeState.kt      - session snapshot: exercise, score, resultByBeat, bpm, lastCorrectTimestamp
-    AppSettings.kt        - all user-configurable settings + HandMode enum + musicalKey + exerciseLength
+    AppSettings.kt        - all user-configurable settings + HandMode enum + selected key pool + exercise type pool + exerciseLength
     NoteValue.kt          - rhythmic duration enum (WHOLE/HALF/QUARTER/EIGHTH) with beats: Float helper
   usecase/
     MatchNotesUseCase.kt       - compares played chord against expected notes and checks timing
-    GenerateExerciseUseCase.kt - creates Exercise for a given difficulty + hand mode + exercise length
+    GenerateExerciseUseCase.kt - creates Exercise from selected exercise types + hand mode + exercise length
     PracticeSessionUseCase.kt  - stateful session: advances through exercise, accumulates score
 core/
   midi/
@@ -84,7 +84,7 @@ GrandStaffCanvas             draws the grand staff, clefs, notes, cursor, and la
 1. `PracticeScreen` starts a session on `LaunchedEffect(Unit)` by calling `PracticeViewModel.startSession()`.
 2. Domain `PracticeState` is transformed into UI `GameState` with `toGameState(nowMs)`.
 3. `HeaderCard` shows level title, elapsed time, live BPM, and score.
-4. `GrandStaffCanvas` draws a connected grand staff with staff lines behind the clefs, a dedicated clef area, key signature, note glyphs, and a static cursor at the current expected chord.
+4. `GrandStaffCanvas` draws a connected grand staff with staff lines behind the clefs, a dedicated clef area, the generated key signature, harmonic chord labels, note glyphs, and a static cursor at the current expected chord.
 5. The single "New Exercise" button regenerates notes via `PracticeViewModel.reloadSession()`.
 
 ## Dependency Injection
