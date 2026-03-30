@@ -41,7 +41,7 @@ const val BASS_CLEF_LOWER_DOT_STEP = 23
 const val BASS_CLEF_UPPER_DOT_STEP = 25
 const val TREBLE_CLEF_BASELINE_OFFSET = 0.62f
 const val BASS_CLEF_BASELINE_OFFSET = 2.68f
-const val CLEF_AREA_WIDTH_RATIO = 3.25f
+const val CLEF_AREA_WIDTH_RATIO = 3.8f
 const val POST_CLEF_GAP_RATIO = 2.15f
 const val ACCIDENTAL_SPACING_RATIO = 0.75f
 const val ACCIDENTAL_TEXT_SIZE_RATIO = 2.2f
@@ -75,7 +75,9 @@ data class NoteEvent(
 data class Chord(
     val name: String,
     val notes: List<Int>,
-    val startBeat: Float
+    val startBeat: Float,
+    /** Which staff the label should appear on. TREBLE → above treble staff; BASS → below bass staff. */
+    val staff: StaffType = StaffType.TREBLE
 )
 
 data class GameState(
@@ -356,6 +358,20 @@ fun formatChordLabel(notes: List<Int>, musicalKey: Int): String {
     }
 
     return notes.joinToString(" - ") { noteName(it) }
+}
+
+/**
+ * Compact chord label without the Roman-numeral suffix.
+ * Used when horizontal space is tight (label area ≈ beat width).
+ * Single notes → note name, intervals → "X-Y", chords → "RootQuality".
+ */
+fun formatChordLabelShort(notes: List<Int>): String {
+    if (notes.isEmpty()) return "?"
+    if (notes.size == 1) return noteName(notes.first())
+    if (notes.size == 2) return "${noteName(notes.first())}-${noteName(notes.last())}"
+    val detected = detectChord(notes)
+    if (detected != null) return "${KEY_NAMES[detected.rootPitchClass]}${detected.quality}"
+    return notes.take(2).joinToString("-") { noteName(it) }
 }
 
 fun chordQualitySuffix(notes: List<Int>): String = detectChord(notes)?.quality.orEmpty()

@@ -2,7 +2,7 @@
 
 ## Immediate
 
-*(none)*
+*(none — all label/clef/key-sig layout fixes validated on device)*
 
 ## Features
 
@@ -18,6 +18,7 @@
 
 ## Done (recent)
 
+- [x] **Label/clef/key-sig layout fixes (v3)** - Clef-keysig overlap eliminated (`CLEF_AREA_WIDTH_RATIO` raised to 3.8); chord labels split: treble-side labels draw above the treble staff, bass-side labels draw below the bass staff; label text size made dynamic (`beatWidth * 0.5f` clamped to `lineSpacing * 0.42f`) to prevent overlap; `Chord.staff` field drives per-label placement; compact `formatChordLabelShort` (no Roman numeral) used for label rendering. Validated with 20 on-device screenshots across all key signatures (7 flats to 7 sharps). New tests added for `formatChordLabelShort` and `staffForExercise` BOTH-mode logic.
 - [x] **Notation rendering fixes (v2)** - Bass clef spurious ":" dots removed (Unicode 𝄢 glyph already includes them); bass clef baseline raised so glyph sits below the A line (`BASS_CLEF_BASELINE_FROM_TOP_RATIO` 0.84→0.92); key signature accidentals enlarged to proper proportion (`ACCIDENTAL_TEXT_SIZE_RATIO` 0.96→2.2, `ACCIDENTAL_SPACING_RATIO` 0.42→0.75); cluster notehead displacement increased to one notehead width (lineSpacing×1.1) so displaced notes actually clear the stem; stem X for clusters now anchored to non-displaced noteheads (min for upstem, max for downstem). New tests cover all changed behaviour. APK rebuilt and validated on VASOUN L10.
 - [x] **PDF notation review** - `mocks/Standard_music_notation_practice.pdf` was extracted into `validation/pdf-ref/` and used as an additional notation reference.
 - [x] **Notation rule tests expanded** - unit tests now cover clefs, key-signature ordering/proportions, ledger lines, stem direction, notehead displacement, and single-stem chord geometry.

@@ -236,7 +236,7 @@ fun GrandStaffCanvas(
 
         val startX = staffStartX + clefAreaWidth + postClefGap + keySigWidth
         val beatWidth = max(
-            30f,
+            20f,
             (size.width - startX - lineSpacing) / (gameState.chords.size.coerceAtLeast(1) * 2f + 1f)
         )
 
@@ -311,25 +311,28 @@ fun GrandStaffCanvas(
             }
         }
 
+        // Label text size scales with beat width so labels never overlap.
+        val labelTextSize = (beatWidth * 0.5f).coerceIn(10f, lineSpacing * 0.42f)
         val labelPaint = Paint().asFrameworkPaint().apply {
             color = android.graphics.Color.DKGRAY
-            textSize = lineSpacing * 1.1f
+            textSize = labelTextSize
             isAntiAlias = true
         }
+        val trebleLabelY = trebleTopY - lineSpacing * 0.55f   // above treble staff
+        val bassLabelY   = bassTopY   + lineSpacing * 5.3f    // below bass staff
+
         gameState.chords.forEach { chord ->
             val x = beatToX(chord.startBeat, startX, beatWidth)
             drawLine(
                 color = Color(0x447E8798),
-                start = Offset(x, trebleTopY - lineSpacing * 0.8f),
+                start = Offset(x, trebleTopY - lineSpacing * 0.6f),
                 end = Offset(x, bassTopY + lineSpacing * 4f),
                 strokeWidth = 1f
             )
-            drawContext.canvas.nativeCanvas.drawText(
-                chord.name,
-                x + 4f,
-                trebleTopY - lineSpacing * 1.2f,
-                labelPaint
-            )
+            // Use the compact label (no Roman numeral) to keep text within beat width.
+            val label = formatChordLabelShort(chord.notes)
+            val labelY = if (chord.staff == StaffType.BASS) bassLabelY else trebleLabelY
+            drawContext.canvas.nativeCanvas.drawText(label, x + 2f, labelY, labelPaint)
         }
 
         val noteHeadWidth = lineSpacing * 1.1f
@@ -486,10 +489,13 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
     }
 
     val chords = exercise.expectedNotes.mapIndexed { idx, notes ->
+        val chordStaff = if (notes.all { staffForExercise(it, exercise.handMode) == StaffType.BASS })
+            StaffType.BASS else StaffType.TREBLE
         Chord(
             name = formatChordLabel(notes, exercise.musicalKey),
             notes = notes,
-            startBeat = idx.toFloat() * 2f
+            startBeat = idx.toFloat() * 2f,
+            staff = chordStaff
         )
     }
 
@@ -536,10 +542,12 @@ fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameStat
     }
 
     val chords = progression.mapIndexed { idx, chordNotes ->
+        val chordStaff = if (chordNotes.all { it < 60 }) StaffType.BASS else StaffType.TREBLE
         Chord(
             name = formatChordLabel(chordNotes, 0),
             notes = chordNotes,
-            startBeat = idx * 2f
+            startBeat = idx * 2f,
+            staff = chordStaff
         )
     }
 

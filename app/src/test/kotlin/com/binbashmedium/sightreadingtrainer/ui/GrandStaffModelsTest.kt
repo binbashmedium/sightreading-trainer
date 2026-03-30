@@ -78,7 +78,7 @@ class GrandStaffModelsTest {
     fun `key signature accidentals are proportionally larger than before`() {
         val metrics = grandStaffLayoutMetrics(lineSpacing = 20f, numAccidentals = 4)
 
-        assertEquals(65f, metrics.clefAreaWidth, 0.001f)
+        assertEquals(76f, metrics.clefAreaWidth, 0.001f)           // 20 * 3.8
         assertEquals(43f, metrics.postClefGap, 0.001f)
         assertEquals(15f, metrics.accidentalSpacing, 0.001f)       // 20 * 0.75
         assertEquals(44f, metrics.accidentalTextSize, 0.001f)      // 20 * 2.2
@@ -86,7 +86,34 @@ class GrandStaffModelsTest {
         // Accidentals must be clearly visible (> 1 lineSpacing) but smaller than the clef
         assertTrue(metrics.accidentalTextSize > metrics.trebleClefTextSize / 4f)
         assertTrue(metrics.accidentalTextSize < metrics.trebleClefTextSize)
+        // Key sig (4 accidentals) must fit within the (now wider) clef area
         assertTrue(metrics.keySignatureWidth < metrics.clefAreaWidth)
+    }
+
+    @Test
+    fun `formatChordLabelShort omits roman numeral and stays compact`() {
+        // Single note — just the note name
+        assertEquals("C4", formatChordLabelShort(listOf(60)))
+        // Interval — note-note
+        assertEquals("C4-E4", formatChordLabelShort(listOf(60, 64)))
+        // Triad — root + quality, no parenthetical
+        assertEquals("CM", formatChordLabelShort(listOf(60, 64, 67)))
+        assertEquals("Dm", formatChordLabelShort(listOf(62, 65, 69)))
+        // Seventh chord
+        assertEquals("CM7", formatChordLabelShort(listOf(60, 64, 67, 71)))
+    }
+
+    @Test
+    fun `chord staff is BASS only when all notes are below middle C in BOTH mode`() {
+        // All below 60 → bass
+        val bassChord = listOf(48, 52, 55)
+        val bassStaffs = bassChord.map { staffForExercise(it, HandMode.BOTH) }
+        assertTrue(bassStaffs.all { it == StaffType.BASS })
+
+        // Any note >= 60 → treble label
+        val trebleChord = listOf(60, 64, 67)
+        val trebleStaffs = trebleChord.map { staffForExercise(it, HandMode.BOTH) }
+        assertTrue(trebleStaffs.all { it == StaffType.TREBLE })
     }
 
     @Test

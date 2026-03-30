@@ -103,13 +103,18 @@ The clefs are anchored to:
 
 Ledger lines are drawn by `ledgerStepsBelow` / `ledgerStepsAbove`.
 
-Current status: the renderer was re-validated against `mocks/Standard_music_notation_practice.pdf` (especially page 6 on notehead placement and accidentals). Fixes applied in this round:
+Current status: the renderer was validated against `mocks/Standard_music_notation_practice.pdf` across three rounds of fixes and 20 on-device screenshots (all keys). Latest fixes applied:
+- `CLEF_AREA_WIDTH_RATIO` raised to 3.8 to eliminate key-signature/clef overlap.
 - `BASS_CLEF_BASELINE_FROM_TOP_RATIO` raised to 0.92 so the glyph renders below the A line.
 - Spurious programmatic dot circles removed; the Unicode 𝄢 glyph already includes the two dots.
 - `ACCIDENTAL_TEXT_SIZE_RATIO` increased to 2.2 and `ACCIDENTAL_SPACING_RATIO` to 0.75 for proportional key signatures.
+- `BASS_CLEF_TEXT_SIZE_RATIO` reduced to 4.0 for correct glyph proportions.
 - Cluster notehead displacement raised to `lineSpacing * 1.1` (one notehead width) per PDF page 6.
 - Stem X for chord groups now anchors to the non-displaced noteheads (min x for upstem, max x for downstem).
-Extracted PDF pages live under `validation/pdf-ref/`, device validation screenshots under `validation/`.
+- `Chord.staff` field added; labels render **above** the treble staff or **below** the bass staff.
+- Label text size is dynamic (`beatWidth * 0.5f` clamped to `lineSpacing * 0.42f`) to prevent overlap.
+- `formatChordLabelShort` used for labels (no Roman numeral) to save horizontal space.
+Extracted PDF pages live under `validation/pdf-ref/`, device validation screenshots under `validation/screenshots20/`.
 
 ## Key Signature Rendering
 
