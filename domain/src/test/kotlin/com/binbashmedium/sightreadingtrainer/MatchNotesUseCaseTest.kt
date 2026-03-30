@@ -107,4 +107,14 @@ class MatchNotesUseCaseTest {
         )
         assertEquals(MatchResult.Incorrect, result)
     }
+
+    @Test
+    fun `incidental pedal input does not fail note-only step`() {
+        val result = useCase.execute(
+            playedNotes = listOf(NoteEvent(60, 100)),
+            playedPedalAction = PedalAction.PRESS,
+            expectedStep = ExerciseStep(notes = listOf(60), pedalAction = PedalAction.NONE)
+        )
+        assertEquals(MatchResult.Correct, result)
+    }
 }

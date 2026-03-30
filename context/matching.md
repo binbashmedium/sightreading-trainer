@@ -23,7 +23,8 @@ fun execute(
    - Mismatch returns `MatchResult.Incorrect`
 
 2. **Pedal matching**
-   - Compare `playedPedalAction` with `expectedStep.pedalAction`
+   - If `expectedStep.pedalAction` is `NONE`, incidental pedal input is ignored.
+   - If a pedal action is expected (`PRESS`/`RELEASE`), it must match exactly.
    - Mismatch returns `MatchResult.Incorrect`
 
 3. **Timing check (optional)**

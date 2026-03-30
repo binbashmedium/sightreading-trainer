@@ -18,6 +18,10 @@
 
 ## Done (recent)
 
+- [x] **Note detection regression fixed** - note-only steps no longer fail when incidental pedal CC input is present.
+- [x] **Pedal matching guard added** - pedal action is now strictly checked only when a step explicitly expects pedal press/release.
+- [x] **Regression test added** - matching now has a unit test for note-only correctness with incidental pedal input.
+- [x] **Verification rerun** - full test suite passed; debug APK rebuilt, reinstalled, and relaunched.
 - [x] **Scale-consistency fix with accidentals off** - generation now constrains notes to the current major scale when note accidentals are disabled, preventing labels like `Bb4` in C major without a rendered accidental.
 - [x] **Exercise length semantics updated** - `exerciseLength` now acts as a max displayed note budget (sum of noteheads), not a fixed number of steps.
 - [x] **Timed session mode** - added `exerciseTimeSec` (default 60s) and auto-rollover: when a chunk completes before timeout, a new chunk is generated in the same key.

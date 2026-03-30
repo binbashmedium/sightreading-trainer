@@ -17,7 +17,10 @@ class MatchNotesUseCase {
         val playedMidiNotes = playedNotes.map { it.midiNote }.sorted()
         val sortedExpected = expectedStep.notes.sorted()
 
-        if (playedMidiNotes != sortedExpected || playedPedalAction != expectedStep.pedalAction) {
+        if (playedMidiNotes != sortedExpected) {
+            return MatchResult.Incorrect
+        }
+        if (expectedStep.pedalAction != PedalAction.NONE && playedPedalAction != expectedStep.pedalAction) {
             return MatchResult.Incorrect
         }
 
