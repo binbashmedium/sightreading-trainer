@@ -5,7 +5,8 @@
 ```kotlin
 data class Exercise(
     val expectedNotes: List<List<Int>>,   // sequence of chords (each chord = list of MIDI notes)
-    val currentIndex: Int = 0
+    val currentIndex: Int = 0,
+    val musicalKey: Int = 0               // 0=C … 11=B, set at generation time
 )
 ```
 
@@ -14,21 +15,32 @@ data class Exercise(
 
 ## GenerateExerciseUseCase (`domain/usecase/GenerateExerciseUseCase.kt`)
 
-Creates an `Exercise` from current `AppSettings` (difficulty + hand mode).
+Creates an `Exercise` from current `AppSettings` (difficulty + hand mode + musicalKey).
+
+Notes are transposed by `musicalKey` semitones from C. All note lists are **shuffled** using
+`kotlin.random.Random` so every call produces a different note order.
 
 ### Difficulty levels
 
-1. Single notes (one hand)
-2. Parallel octaves (both hands)
-3. Intervals (thirds)
-4. Root-position triads
-5. I–IV–V–I progression
+| Level | Content | Notes per chord | Count |
+|---|---|---|---|
+| 1 | Single notes from diatonic scale (one hand, shuffled) | 1 | 8 |
+| 2 | Parallel octaves (both hands, shuffled) | 2 | 7 |
+| 3 | Diatonic thirds (right hand, shuffled) | 2 | 7 |
+| 4 | All 7 diatonic triads root position (shuffled) | 3 | 7 |
+| 5 | Randomly selected 4-chord progression (I–IV–V–I, I–V–vi–IV, I–vi–IV–V, I–ii–V–I) | 3 | 4 |
 
-(Exact per-level content remains in `GenerateExerciseUseCase.kt`.)
+### Key constants
+
+```kotlin
+GenerateExerciseUseCase.KEY_NAMES  // ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"]
+```
+
+Also exposed from `app/ui/GrandStaffModels.kt` as top-level `KEY_NAMES` for use in UI.
 
 ## Practice UI Data Model (app layer)
 
-Practice rendering is now driven by a dedicated UI model in
+Practice rendering is driven by a dedicated UI model in
 `app/src/main/kotlin/com/binbashmedium/sightreadingtrainer/ui/GrandStaffModels.kt`:
 
 ```kotlin
@@ -48,42 +60,40 @@ data class GameState(
   val levelTitle: String,
   val elapsedTime: Long,
   val score: Int,
+  val bpm: Float,          // live BPM from last inter-chord interval
   val notes: List<NoteEvent>,
   val chords: List<Chord>,
-  val currentBeat: Float
+  val currentBeat: Float   // static: exercise.currentIndex * 2f (not time-driven)
 )
 ```
 
 ## Mapping from Domain to UI State
 
-`PracticeScreen` maps `PracticeState` to `GameState` with:
-- dynamic level title
-- elapsed time from `startTimeMs`
-- dynamic score
-- expected notes mapped to beats and durations
-- dynamic chord labels derived from generated exercise notes
-- optional extra wrong notes rendered in red when incorrect input is detected
-
-This keeps the staff content state-driven without hardcoding fixed chord/time strings in UI.
+`PracticeScreen.toGameState(nowMs)` maps `PracticeState` to `GameState`:
+- `levelTitle` = `"$keyName · $levelDesc"` (e.g. "G · Triads / Progression")
+- `elapsedTime` = wall-clock elapsed since session start
+- `score` and `bpm` taken directly from `PracticeState`
+- Notes coloured per-beat using `PracticeState.resultByBeat[beatIndex]`
+- `currentBeat` = `exercise.currentIndex * 2f` (cursor is **static**, not time-driven)
 
 ## Session Lifecycle
 
 ```
-GenerateExerciseUseCase.execute(settings)
+GenerateExerciseUseCase.execute(settings)  ← random each call
         │
         ▼
   Exercise (immutable snapshot)
         │
-        ▼  repeated per detected chord
+        ▼  for each detected MIDI chord
 PracticeSessionUseCase.processChord(notes)
         │
         ▼
-  PracticeState  ──► PracticeScreen.toGameState(...) ──► GrandStaffCanvas
+  PracticeState  ──► toGameState(nowMs) ──► GrandStaffCanvas
 ```
 
 ## Extending Exercises
 
 To add a new exercise set:
-1. Add generation logic in `GenerateExerciseUseCase`.
-2. Ensure output remains `List<List<Int>>` MIDI groups.
-3. UI will pick up new content automatically through `PracticeState -> GameState` mapping.
+1. Add generation logic in `GenerateExerciseUseCase` (add to `execute` when block).
+2. Ensure output is `List<List<Int>>` MIDI groups.
+3. UI picks up new content automatically through `PracticeState → GameState` mapping.

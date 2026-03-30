@@ -2,6 +2,8 @@ package com.binbashmedium.sightreadingtrainer.ui
 
 import kotlin.math.absoluteValue
 
+val KEY_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+
 enum class NoteState {
     NONE,
     CORRECT,
@@ -27,6 +29,7 @@ data class GameState(
     val levelTitle: String,
     val elapsedTime: Long,
     val score: Int,
+    val bpm: Float,
     val notes: List<NoteEvent>,
     val chords: List<Chord>,
     val currentBeat: Float
@@ -63,11 +66,11 @@ fun beatToX(
 fun durationToGlyphType(duration: Float): NoteGlyphType {
     val normalized = duration.absoluteValue
     return when {
-        normalized >= 4f -> NoteGlyphType.WHOLE
-        normalized >= 2f -> NoteGlyphType.HALF
-        normalized >= 1f -> NoteGlyphType.QUARTER
+        normalized >= 4f  -> NoteGlyphType.WHOLE
+        normalized >= 2f  -> NoteGlyphType.HALF
+        normalized >= 1f  -> NoteGlyphType.QUARTER
         normalized >= 0.5f -> NoteGlyphType.EIGHTH
-        else -> NoteGlyphType.SIXTEENTH
+        else              -> NoteGlyphType.SIXTEENTH
     }
 }
 

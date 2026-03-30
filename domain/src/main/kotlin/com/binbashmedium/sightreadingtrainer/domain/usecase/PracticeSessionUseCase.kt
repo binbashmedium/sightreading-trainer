@@ -24,19 +24,47 @@ class PracticeSessionUseCase(
         val expectedNotes = exercise.currentChord ?: return MatchResult.Waiting
 
         val result = matchNotesUseCase.execute(playedNotes, expectedNotes, toleranceMs)
+        val nowMs = System.currentTimeMillis()
 
-        val newScore = if (result == MatchResult.Correct) currentState.score + 1 else currentState.score
-        val newExercise = if (result == MatchResult.Correct) {
-            exercise.copy(currentIndex = exercise.currentIndex + 1)
+        // Record result for this beat index (overwrites previous attempts on same chord).
+        val newResultByBeat = currentState.resultByBeat + (exercise.currentIndex to result)
+
+        val (newScore, newBpm, newLastCorrectTs) = if (result == MatchResult.Correct) {
+            val interChordMs = if (currentState.lastCorrectTimestamp > 0L)
+                nowMs - currentState.lastCorrectTimestamp
+            else
+                Long.MAX_VALUE
+
+            // Fluency bonus: up to +10 pts for fast playing (< 2 s inter-chord).
+            val fluencyBonus = if (interChordMs < Long.MAX_VALUE)
+                maxOf(0L, (2000L - interChordMs) / 200L).toInt()
+            else
+                0
+
+            // BPM from the last inter-chord interval, capped at 300.
+            val updatedBpm = if (interChordMs < Long.MAX_VALUE)
+                (60_000f / interChordMs.coerceAtLeast(1L)).coerceIn(0f, 300f)
+            else
+                currentState.bpm
+
+            Triple(currentState.score + 10 + fluencyBonus, updatedBpm, nowMs)
         } else {
-            exercise
+            Triple(currentState.score, currentState.bpm, currentState.lastCorrectTimestamp)
         }
+
+        val newExercise = if (result == MatchResult.Correct)
+            exercise.copy(currentIndex = exercise.currentIndex + 1)
+        else
+            exercise
 
         _state.value = currentState.copy(
             exercise = newExercise,
             lastResult = result,
             score = newScore,
-            totalAttempts = currentState.totalAttempts + 1
+            totalAttempts = currentState.totalAttempts + 1,
+            resultByBeat = newResultByBeat,
+            bpm = newBpm,
+            lastCorrectTimestamp = newLastCorrectTs
         )
 
         return result

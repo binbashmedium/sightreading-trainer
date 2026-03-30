@@ -6,7 +6,9 @@ data class AppSettings(
     val chordWindowMs: Int = 50,
     val difficulty: Int = 1,
     val handMode: HandMode = HandMode.RIGHT,
-    val soundEnabled: Boolean = true
+    val soundEnabled: Boolean = true,
+    /** 0 = C, 1 = C#/Db, 2 = D, …, 11 = B */
+    val musicalKey: Int = 0
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }

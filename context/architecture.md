@@ -20,10 +20,11 @@ Contains all business logic. Has zero Android dependencies.
 domain/
   model/
     NoteEvent.kt          — raw MIDI note-on event (midiNote, velocity, timestamp)
-    Exercise.kt           — sequence of expected note groups, tracks current position
+    Exercise.kt           — sequence of expected note groups, current position + musicalKey
     MatchResult.kt        — sealed class: Correct | Incorrect | TooEarly | TooLate | Waiting
-    PracticeState.kt      — snapshot of an active session (exercise, score, lastResult)
-    AppSettings.kt        — all user-configurable settings + HandMode enum
+    PracticeState.kt      — session snapshot: exercise, score, resultByBeat, bpm, lastCorrectTimestamp
+    AppSettings.kt        — all user-configurable settings + HandMode enum + musicalKey (0–11)
+    NoteValue.kt          — rhythmic duration enum (WHOLE/HALF/QUARTER/EIGHTH) with beats: Float helper
   usecase/
     MatchNotesUseCase.kt       — compares played chord against expected notes and checks timing
     GenerateExerciseUseCase.kt — creates Exercise for a given difficulty + hand mode
@@ -80,11 +81,11 @@ GrandStaffCanvas             draws one Grand Staff + dynamic chords/notes/cursor
 
 ## UI Rendering Pipeline (Practice)
 
-1. `PracticeScreen` starts a session and tracks wall-clock time.
+1. `PracticeScreen` starts a session on `LaunchedEffect(Unit)` by calling `PracticeViewModel.startSession()`.
 2. Domain `PracticeState` is transformed into UI `GameState` (`toGameState` mapper).
-3. `HeaderCard` draws dynamic `levelTitle`, `elapsedTime` (mm:ss), and `score`.
-4. `GrandStaffCanvas` draws exactly one connected grand staff (treble + bass), chord labels, note glyphs, and time cursor.
-5. Bottom controls provide `Pause` and `Hint` actions.
+3. `HeaderCard` shows: level title (key · type), elapsed time, live BPM, and score.
+4. `GrandStaffCanvas` draws exactly one connected grand staff (treble + bass), chord labels, note glyphs, and a **static** cursor at the current expected chord.
+5. Single "New Exercise" button regenerates notes via `PracticeViewModel.reloadSession()`.
 
 ## Dependency Injection
 

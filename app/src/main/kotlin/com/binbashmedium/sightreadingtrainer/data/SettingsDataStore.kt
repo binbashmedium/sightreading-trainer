@@ -28,6 +28,7 @@ class SettingsDataStore @Inject constructor(
         val DIFFICULTY = intPreferencesKey("difficulty")
         val HAND_MODE = stringPreferencesKey("hand_mode")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
+        val MUSICAL_KEY = intPreferencesKey("musical_key")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -37,7 +38,8 @@ class SettingsDataStore @Inject constructor(
             chordWindowMs = prefs[Keys.CHORD_WINDOW] ?: 50,
             difficulty = prefs[Keys.DIFFICULTY] ?: 1,
             handMode = HandMode.valueOf(prefs[Keys.HAND_MODE] ?: HandMode.RIGHT.name),
-            soundEnabled = prefs[Keys.SOUND_ENABLED] ?: true
+            soundEnabled = prefs[Keys.SOUND_ENABLED] ?: true,
+            musicalKey = prefs[Keys.MUSICAL_KEY] ?: 0
         )
     }
 
@@ -49,6 +51,7 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.DIFFICULTY] = settings.difficulty
             prefs[Keys.HAND_MODE] = settings.handMode.name
             prefs[Keys.SOUND_ENABLED] = settings.soundEnabled
+            prefs[Keys.MUSICAL_KEY] = settings.musicalKey
         }
     }
 }

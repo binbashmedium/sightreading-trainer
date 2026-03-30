@@ -19,14 +19,14 @@ fun execute(
 1. **Pitch matching (strict)**
    - Extract MIDI note numbers from played notes
    - Compare sorted lists with expected notes
-   - Mismatch => `MatchResult.Incorrect`
+   - Mismatch → `MatchResult.Incorrect`
 
 2. **Timing check (optional)**
    - Runs only when `expectedTimeMs` is provided
    - `delta = playedNotes[0].timestamp - expectedTimeMs`
-   - `delta < -toleranceMs` => `TooEarly`
-   - `delta > toleranceMs` => `TooLate`
-   - otherwise => `Correct`
+   - `delta < -toleranceMs` → `TooEarly`
+   - `delta > toleranceMs` → `TooLate`
+   - otherwise → `Correct`
 
 ## MatchResult States
 
@@ -40,22 +40,30 @@ fun execute(
 
 ## Practice Session Wrapper
 
-`PracticeSessionUseCase` stores session progress (`Exercise`, `score`, `totalAttempts`) and updates `PracticeState` after each processed chord.
+`PracticeSessionUseCase` stores session progress and updates `PracticeState` after each chord:
+
+- **Score**: base **+10 pts** per correct chord; **fluency bonus** of up to +10 pts for fast
+  consecutive playing (`max(0, (2000 - interChordMs) / 200)` integer pts).
+- **BPM**: calculated from last inter-chord interval: `60000 / interChordMs`, capped at 300.
+  Updated only on correct chords. Shown as `PracticeState.bpm`.
+- **Per-beat results**: `PracticeState.resultByBeat: Map<Int, MatchResult>` stores the latest
+  result for each chord index — used by the UI for accurate note colouring per beat.
 
 ## UI Visualization Mapping
 
-In `PracticeScreen` the domain result is mapped to note states for rendering on the staff:
-- `Correct` → expected note glyphs turn green (`NoteState.CORRECT`)
-- `Incorrect` → expected glyphs can become red and wrong/extra notes are rendered as red notes on staff (`NoteState.WRONG`)
-- `TooLate` → expected note glyphs turn yellow (`NoteState.LATE`)
-- pending/unplayed notes remain black (`NoteState.NONE`)
+`PracticeScreen.toGameState` maps `resultByBeat[beatIndex]` to `NoteState`:
+- `Correct`   → green (`NoteState.CORRECT`, `#2E7D32`)
+- `Incorrect` → red (`NoteState.WRONG`, `#C62828`)
+- `TooLate`   → yellow (`NoteState.LATE`, `#F9A825`)
+- pending/unplayed → black (`NoteState.NONE`)
 
-Color is applied directly to musical glyphs (noteheads/stems/flags), not overlays.
+## Cursor Behaviour
 
-## Cursor-time Evaluation Context
-
-The UI also renders a red time cursor based on current beat. Notes left of cursor are interpreted as evaluated/past context; notes right of cursor are upcoming context.
+The red time cursor sits **statically** at `exercise.currentIndex * 2f` beats. It advances
+only when the user plays the correct notes — the app waits for input rather than advancing
+on wall-clock time.
 
 ## Future Matching Modes
 
-Only strict equality is currently implemented. A tolerant mode (`expected ⊆ played`) can be introduced by extending `MatchNotesUseCase` and the UI mapper.
+Only strict equality is currently implemented. A tolerant mode (`expected ⊆ played`) can be
+introduced by extending `MatchNotesUseCase` and the UI mapper.

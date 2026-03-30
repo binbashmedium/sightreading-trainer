@@ -6,7 +6,9 @@ package com.binbashmedium.sightreadingtrainer.domain.model
  */
 data class Exercise(
     val expectedNotes: List<List<Int>>,
-    val currentIndex: Int = 0
+    val currentIndex: Int = 0,
+    /** Key used when this exercise was generated (0=C … 11=B). */
+    val musicalKey: Int = 0
 ) {
     val isComplete: Boolean
         get() = currentIndex >= expectedNotes.size

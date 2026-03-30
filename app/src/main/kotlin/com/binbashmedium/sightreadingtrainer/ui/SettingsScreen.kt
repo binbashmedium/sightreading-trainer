@@ -1,6 +1,8 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -42,6 +44,23 @@ fun SettingsScreen(
             valueRange = 1f..5f,
             steps = 3
         )
+
+        Spacer(Modifier.height(16.dp))
+
+        // Key signature
+        Text("Key: ${KEY_NAMES.getOrElse(settings.musicalKey) { "C" }}")
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            itemsIndexed(KEY_NAMES) { index, keyName ->
+                FilterChip(
+                    selected = settings.musicalKey == index,
+                    onClick = { viewModel.updateSettings(settings.copy(musicalKey = index)) },
+                    label = { Text(keyName) }
+                )
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
 

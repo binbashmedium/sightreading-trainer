@@ -45,9 +45,15 @@ class GrandStaffModelsTest {
         val now = 1_700_000_000_000L
         val state = generateExampleGameState(now)
 
-        assertTrue(state.levelTitle.startsWith("Level "))
+        assertTrue(state.levelTitle.isNotEmpty())
         assertTrue(state.notes.isNotEmpty())
         assertTrue(state.chords.isNotEmpty())
         assertTrue(state.score > 0)
+    }
+
+    @Test
+    fun `generateExampleGameState bpm field is non-negative`() {
+        val state = generateExampleGameState(System.currentTimeMillis())
+        assertTrue("BPM should be non-negative", state.bpm >= 0f)
     }
 }

@@ -47,19 +47,20 @@ class PracticeSessionUseCaseTest {
     }
 
     @Test
-    fun `correct note advances exercise index and increments score`() = runTest {
+    fun `correct note advances exercise index and awards base score`() = runTest {
         useCase.startSession(threeNoteExercise)
 
         val result = useCase.processChord(listOf(NoteEvent(60, 100)))
 
         assertEquals(MatchResult.Correct, result)
         assertEquals(1, useCase.state.value!!.exercise.currentIndex)
-        assertEquals(1, useCase.state.value!!.score)
+        // First chord: base 10 pts, no fluency bonus (no previous timestamp).
+        assertEquals(10, useCase.state.value!!.score)
         assertEquals(1, useCase.state.value!!.totalAttempts)
     }
 
     @Test
-    fun `incorrect note does not advance exercise and does not increment score`() = runTest {
+    fun `incorrect note does not advance exercise and does not change score`() = runTest {
         useCase.startSession(threeNoteExercise)
 
         val result = useCase.processChord(listOf(NoteEvent(62, 100))) // D4 instead of C4
@@ -80,7 +81,8 @@ class PracticeSessionUseCaseTest {
 
         val state = useCase.state.value!!
         assertTrue("Exercise should be complete", state.exercise.isComplete)
-        assertEquals(3, state.score)
+        // Minimum 30 pts (3 × base 10), fast consecutive calls earn fluency bonuses.
+        assertTrue("Score should be at least 30", state.score >= 30)
         assertEquals(3, state.totalAttempts)
     }
 
@@ -105,16 +107,51 @@ class PracticeSessionUseCaseTest {
         val chordExercise = Exercise(expectedNotes = listOf(listOf(60, 64, 67)))
         useCase.startSession(chordExercise)
 
-        // Wrong chord first
         val wrong = useCase.processChord(listOf(NoteEvent(60, 100), NoteEvent(64, 100)))
         assertEquals(MatchResult.Incorrect, wrong)
         assertFalse(useCase.state.value!!.exercise.isComplete)
 
-        // Correct chord
         val correct = useCase.processChord(
             listOf(NoteEvent(60, 100), NoteEvent(64, 100), NoteEvent(67, 100))
         )
         assertEquals(MatchResult.Correct, correct)
         assertTrue(useCase.state.value!!.exercise.isComplete)
+    }
+
+    @Test
+    fun `correct chord stores Correct in resultByBeat`() = runTest {
+        useCase.startSession(threeNoteExercise)
+        useCase.processChord(listOf(NoteEvent(60, 100)))
+
+        assertEquals(MatchResult.Correct, useCase.state.value!!.resultByBeat[0])
+    }
+
+    @Test
+    fun `incorrect chord stores Incorrect in resultByBeat`() = runTest {
+        useCase.startSession(threeNoteExercise)
+        useCase.processChord(listOf(NoteEvent(62, 100))) // wrong note
+
+        assertEquals(MatchResult.Incorrect, useCase.state.value!!.resultByBeat[0])
+    }
+
+    @Test
+    fun `second correct chord produces non-zero BPM`() = runTest {
+        useCase.startSession(threeNoteExercise)
+        useCase.processChord(listOf(NoteEvent(60, 100)))
+        useCase.processChord(listOf(NoteEvent(62, 100)))
+
+        val bpm = useCase.state.value!!.bpm
+        assertTrue("BPM should be positive after two correct chords", bpm > 0f)
+    }
+
+    @Test
+    fun `fluency bonus raises score above base for fast playing`() = runTest {
+        useCase.startSession(threeNoteExercise)
+        useCase.processChord(listOf(NoteEvent(60, 100))) // first: no bonus
+        useCase.processChord(listOf(NoteEvent(62, 100))) // second: fast → fluency bonus
+
+        // First chord = 10 pts, second chord = 10 + fluencyBonus (> 0 for fast call).
+        assertTrue("Score should exceed 20 for fast consecutive playing",
+            useCase.state.value!!.score > 20)
     }
 }

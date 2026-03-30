@@ -9,7 +9,8 @@ data class AppSettings(
     val chordWindowMs: Int = 50,
     val difficulty: Int = 1,
     val handMode: HandMode = HandMode.RIGHT,
-    val soundEnabled: Boolean = true
+    val soundEnabled: Boolean = true,
+    val musicalKey: Int = 0   // 0=C, 1=C#/Db, …, 11=B
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }
@@ -19,24 +20,31 @@ enum class HandMode { LEFT, RIGHT, BOTH }
 
 Settings are persisted using Jetpack DataStore (`Preferences`).
 
-- `SettingsDataStore` maps preference keys ↔ fields
+- `SettingsDataStore` maps preference keys ↔ fields (includes `musical_key` int key)
 - `SettingsRepository` exposes `Flow<AppSettings>` and update API
 - `SettingsViewModel` and other consumers collect from repository flow
 
 ## Runtime Usage
 
 ### Practice pipeline
-`PracticeViewModel` collects settings to configure:
+`PracticeViewModel` reads settings to configure:
 - `AndroidMidiManager.openDevice(settings.midiDeviceName)`
 - `ChordDetector(chordWindowMs = settings.chordWindowMs)`
 - `PracticeSessionUseCase.processChord(..., timingToleranceMs = settings.timingToleranceMs)`
 
 ### Exercise generation
-`ExerciseRepository` and `GenerateExerciseUseCase` use:
-- `difficulty`
+`GenerateExerciseUseCase` uses:
+- `difficulty` (1–5)
 - `handMode`
+- `musicalKey` (0–11) — transposes all notes by this semitone offset from C
+
+## SettingsScreen UI
+
+Key signature is selected via a horizontally-scrollable `LazyRow` of `FilterChip`s showing
+all 12 key names. Other controls (Difficulty slider, Hand mode chips, Tolerance slider,
+Chord window slider, Sound toggle, MIDI device radio) are unchanged.
 
 ## UI Notes
 
-The new grand-staff UI is fully state-driven and does not introduce additional persisted settings.
-`Pause` and `Hint` controls in `PracticeScreen` are presentation-level controls currently handled in the UI layer.
+The grand-staff UI is fully state-driven. The `musicalKey` is embedded in `Exercise.musicalKey`
+at generation time so the level title can show the key even when settings change mid-session.
