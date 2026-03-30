@@ -35,6 +35,7 @@ fun MainScreen(
         Spacer(Modifier.height(32.dp))
 
         Text("Difficulty: Level ${settings.difficulty}")
+        Text("Length: ${settings.exerciseLength}")
         Text("Hand: ${settings.handMode.name}")
 
         Spacer(Modifier.height(32.dp))

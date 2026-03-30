@@ -1,5 +1,6 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
+import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import kotlin.math.absoluteValue
 
 val KEY_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
@@ -30,6 +31,13 @@ val TREBLE_FLAT_STEPS  = intArrayOf(34, 37, 33, 36, 32, 35, 31) // B4,E5,A4,D5,G
 // Bass: G2=bottom line at diatonic step 18.
 val BASS_SHARP_STEPS   = intArrayOf(24, 21, 25, 22, 19, 23, 20) // F3,C3,G3,D3,A2,E3,B2
 val BASS_FLAT_STEPS    = intArrayOf(20, 23, 19, 22, 18, 21, 17) // B2,E3,A2,D3,G2,C3,F2
+
+const val TREBLE_BOTTOM_LINE_STEP = 30
+const val TREBLE_G_LINE_STEP = 32
+const val TREBLE_TOP_LINE_STEP = 38
+const val BASS_BOTTOM_LINE_STEP = 18
+const val BASS_F_LINE_STEP = 24
+const val BASS_TOP_LINE_STEP = 26
 
 enum class NoteState {
     NONE,
@@ -99,12 +107,23 @@ fun midiToGrandStaffY(
     trebleTopY: Float,
     bassTopY: Float,
     lineSpacing: Float
-): Float {
-    val step = midiToDiatonicStep(midi)
-    return when (staff) {
-        StaffType.TREBLE -> (trebleTopY + 4f * lineSpacing) - (step - 30) * lineSpacing / 2f
-        StaffType.BASS   -> (bassTopY  + 4f * lineSpacing) - (step - 18) * lineSpacing / 2f
-    }
+): Float = staffLineYForStep(midiToDiatonicStep(midi), staff, trebleTopY, bassTopY, lineSpacing)
+
+fun staffLineYForStep(
+    diatonicStep: Int,
+    staff: StaffType,
+    trebleTopY: Float,
+    bassTopY: Float,
+    lineSpacing: Float
+): Float = when (staff) {
+    StaffType.TREBLE -> (trebleTopY + 4f * lineSpacing) - (diatonicStep - TREBLE_BOTTOM_LINE_STEP) * lineSpacing / 2f
+    StaffType.BASS -> (bassTopY + 4f * lineSpacing) - (diatonicStep - BASS_BOTTOM_LINE_STEP) * lineSpacing / 2f
+}
+
+fun staffForExercise(midi: Int, handMode: HandMode): StaffType = when (handMode) {
+    HandMode.LEFT -> StaffType.BASS
+    HandMode.RIGHT -> StaffType.TREBLE
+    HandMode.BOTH -> if (midi >= 60) StaffType.TREBLE else StaffType.BASS
 }
 
 /**

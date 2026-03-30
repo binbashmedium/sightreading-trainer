@@ -4,6 +4,7 @@
     <string name="start_practice">Start Practice</string>
     <string name="settings">Settings</string>
     <string name="difficulty">Difficulty</string>
+    <string name="exercise_length">Exercise Length</string>
     <string name="hand_mode">Hand Mode</string>
     <string name="timing_tolerance">Timing Tolerance (ms)</string>
     <string name="chord_window">Chord Detection Window (ms)</string>

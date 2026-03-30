@@ -47,6 +47,16 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        Text("${stringResource(R.string.exercise_length)}: ${settings.exerciseLength}")
+        Slider(
+            value = settings.exerciseLength.toFloat(),
+            onValueChange = { viewModel.updateSettings(settings.copy(exerciseLength = it.toInt())) },
+            valueRange = 4f..16f,
+            steps = 11
+        )
+
+        Spacer(Modifier.height(16.dp))
+
         // Key signature
         Text("Key: ${KEY_NAMES.getOrElse(settings.musicalKey) { "C" }}")
         LazyRow(

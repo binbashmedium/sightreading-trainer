@@ -26,6 +26,7 @@ class SettingsDataStore @Inject constructor(
         val TIMING_TOLERANCE = intPreferencesKey("timing_tolerance_ms")
         val CHORD_WINDOW = intPreferencesKey("chord_window_ms")
         val DIFFICULTY = intPreferencesKey("difficulty")
+        val EXERCISE_LENGTH = intPreferencesKey("exercise_length")
         val HAND_MODE = stringPreferencesKey("hand_mode")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val MUSICAL_KEY = intPreferencesKey("musical_key")
@@ -37,6 +38,7 @@ class SettingsDataStore @Inject constructor(
             timingToleranceMs = prefs[Keys.TIMING_TOLERANCE] ?: 200,
             chordWindowMs = prefs[Keys.CHORD_WINDOW] ?: 50,
             difficulty = prefs[Keys.DIFFICULTY] ?: 1,
+            exerciseLength = prefs[Keys.EXERCISE_LENGTH] ?: 8,
             handMode = HandMode.valueOf(prefs[Keys.HAND_MODE] ?: HandMode.RIGHT.name),
             soundEnabled = prefs[Keys.SOUND_ENABLED] ?: true,
             musicalKey = prefs[Keys.MUSICAL_KEY] ?: 0
@@ -49,6 +51,7 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.TIMING_TOLERANCE] = settings.timingToleranceMs
             prefs[Keys.CHORD_WINDOW] = settings.chordWindowMs
             prefs[Keys.DIFFICULTY] = settings.difficulty
+            prefs[Keys.EXERCISE_LENGTH] = settings.exerciseLength
             prefs[Keys.HAND_MODE] = settings.handMode.name
             prefs[Keys.SOUND_ENABLED] = settings.soundEnabled
             prefs[Keys.MUSICAL_KEY] = settings.musicalKey

@@ -45,42 +45,130 @@ class GenerateExerciseUseCase {
         val K = settings.musicalKey
         val rightRoot = 60 + K   // C4 + key offset (treble)
         val leftRoot  = 48 + K   // C3 + key offset (bass)
+        val exerciseLength = settings.exerciseLength.coerceAtLeast(1)
 
         val chords = when (settings.difficulty) {
-            1    -> generateLevel1(settings.handMode, rightRoot, leftRoot)
-            2    -> generateLevel2(rightRoot, leftRoot)
-            3    -> generateLevel3(rightRoot)
-            4    -> generateLevel4(rightRoot)
-            5    -> generateLevel5(rightRoot)
-            else -> generateLevel1(settings.handMode, rightRoot, leftRoot)
+            1    -> generateLevel1(settings.handMode, rightRoot, leftRoot, exerciseLength)
+            2    -> generateLevel2(settings.handMode, rightRoot, leftRoot, exerciseLength)
+            3    -> generateLevel3(settings.handMode, rightRoot, leftRoot, exerciseLength)
+            4    -> generateLevel4(settings.handMode, rightRoot, leftRoot, exerciseLength)
+            5    -> generateLevel5(settings.handMode, rightRoot, leftRoot, exerciseLength)
+            else -> generateLevel1(settings.handMode, rightRoot, leftRoot, exerciseLength)
         }
-        return Exercise(chords, musicalKey = K)
+        return Exercise(chords, musicalKey = K, handMode = settings.handMode)
     }
 
     /** Level 1: single notes from the diatonic scale (one hand), shuffled each time. */
-    private fun generateLevel1(handMode: HandMode, rightRoot: Int, leftRoot: Int): List<List<Int>> {
-        val root = if (handMode == HandMode.LEFT) leftRoot else rightRoot
-        return SCALE_8.map { listOf(root + it) }.shuffled()
+    private fun generateLevel1(
+        handMode: HandMode,
+        rightRoot: Int,
+        leftRoot: Int,
+        length: Int
+    ): List<List<Int>> {
+        val rightPattern = SCALE_8.map { listOf(rightRoot + it) }
+        val leftPattern = SCALE_8.map { listOf(leftRoot + it) }
+        return sequenceForHandMode(handMode, leftPattern, rightPattern, length)
     }
 
-    /** Level 2: parallel octaves (both hands), shuffled each time. */
-    private fun generateLevel2(rightRoot: Int, leftRoot: Int): List<List<Int>> =
-        SCALE_7.map { i -> listOf(leftRoot + i, rightRoot + i) }.shuffled()
+    /** Level 2: octaves in one hand, or split octaves across both hands. */
+    private fun generateLevel2(
+        handMode: HandMode,
+        rightRoot: Int,
+        leftRoot: Int,
+        length: Int
+    ): List<List<Int>> {
+        val rightPattern = SCALE_7.map { i -> listOf(rightRoot + i, rightRoot + i + 12) }
+        val leftPattern = SCALE_7.map { i -> listOf(leftRoot + i - 12, leftRoot + i) }
+        return when (handMode) {
+            HandMode.RIGHT -> repeatPattern(rightPattern, length)
+            HandMode.LEFT -> repeatPattern(leftPattern, length)
+            HandMode.BOTH -> repeatPattern(SCALE_7.map { i -> listOf(leftRoot + i, rightRoot + i) }, length)
+        }
+    }
 
-    /** Level 3: diatonic thirds in the right hand, shuffled each time. */
-    private fun generateLevel3(root: Int): List<List<Int>> =
-        THIRDS.map { (a, b) -> listOf(root + a, root + b) }.shuffled()
+    /** Level 3: diatonic thirds in the selected hand(s). */
+    private fun generateLevel3(
+        handMode: HandMode,
+        rightRoot: Int,
+        leftRoot: Int,
+        length: Int
+    ): List<List<Int>> {
+        val rightPattern = THIRDS.map { (a, b) -> listOf(rightRoot + a, rightRoot + b) }
+        val leftPattern = THIRDS.map { (a, b) -> listOf(leftRoot + a, leftRoot + b) }
+        return sequenceForHandMode(handMode, leftPattern, rightPattern, length)
+    }
 
-    /** Level 4: all 7 diatonic triads in root position, shuffled each time. */
-    private fun generateLevel4(root: Int): List<List<Int>> =
-        TRIADS.map { (a, b, c) -> listOf(root + a, root + b, root + c) }.shuffled()
+    /** Level 4: diatonic triads in the selected hand(s). */
+    private fun generateLevel4(
+        handMode: HandMode,
+        rightRoot: Int,
+        leftRoot: Int,
+        length: Int
+    ): List<List<Int>> {
+        val rightPattern = TRIADS.map { (a, b, c) -> listOf(rightRoot + a, rightRoot + b, rightRoot + c) }
+        val leftPattern = TRIADS.map { (a, b, c) -> listOf(leftRoot + a, leftRoot + b, leftRoot + c) }
+        return sequenceForHandMode(handMode, leftPattern, rightPattern, length)
+    }
 
-    /** Level 5: randomly pick one of several common 4-chord progressions. */
-    private fun generateLevel5(root: Int): List<List<Int>> {
-        val prog = PROGRESSIONS[Random.nextInt(PROGRESSIONS.size)]
-        return prog.map { triadIdx ->
+    /** Level 5: common progressions in the selected hand(s). */
+    private fun generateLevel5(
+        handMode: HandMode,
+        rightRoot: Int,
+        leftRoot: Int,
+        length: Int
+    ): List<List<Int>> {
+        val rightPattern = progressionPattern(rightRoot)
+        val leftPattern = progressionPattern(leftRoot)
+        return sequenceForHandMode(handMode, leftPattern, rightPattern, length)
+    }
+
+    private fun progressionPattern(root: Int): List<List<Int>> {
+        val progression = PROGRESSIONS[Random.nextInt(PROGRESSIONS.size)]
+        return progression.map { triadIdx ->
             val (a, b, c) = TRIADS[triadIdx]
             listOf(root + a, root + b, root + c)
+        }
+    }
+
+    private fun sequenceForHandMode(
+        handMode: HandMode,
+        leftPattern: List<List<Int>>,
+        rightPattern: List<List<Int>>,
+        length: Int
+    ): List<List<Int>> = when (handMode) {
+        HandMode.LEFT -> repeatPattern(leftPattern, length)
+        HandMode.RIGHT -> repeatPattern(rightPattern, length)
+        HandMode.BOTH -> alternateHands(leftPattern, rightPattern, length)
+    }
+
+    private fun repeatPattern(pattern: List<List<Int>>, length: Int): List<List<Int>> {
+        if (pattern.isEmpty()) return emptyList()
+        val result = mutableListOf<List<Int>>()
+        while (result.size < length) {
+            result += pattern.shuffled().take(length - result.size)
+        }
+        return result
+    }
+
+    private fun alternateHands(
+        leftPattern: List<List<Int>>,
+        rightPattern: List<List<Int>>,
+        length: Int
+    ): List<List<Int>> {
+        val leftNotes = repeatPattern(leftPattern, (length + 1) / 2)
+        val rightNotes = repeatPattern(rightPattern, length / 2)
+        return buildList(length) {
+            var leftIndex = 0
+            var rightIndex = 0
+            repeat(length) { index ->
+                add(
+                    if (index % 2 == 0) {
+                        leftNotes[leftIndex++]
+                    } else {
+                        rightNotes[rightIndex++]
+                    }
+                )
+            }
         }
     }
 }

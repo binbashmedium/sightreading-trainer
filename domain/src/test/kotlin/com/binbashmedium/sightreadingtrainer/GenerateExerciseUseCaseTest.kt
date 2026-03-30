@@ -18,39 +18,46 @@ class GenerateExerciseUseCaseTest {
 
         assertTrue(exercise.expectedNotes.isNotEmpty())
         exercise.expectedNotes.forEach { chord ->
-            assertEquals("Each chord should have exactly 1 note", 1, chord.size)
+            assertEquals(1, chord.size)
             assertTrue("Right-hand notes should be >= 60", chord[0] >= 60)
         }
     }
 
     @Test
     fun `level 1 left hand generates lower notes than right hand`() {
-        val leftExercise  = useCase.execute(AppSettings(difficulty = 1, handMode = HandMode.LEFT))
+        val leftExercise = useCase.execute(AppSettings(difficulty = 1, handMode = HandMode.LEFT))
         val rightExercise = useCase.execute(AppSettings(difficulty = 1, handMode = HandMode.RIGHT))
 
-        val leftAvg  = leftExercise.expectedNotes.flatten().average()
+        val leftAvg = leftExercise.expectedNotes.flatten().average()
         val rightAvg = rightExercise.expectedNotes.flatten().average()
         assertTrue("Left-hand notes should be lower than right-hand notes", leftAvg < rightAvg)
     }
 
     @Test
-    fun `level 2 generates two-note chords`() {
-        val exercise = useCase.execute(AppSettings(difficulty = 2))
+    fun `configured exercise length is applied to generated exercises`() {
+        val exercise = useCase.execute(
+            AppSettings(difficulty = 4, handMode = HandMode.RIGHT, exerciseLength = 12)
+        )
 
-        assertTrue(exercise.expectedNotes.isNotEmpty())
-        exercise.expectedNotes.forEach { chord ->
-            assertEquals("Level 2 chords should have 2 notes", 2, chord.size)
-        }
+        assertEquals(12, exercise.expectedNotes.size)
     }
 
     @Test
-    fun `level 3 generates interval pairs`() {
-        val exercise = useCase.execute(AppSettings(difficulty = 3))
+    fun `level 2 left hand stays in lower register`() {
+        val exercise = useCase.execute(AppSettings(difficulty = 2, handMode = HandMode.LEFT))
 
-        assertTrue(exercise.expectedNotes.isNotEmpty())
-        exercise.expectedNotes.forEach { chord ->
-            assertEquals("Level 3 chords should have 2 notes", 2, chord.size)
-        }
+        assertTrue(exercise.expectedNotes.all { chord -> chord.all { it < 60 } })
+    }
+
+    @Test
+    fun `both hand exercises include notes on both staves`() {
+        val exercise = useCase.execute(
+            AppSettings(difficulty = 3, handMode = HandMode.BOTH, exerciseLength = 10)
+        )
+
+        val notes = exercise.expectedNotes.flatten()
+        assertTrue(notes.any { it < 60 })
+        assertTrue(notes.any { it >= 60 })
     }
 
     @Test
@@ -59,17 +66,19 @@ class GenerateExerciseUseCaseTest {
 
         assertTrue(exercise.expectedNotes.isNotEmpty())
         exercise.expectedNotes.forEach { chord ->
-            assertEquals("Level 4 chords should have 3 notes", 3, chord.size)
+            assertEquals(3, chord.size)
         }
     }
 
     @Test
-    fun `level 5 generates exactly 4 chords each a triad`() {
-        val exercise = useCase.execute(AppSettings(difficulty = 5))
+    fun `level 5 respects configured exercise length`() {
+        val exercise = useCase.execute(
+            AppSettings(difficulty = 5, handMode = HandMode.RIGHT, exerciseLength = 9)
+        )
 
-        assertEquals("Level 5 should have 4 chords", 4, exercise.expectedNotes.size)
+        assertEquals(9, exercise.expectedNotes.size)
         exercise.expectedNotes.forEach { chord ->
-            assertEquals("Each chord should be a triad", 3, chord.size)
+            assertEquals(3, chord.size)
         }
     }
 
@@ -93,21 +102,28 @@ class GenerateExerciseUseCaseTest {
 
     @Test
     fun `key transposition shifts all notes by the key offset`() {
-        val cExercise = useCase.execute(AppSettings(difficulty = 1, handMode = HandMode.RIGHT, musicalKey = 0))
-        val gExercise = useCase.execute(AppSettings(difficulty = 1, handMode = HandMode.RIGHT, musicalKey = 7))
+        val cExercise = useCase.execute(
+            AppSettings(difficulty = 1, handMode = HandMode.RIGHT, musicalKey = 0)
+        )
+        val gExercise = useCase.execute(
+            AppSettings(difficulty = 1, handMode = HandMode.RIGHT, musicalKey = 7)
+        )
 
         val cNotes = cExercise.expectedNotes.flatten().toSet()
         val gNotes = gExercise.expectedNotes.flatten().toSet()
 
-        // C major right hand: 60–72; G major right hand: 67–79
-        assertTrue("C major notes should be in range 60–72", cNotes.all { it in 60..72 })
-        assertTrue("G major notes should be in range 67–79", gNotes.all { it in 67..79 })
+        assertTrue(cNotes.all { it in 60..72 })
+        assertTrue(gNotes.all { it in 67..79 })
     }
 
     @Test
-    fun `exercise stores the musical key from settings`() {
-        val exercise = useCase.execute(AppSettings(difficulty = 1, musicalKey = 5))
+    fun `exercise stores the musical key and hand mode from settings`() {
+        val exercise = useCase.execute(
+            AppSettings(difficulty = 1, musicalKey = 5, handMode = HandMode.LEFT)
+        )
+
         assertEquals(5, exercise.musicalKey)
+        assertEquals(HandMode.LEFT, exercise.handMode)
     }
 
     @Test
@@ -115,6 +131,6 @@ class GenerateExerciseUseCaseTest {
         val settings = AppSettings(difficulty = 1, handMode = HandMode.RIGHT, musicalKey = 0)
         val e1 = useCase.execute(settings).expectedNotes.flatten().toSet()
         val e2 = useCase.execute(settings).expectedNotes.flatten().toSet()
-        assertEquals("Same notes regardless of shuffle order", e1, e2)
+        assertEquals(e1, e2)
     }
 }

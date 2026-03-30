@@ -8,9 +8,10 @@ data class AppSettings(
     val timingToleranceMs: Int = 200,
     val chordWindowMs: Int = 50,
     val difficulty: Int = 1,
+    val exerciseLength: Int = 8,
     val handMode: HandMode = HandMode.RIGHT,
     val soundEnabled: Boolean = true,
-    val musicalKey: Int = 0   // 0=C, 1=C#/Db, …, 11=B
+    val musicalKey: Int = 0
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }
@@ -20,9 +21,9 @@ enum class HandMode { LEFT, RIGHT, BOTH }
 
 Settings are persisted using Jetpack DataStore (`Preferences`).
 
-- `SettingsDataStore` maps preference keys ↔ fields (includes `musical_key` int key)
-- `SettingsRepository` exposes `Flow<AppSettings>` and update API
-- `SettingsViewModel` and other consumers collect from repository flow
+- `SettingsDataStore` maps preference keys to fields, including `musical_key` and `exercise_length`.
+- `SettingsRepository` exposes `Flow<AppSettings>` and the save API.
+- `SettingsViewModel` and other consumers collect from the repository flow.
 
 ## Runtime Usage
 
@@ -34,17 +35,23 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 
 ### Exercise generation
 `GenerateExerciseUseCase` uses:
-- `difficulty` (1–5)
+- `difficulty` (1-5)
+- `exerciseLength`
 - `handMode`
-- `musicalKey` (0–11) — transposes all notes by this semitone offset from C
+- `musicalKey` (0-11)
 
 ## SettingsScreen UI
 
-Key signature is selected via a horizontally-scrollable `LazyRow` of `FilterChip`s showing
-all 12 key names. Other controls (Difficulty slider, Hand mode chips, Tolerance slider,
-Chord window slider, Sound toggle, MIDI device radio) are unchanged.
+The screen includes:
+- difficulty slider
+- exercise-length slider
+- key signature chips
+- hand-mode chips
+- timing tolerance slider
+- chord-window slider
+- sound toggle
+- MIDI device radio list
 
 ## UI Notes
 
-The grand-staff UI is fully state-driven. The `musicalKey` is embedded in `Exercise.musicalKey`
-at generation time so the level title can show the key even when settings change mid-session.
+`musicalKey` and `handMode` are embedded into `Exercise` at generation time so the practice screen can keep rendering the correct staff assignment and title even if settings change mid-session.
