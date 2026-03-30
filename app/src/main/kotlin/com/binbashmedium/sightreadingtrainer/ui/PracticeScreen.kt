@@ -61,7 +61,9 @@ fun PracticeScreen(
 
     LaunchedEffect(Unit) {
         while (true) {
-            now = System.currentTimeMillis()
+            val currentNow = System.currentTimeMillis()
+            now = currentNow
+            viewModel.finalizeIfTimedOut(currentNow)
             delay(500)
         }
     }

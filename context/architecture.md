@@ -72,7 +72,7 @@ AndroidMidiManager           (SharedFlow<domain.NoteEvent>)
 ChordDetector                groups notes + pedal events within chordWindowMs
       |
       v
-PracticeViewModel            collects grouped input, calls PracticeSessionUseCase, rolls exercises in same key until timer ends
+PracticeViewModel            collects grouped input, calls PracticeSessionUseCase, rolls exercises in same key until timer ends, and finalizes timeout from both MIDI and UI timer paths
       |
       v
 PracticeScreen               maps PracticeState -> ui.GameState

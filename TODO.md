@@ -18,6 +18,9 @@
 
 ## Done (recent)
 
+- [x] **Timeout finish-screen regression fixed** - the practice timer loop now calls `PracticeViewModel.finalizeIfTimedOut(...)`, so the session-complete overlay (score, highscore, correct/wrong) appears even if no new MIDI input arrives after time expires.
+- [x] **Timeout boundary tests added** - new `PracticeViewModelTimeoutTest` verifies pre-boundary, boundary, and post-boundary behavior for `hasSessionTimedOut(...)`.
+- [x] **Verification rerun** - full `test` passed; debug APK rebuilt, installed, and launched on the VASOUN L10.
 - [x] **Note detection regression fixed** - note-only steps no longer fail when incidental pedal CC input is present.
 - [x] **Pedal matching guard added** - pedal action is now strictly checked only when a step explicitly expects pedal press/release.
 - [x] **Regression test added** - matching now has a unit test for note-only correctness with incidental pedal input.

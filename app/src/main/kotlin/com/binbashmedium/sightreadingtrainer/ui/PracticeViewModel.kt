@@ -26,6 +26,9 @@ data class SessionResultUi(
     val isNewHighScore: Boolean
 )
 
+internal fun hasSessionTimedOut(state: PracticeState, nowMs: Long): Boolean =
+    (nowMs - state.startTimeMs) >= state.sessionDurationSec * 1_000L
+
 @HiltViewModel
 class PracticeViewModel @Inject constructor(
     private val practiceSessionUseCase: PracticeSessionUseCase,
@@ -93,11 +96,12 @@ class PracticeViewModel @Inject constructor(
                         if (_sessionResult.value != null) return@collect
                         practiceSessionUseCase.processInput(input, appSettings.timingToleranceMs.toLong())
                         val state = practiceSessionUseCase.state.value ?: return@collect
-                        if (!state.exercise.isComplete) return@collect
+                        if (!state.exercise.isComplete) {
+                            finalizeIfTimedOut()
+                            return@collect
+                        }
 
-                        val elapsedMs = System.currentTimeMillis() - state.startTimeMs
-                        val durationMs = state.sessionDurationSec * 1_000L
-                        if (elapsedMs < durationMs) {
+                        if (!hasSessionTimedOut(state, System.currentTimeMillis())) {
                             val baseSettings = sessionSettings ?: appSettings
                             val nextExercise = exerciseRepository.generateExercise(baseSettings, forcedKey = sessionKey)
                             practiceSessionUseCase.loadNextExercise(nextExercise)
@@ -108,6 +112,13 @@ class PracticeViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun finalizeIfTimedOut(nowMs: Long = System.currentTimeMillis()) {
+        if (_sessionResult.value != null) return
+        val state = practiceSessionUseCase.state.value ?: return
+        if (!hasSessionTimedOut(state, nowMs)) return
+        viewModelScope.launch { completeAndPersist(state) }
     }
 
     private suspend fun completeAndPersist(state: PracticeState) {
@@ -121,8 +132,6 @@ class PracticeViewModel @Inject constructor(
             totalCorrectNotes = settings.totalCorrectNotes + state.correctNotesCount,
             totalWrongNotes = settings.totalWrongNotes + state.wrongNotesCount
         )
-        settingsRepository.save(updatedSettings)
-
         _sessionResult.value = SessionResultUi(
             score = state.score,
             correctNotes = state.correctNotesCount,
@@ -130,6 +139,7 @@ class PracticeViewModel @Inject constructor(
             highScore = highScore,
             isNewHighScore = isNewHighScore
         )
+        settingsRepository.save(updatedSettings)
     }
 
     fun stopSession() {

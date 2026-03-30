@@ -157,7 +157,8 @@ The app now applies these notation rules in pure helpers:
 
 Any played step input (notes and optional pedal), correct or wrong, advances `exercise.currentIndex` by 1.
 When a chunk is complete before timeout, a new chunk is generated in the same key and the session continues.
-When session time is up and the current chunk is complete, `PracticeScreen` shows `SessionCompleteOverlay` with final score, highscore, and correct/wrong note counts.
+Timeout finalization is now checked from both input handling and the UI timer tick (`PracticeViewModel.finalizeIfTimedOut(...)`), so session completion is persisted even when no new MIDI events arrive after time expires.
+When session time is up, `PracticeScreen` shows `SessionCompleteOverlay` with final score, highscore, and correct/wrong note counts.
 
 Sustain-pedal press and release events are now represented directly on exercise steps so they can be checked alongside notes in the session pipeline.
 
