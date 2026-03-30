@@ -18,6 +18,11 @@
 
 ## Done (recent)
 
+- [x] **Pedal-only events no longer advance steps** - `PracticeSessionUseCase` now treats input with no notes as state-only pedal updates (`MatchResult.Waiting`), so pressing/releasing pedal alone never moves to the next expected note/chord.
+- [x] **Pedal press-before-note support** - steps marked with pedal press now validate when the pedal is already held down before the played notes arrive.
+- [x] **Pedal release lead-window support** - steps marked with pedal release now validate if release happened on the same input or within 1 second before the played notes.
+- [x] **Regression coverage expanded** - new tests verify pedal-only gating plus press-before and release-before behavior in both `MatchNotesUseCaseTest` and `PracticeSessionUseCaseTest`.
+- [x] **Verification rerun** - full `test` passed; debug APK rebuilt, installed, and launched on the VASOUN L10.
 - [x] **MIDI reopen regression fixed** - `AndroidMidiManager` now closes existing port/device before reopen, rejects stale async open callbacks with request IDs, and invalidates pending opens on `close()`, preventing duplicate receivers that caused all-played-notes to be marked wrong after starting a new exercise.
 - [x] **Session reset hardening** - `PracticeViewModel.startSession()` now resets `ChordDetector` before generating/starting the next exercise so pending grouped input cannot leak across exercises.
 - [x] **MIDI reopen regression tests added** - new `MidiOpenRequestTrackerTest` verifies request rollover and invalidation behavior used to block stale callback attachment.

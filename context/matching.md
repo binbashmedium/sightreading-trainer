@@ -24,7 +24,8 @@ fun execute(
 
 2. **Pedal matching**
    - If `expectedStep.pedalAction` is `NONE`, incidental pedal input is ignored.
-   - If a pedal action is expected (`PRESS`/`RELEASE`), it must match exactly.
+   - For `PRESS`, the step is valid when pedal is pressed on this input **or** already held from an earlier pedal-only input.
+   - For `RELEASE`, the step is valid when release is on this input, or when release happened shortly before the played notes (lead window: 1 second).
    - Mismatch returns `MatchResult.Incorrect`
 
 3. **Timing check (optional)**
@@ -52,6 +53,7 @@ fun execute(
 - **BPM**: calculated from last inter-correct-step interval (`60000 / interStepMs`, capped at 300).
 - **Per-beat results**: `resultByBeat: Map<Int, MatchResult>` stores latest result for each step index.
 - **Note counters**: `correctNotesCount` and `wrongNotesCount` accumulate expected note counts per matched step.
+- **Pedal-only gating**: inputs with no notes update pedal state only and return `Waiting`; they do not advance `currentIndex`.
 
 ## UI Visualization Mapping
 

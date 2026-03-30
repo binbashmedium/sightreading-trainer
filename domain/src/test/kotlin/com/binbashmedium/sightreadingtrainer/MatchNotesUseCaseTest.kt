@@ -117,4 +117,41 @@ class MatchNotesUseCaseTest {
         )
         assertEquals(MatchResult.Correct, result)
     }
+
+    @Test
+    fun `expected press accepts pedal already pressed before notes`() {
+        val result = useCase.execute(
+            playedNotes = listOf(NoteEvent(60, 100, timestamp = 2_000L)),
+            playedPedalAction = PedalAction.NONE,
+            expectedStep = ExerciseStep(notes = listOf(60), pedalAction = PedalAction.PRESS),
+            pedalIsPressed = true
+        )
+        assertEquals(MatchResult.Correct, result)
+    }
+
+    @Test
+    fun `expected release accepts recent release shortly before notes`() {
+        val result = useCase.execute(
+            playedNotes = listOf(NoteEvent(60, 100, timestamp = 2_500L)),
+            playedPedalAction = PedalAction.NONE,
+            expectedStep = ExerciseStep(notes = listOf(60), pedalAction = PedalAction.RELEASE),
+            pedalIsPressed = false,
+            lastPedalReleaseTimestampMs = 2_000L,
+            releaseLeadToleranceMs = 1_000L
+        )
+        assertEquals(MatchResult.Correct, result)
+    }
+
+    @Test
+    fun `expected release fails when release was too early`() {
+        val result = useCase.execute(
+            playedNotes = listOf(NoteEvent(60, 100, timestamp = 3_500L)),
+            playedPedalAction = PedalAction.NONE,
+            expectedStep = ExerciseStep(notes = listOf(60), pedalAction = PedalAction.RELEASE),
+            pedalIsPressed = false,
+            lastPedalReleaseTimestampMs = 2_000L,
+            releaseLeadToleranceMs = 1_000L
+        )
+        assertEquals(MatchResult.Incorrect, result)
+    }
 }

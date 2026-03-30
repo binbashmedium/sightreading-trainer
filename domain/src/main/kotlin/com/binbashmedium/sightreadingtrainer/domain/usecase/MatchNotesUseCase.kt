@@ -12,7 +12,11 @@ class MatchNotesUseCase {
         playedPedalAction: PedalAction,
         expectedStep: ExerciseStep,
         toleranceMs: Long = 200L,
-        expectedTimeMs: Long? = null
+        expectedTimeMs: Long? = null,
+        pedalIsPressed: Boolean = false,
+        lastPedalReleaseTimestampMs: Long? = null,
+        releaseLeadToleranceMs: Long = 1_000L,
+        playedInputTimestampMs: Long? = null
     ): MatchResult {
         val playedMidiNotes = playedNotes.map { it.midiNote }.sorted()
         val sortedExpected = expectedStep.notes.sorted()
@@ -20,8 +24,23 @@ class MatchNotesUseCase {
         if (playedMidiNotes != sortedExpected) {
             return MatchResult.Incorrect
         }
-        if (expectedStep.pedalAction != PedalAction.NONE && playedPedalAction != expectedStep.pedalAction) {
-            return MatchResult.Incorrect
+
+        when (expectedStep.pedalAction) {
+            PedalAction.NONE -> Unit
+            PedalAction.PRESS -> {
+                val pedalSatisfied = playedPedalAction == PedalAction.PRESS || pedalIsPressed
+                if (!pedalSatisfied) return MatchResult.Incorrect
+            }
+            PedalAction.RELEASE -> {
+                val playedTime = playedNotes.firstOrNull()?.timestamp
+                    ?: playedInputTimestampMs
+                    ?: System.currentTimeMillis()
+                val releaseOnThisInput = playedPedalAction == PedalAction.RELEASE
+                val releaseWasRecent = lastPedalReleaseTimestampMs != null &&
+                    playedTime >= lastPedalReleaseTimestampMs &&
+                    playedTime - lastPedalReleaseTimestampMs <= releaseLeadToleranceMs
+                if (!releaseOnThisInput && !releaseWasRecent) return MatchResult.Incorrect
+            }
         }
 
         if (expectedTimeMs != null) {

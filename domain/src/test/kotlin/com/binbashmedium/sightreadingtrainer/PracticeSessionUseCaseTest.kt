@@ -186,6 +186,84 @@ class PracticeSessionUseCaseTest {
     }
 
     @Test
+    fun `pedal only input does not advance exercise`() = runTest {
+        useCase.startSession(threeNoteExercise)
+
+        val result = useCase.processInput(
+            PerformanceInput(
+                notes = emptyList(),
+                pedalAction = PedalAction.PRESS,
+                timestamp = 1_000L
+            )
+        )
+
+        val state = useCase.state.value!!
+        assertEquals(MatchResult.Waiting, result)
+        assertEquals(0, state.exercise.currentIndex)
+        assertEquals(0, state.totalAttempts)
+        assertTrue(state.resultByBeat.isEmpty())
+    }
+
+    @Test
+    fun `pedal press before note satisfies expected press step`() = runTest {
+        val exercise = Exercise(
+            steps = listOf(ExerciseStep(notes = listOf(60), pedalAction = PedalAction.PRESS))
+        )
+        useCase.startSession(exercise)
+
+        useCase.processInput(
+            PerformanceInput(
+                notes = emptyList(),
+                pedalAction = PedalAction.PRESS,
+                timestamp = 1_000L
+            )
+        )
+        val result = useCase.processInput(
+            PerformanceInput(
+                notes = listOf(NoteEvent(60, 100, timestamp = 1_400L)),
+                pedalAction = PedalAction.NONE,
+                timestamp = 1_400L
+            )
+        )
+
+        assertEquals(MatchResult.Correct, result)
+        assertTrue(useCase.state.value!!.exercise.isComplete)
+    }
+
+    @Test
+    fun `pedal release shortly before note satisfies expected release step`() = runTest {
+        val exercise = Exercise(
+            steps = listOf(ExerciseStep(notes = listOf(60), pedalAction = PedalAction.RELEASE))
+        )
+        useCase.startSession(exercise)
+
+        useCase.processInput(
+            PerformanceInput(
+                notes = emptyList(),
+                pedalAction = PedalAction.PRESS,
+                timestamp = 1_000L
+            )
+        )
+        useCase.processInput(
+            PerformanceInput(
+                notes = emptyList(),
+                pedalAction = PedalAction.RELEASE,
+                timestamp = 2_000L
+            )
+        )
+        val result = useCase.processInput(
+            PerformanceInput(
+                notes = listOf(NoteEvent(60, 100, timestamp = 2_700L)),
+                pedalAction = PedalAction.NONE,
+                timestamp = 2_700L
+            )
+        )
+
+        assertEquals(MatchResult.Correct, result)
+        assertTrue(useCase.state.value!!.exercise.isComplete)
+    }
+
+    @Test
     fun `loadNextExercise keeps session totals and resets beat map`() = runTest {
         useCase.startSession(threeNoteExercise, sessionDurationSec = 60)
         useCase.processChord(listOf(NoteEvent(60, 100)))

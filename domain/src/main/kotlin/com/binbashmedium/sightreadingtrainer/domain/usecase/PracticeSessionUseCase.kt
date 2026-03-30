@@ -3,6 +3,7 @@ package com.binbashmedium.sightreadingtrainer.domain.usecase
 import com.binbashmedium.sightreadingtrainer.domain.model.Exercise
 import com.binbashmedium.sightreadingtrainer.domain.model.MatchResult
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.model.PerformanceInput
 import com.binbashmedium.sightreadingtrainer.domain.model.PracticeState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,10 +13,18 @@ import kotlinx.coroutines.flow.asStateFlow
 class PracticeSessionUseCase(
     private val matchNotesUseCase: MatchNotesUseCase = MatchNotesUseCase()
 ) {
+    companion object {
+        private const val PEDAL_RELEASE_LEAD_TOLERANCE_MS = 1_000L
+    }
+
     private val _state = MutableStateFlow<PracticeState?>(null)
     val state: StateFlow<PracticeState?> = _state.asStateFlow()
+    private var pedalIsPressed: Boolean = false
+    private var lastPedalReleaseTimestampMs: Long? = null
 
     fun startSession(exercise: Exercise, sessionDurationSec: Int = 60) {
+        pedalIsPressed = false
+        lastPedalReleaseTimestampMs = null
         _state.value = PracticeState(
             exercise = exercise,
             sessionDurationSec = sessionDurationSec.coerceAtLeast(10)
@@ -36,7 +45,29 @@ class PracticeSessionUseCase(
         val exercise = currentState.exercise
         val expectedStep = exercise.currentStep ?: return MatchResult.Waiting
 
-        val result = matchNotesUseCase.execute(input.notes, input.pedalAction, expectedStep, toleranceMs)
+        when (input.pedalAction) {
+            PedalAction.PRESS -> pedalIsPressed = true
+            PedalAction.RELEASE -> {
+                pedalIsPressed = false
+                lastPedalReleaseTimestampMs = input.timestamp
+            }
+            PedalAction.NONE -> Unit
+        }
+
+        if (input.notes.isEmpty()) {
+            return MatchResult.Waiting
+        }
+
+        val result = matchNotesUseCase.execute(
+            playedNotes = input.notes,
+            playedPedalAction = input.pedalAction,
+            expectedStep = expectedStep,
+            toleranceMs = toleranceMs,
+            pedalIsPressed = pedalIsPressed,
+            lastPedalReleaseTimestampMs = lastPedalReleaseTimestampMs,
+            releaseLeadToleranceMs = PEDAL_RELEASE_LEAD_TOLERANCE_MS,
+            playedInputTimestampMs = input.timestamp
+        )
         val nowMs = System.currentTimeMillis()
 
         // Record result for this beat index (overwrites previous attempts on same chord).
@@ -95,6 +126,8 @@ class PracticeSessionUseCase(
         processInput(PerformanceInput(notes = playedNotes), toleranceMs)
 
     fun resetSession() {
+        pedalIsPressed = false
+        lastPedalReleaseTimestampMs = null
         _state.value = null
     }
 }
