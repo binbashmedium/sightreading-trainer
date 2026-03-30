@@ -60,13 +60,14 @@ class PracticeSessionUseCaseTest {
     }
 
     @Test
-    fun `incorrect note does not advance exercise and does not change score`() = runTest {
+    fun `incorrect note advances exercise but does not change score`() = runTest {
         useCase.startSession(threeNoteExercise)
 
         val result = useCase.processChord(listOf(NoteEvent(62, 100))) // D4 instead of C4
 
         assertEquals(MatchResult.Incorrect, result)
-        assertEquals(0, useCase.state.value!!.exercise.currentIndex)
+        // Wrong notes still advance the cursor so the exercise keeps moving.
+        assertEquals(1, useCase.state.value!!.exercise.currentIndex)
         assertEquals(0, useCase.state.value!!.score)
         assertEquals(1, useCase.state.value!!.totalAttempts)
     }
@@ -103,19 +104,14 @@ class PracticeSessionUseCaseTest {
     }
 
     @Test
-    fun `chord exercise advances only after exact match`() = runTest {
+    fun `any played chord advances exercise regardless of correctness`() = runTest {
         val chordExercise = Exercise(expectedNotes = listOf(listOf(60, 64, 67)))
         useCase.startSession(chordExercise)
 
+        // A wrong attempt advances past the chord and completes the exercise.
         val wrong = useCase.processChord(listOf(NoteEvent(60, 100), NoteEvent(64, 100)))
         assertEquals(MatchResult.Incorrect, wrong)
-        assertFalse(useCase.state.value!!.exercise.isComplete)
-
-        val correct = useCase.processChord(
-            listOf(NoteEvent(60, 100), NoteEvent(64, 100), NoteEvent(67, 100))
-        )
-        assertEquals(MatchResult.Correct, correct)
-        assertTrue(useCase.state.value!!.exercise.isComplete)
+        assertTrue("Exercise should be complete after one attempt (wrong)", useCase.state.value!!.exercise.isComplete)
     }
 
     @Test

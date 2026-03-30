@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -32,7 +34,9 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.binbashmedium.sightreadingtrainer.domain.model.MatchResult
@@ -51,7 +55,6 @@ fun PracticeScreen(
     val state by viewModel.practiceState.collectAsState()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    // Tick elapsed time every 500 ms for the timer display.
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()
@@ -63,35 +66,101 @@ fun PracticeScreen(
         state?.toGameState(now) ?: generateExampleGameState(now)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F7FB))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        HeaderCard(gameState = gameState)
+    val isComplete = state?.exercise?.isComplete == true
 
-        Card(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                .fillMaxSize()
+                .background(Color(0xFFF5F7FB))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GrandStaffCanvas(
+            HeaderCard(gameState = gameState)
+
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                gameState = gameState
-            )
+                    .fillMaxWidth()
+                    .weight(1f),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                GrandStaffCanvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    gameState = gameState
+                )
+            }
+
+            Button(
+                onClick = { viewModel.reloadSession() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("New Exercise")
+            }
         }
 
-        Button(
-            onClick = { viewModel.reloadSession() },
-            modifier = Modifier.fillMaxWidth()
+        if (isComplete) {
+            SessionCompleteOverlay(
+                score = gameState.score,
+                bpm = gameState.bpm,
+                onRestart = { viewModel.reloadSession() }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SessionCompleteOverlay(score: Int, bpm: Float, onRestart: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xCC000000)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F2748)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+            modifier = Modifier.padding(32.dp)
         ) {
-            Text("New Exercise")
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Exercise Complete!",
+                    color = Color(0xFFF2F6FF),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "$score pts",
+                    color = Color(0xFFFFD700),
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+                if (bpm > 0f) {
+                    Text(
+                        text = "${bpm.toInt()} BPM",
+                        color = Color(0xFFB0C4DE),
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onRestart,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("New Exercise", style = MaterialTheme.typography.titleMedium)
+                }
+            }
         }
     }
 }
@@ -152,26 +221,32 @@ fun GrandStaffCanvas(
 ) {
     Canvas(modifier = modifier) {
         val lineSpacing = size.height / 18f
-        val trebleTopY = lineSpacing * 3f
+        val trebleTopY = lineSpacing * 2.5f
         val bassTopY = lineSpacing * 10f
 
-        val leftPadding = lineSpacing * 3f
-        val startX = leftPadding + lineSpacing * 3f
-        val beatWidth = max(30f, size.width / 24f)
+        val clefAreaWidth = lineSpacing * 3f
+        val leftPadding = lineSpacing * 0.5f
+
+        val (sharps, flats) = KEY_SIGNATURES.getOrElse(gameState.musicalKey) { 0 to 0 }
+        val numAccidentals = sharps + flats
+        val keySigWidth = if (numAccidentals > 0) numAccidentals * lineSpacing * 0.8f + lineSpacing * 0.5f else 0f
+
+        val startX = leftPadding + clefAreaWidth + keySigWidth
+        val beatWidth = max(30f, (size.width - startX - lineSpacing) / (gameState.chords.size.coerceAtLeast(1) * 2f + 1f))
 
         val black = Color(0xFF111111)
+        val staffStroke = 2f
 
-        // Grand staff lines.
+        // ── Staff lines ──────────────────────────────────────────────────────────
+        val staffEndX = size.width - lineSpacing
         for (i in 0..4) {
-            val y = trebleTopY + i * lineSpacing
-            drawLine(black, Offset(startX, y), Offset(size.width - lineSpacing, y), strokeWidth = 2f)
+            drawLine(black, Offset(startX, trebleTopY + i * lineSpacing), Offset(staffEndX, trebleTopY + i * lineSpacing), strokeWidth = staffStroke)
         }
         for (i in 0..4) {
-            val y = bassTopY + i * lineSpacing
-            drawLine(black, Offset(startX, y), Offset(size.width - lineSpacing, y), strokeWidth = 2f)
+            drawLine(black, Offset(startX, bassTopY + i * lineSpacing), Offset(staffEndX, bassTopY + i * lineSpacing), strokeWidth = staffStroke)
         }
 
-        // Vertical brace connecting both staves.
+        // Vertical brace connecting both staves
         drawLine(
             color = black,
             start = Offset(startX, trebleTopY),
@@ -179,36 +254,80 @@ fun GrandStaffCanvas(
             strokeWidth = 3f
         )
 
-        // Clef symbols.
+        // ── Clef symbols ─────────────────────────────────────────────────────────
         val clefPaint = Paint().asFrameworkPaint().apply {
             color = android.graphics.Color.BLACK
-            textSize = lineSpacing * 5f
+            textSize = lineSpacing * 4.8f
             isAntiAlias = true
         }
-        drawContext.canvas.nativeCanvas.drawText("𝄞", leftPadding, trebleTopY + lineSpacing * 3.7f, clefPaint)
-        drawContext.canvas.nativeCanvas.drawText("𝄢", leftPadding, bassTopY + lineSpacing * 3.6f, clefPaint)
+        val clefX = leftPadding + lineSpacing * 0.2f
+        // Treble clef: glyph baseline should sit so the curl wraps around the G4 line (trebleTopY + 3*lineSpacing)
+        drawContext.canvas.nativeCanvas.drawText("𝄞", clefX, trebleTopY + lineSpacing * 3.5f, clefPaint)
 
-        // Bar lines and chord labels.
+        val bassClefPaint = Paint().asFrameworkPaint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = lineSpacing * 3.5f
+            isAntiAlias = true
+        }
+        // Bass clef: baseline at the F3 line (bassTopY + lineSpacing)
+        drawContext.canvas.nativeCanvas.drawText("𝄢", clefX, bassTopY + lineSpacing * 2.8f, bassClefPaint)
+
+        // ── Key signature ─────────────────────────────────────────────────────────
+        if (numAccidentals > 0) {
+            val accPaint = Paint().asFrameworkPaint().apply {
+                color = android.graphics.Color.BLACK
+                textSize = lineSpacing * 1.6f
+                isAntiAlias = true
+            }
+            val keySigX0 = leftPadding + clefAreaWidth
+            val accSpacing = lineSpacing * 0.8f
+            val symbol = if (sharps > 0) "♯" else "♭"
+            val trebleSteps = if (sharps > 0) TREBLE_SHARP_STEPS else TREBLE_FLAT_STEPS
+            val bassSteps   = if (sharps > 0) BASS_SHARP_STEPS   else BASS_FLAT_STEPS
+
+            repeat(numAccidentals) { i ->
+                val x = keySigX0 + i * accSpacing
+
+                val trebleStep = trebleSteps[i]
+                val trebleY = (trebleTopY + 4f * lineSpacing) - (trebleStep - 30) * lineSpacing / 2f
+                drawContext.canvas.nativeCanvas.drawText(symbol, x, trebleY + lineSpacing * 0.4f, accPaint)
+
+                val bassStep = bassSteps[i]
+                val bassY = (bassTopY + 4f * lineSpacing) - (bassStep - 18) * lineSpacing / 2f
+                drawContext.canvas.nativeCanvas.drawText(symbol, x, bassY + lineSpacing * 0.4f, accPaint)
+            }
+        }
+
+        // ── Beat separator lines ──────────────────────────────────────────────────
         val labelPaint = Paint().asFrameworkPaint().apply {
             color = android.graphics.Color.DKGRAY
-            textSize = lineSpacing * 1.25f
+            textSize = lineSpacing * 1.1f
             isAntiAlias = true
         }
         gameState.chords.forEach { chord ->
             val x = beatToX(chord.startBeat, startX, beatWidth)
             drawLine(
-                color = Color(0xFF7E8798),
-                start = Offset(x, trebleTopY - lineSpacing * 1.1f),
+                color = Color(0x447E8798),
+                start = Offset(x, trebleTopY - lineSpacing * 0.8f),
                 end = Offset(x, bassTopY + lineSpacing * 4f),
-                strokeWidth = 1.2f
+                strokeWidth = 1f
             )
-            drawContext.canvas.nativeCanvas.drawText(chord.name, x + 6f, trebleTopY - lineSpacing * 1.6f, labelPaint)
+            drawContext.canvas.nativeCanvas.drawText(
+                chord.name, x + 4f, trebleTopY - lineSpacing * 1.2f, labelPaint
+            )
         }
 
-        // Notes.
+        // ── Notes (with ledger lines) ─────────────────────────────────────────────
+        // Treble staff: bottom line step=30, top line step=38
+        // Bass staff:   bottom line step=18, top line step=26
+        val trebleBottomStep = 30
+        val trebleTopStep = 38
+        val bassBottomStep = 18
+        val bassTopStep = 26
+
         gameState.notes.forEach { note ->
             val noteX = beatToX(note.startBeat, startX, beatWidth)
-            val noteY = midiToGrandStaffY(note.midi, trebleTopY, bassTopY, lineSpacing)
+            val noteY = midiToGrandStaffY(note.midi, note.staff, trebleTopY, bassTopY, lineSpacing)
             val noteColor = when (note.state) {
                 NoteState.NONE    -> Color.Black
                 NoteState.CORRECT -> Color(0xFF2E7D32)
@@ -216,6 +335,39 @@ fun GrandStaffCanvas(
                 NoteState.LATE    -> Color(0xFFF9A825)
             }
 
+            val step = midiToDiatonicStep(note.midi)
+            val (bottomStep, topStep) = when (note.staff) {
+                StaffType.TREBLE -> trebleBottomStep to trebleTopStep
+                StaffType.BASS   -> bassBottomStep to bassTopStep
+            }
+
+            // Ledger lines below
+            ledgerStepsBelow(step, bottomStep).forEach { l ->
+                val lY = midiToGrandStaffY(
+                    midiFromDiatonicStep(l), note.staff, trebleTopY, bassTopY, lineSpacing
+                )
+                drawLine(
+                    color = black,
+                    start = Offset(noteX - lineSpacing * 0.75f, lY),
+                    end = Offset(noteX + lineSpacing * 0.75f, lY),
+                    strokeWidth = staffStroke
+                )
+            }
+
+            // Ledger lines above
+            ledgerStepsAbove(step, topStep).forEach { l ->
+                val lY = midiToGrandStaffY(
+                    midiFromDiatonicStep(l), note.staff, trebleTopY, bassTopY, lineSpacing
+                )
+                drawLine(
+                    color = black,
+                    start = Offset(noteX - lineSpacing * 0.75f, lY),
+                    end = Offset(noteX + lineSpacing * 0.75f, lY),
+                    strokeWidth = staffStroke
+                )
+            }
+
+            // Note head
             val glyph = durationToGlyphType(note.duration)
             val isHollow = glyph == NoteGlyphType.WHOLE || glyph == NoteGlyphType.HALF
             drawOval(
@@ -225,6 +377,7 @@ fun GrandStaffCanvas(
                 style = if (isHollow) Stroke(width = 2.4f) else Fill
             )
 
+            // Stem and flags
             if (glyph != NoteGlyphType.WHOLE) {
                 val stemX = noteX + lineSpacing * 0.5f
                 drawLine(
@@ -239,7 +392,7 @@ fun GrandStaffCanvas(
                     else                   -> 0
                 }
                 repeat(flagCount) { flagIndex ->
-                    val fy = noteY - lineSpacing * (2.7f - (flagIndex * 0.7f))
+                    val fy = noteY - lineSpacing * (2.7f - flagIndex * 0.7f)
                     drawLine(
                         color = noteColor,
                         start = Offset(stemX, fy),
@@ -250,15 +403,26 @@ fun GrandStaffCanvas(
             }
         }
 
-        // Static cursor at current expected chord position.
+        // ── Cursor (static at current expected beat) ──────────────────────────────
         val cursorX = beatToX(gameState.currentBeat, startX, beatWidth)
         drawLine(
             color = Color.Red,
             start = Offset(cursorX, trebleTopY - lineSpacing),
-            end = Offset(cursorX, bassTopY + lineSpacing * 4.2f),
+            end = Offset(cursorX, bassTopY + lineSpacing * 4.5f),
             strokeWidth = 3f
         )
     }
+}
+
+/**
+ * Approximate MIDI note from a diatonic step (used only for ledger-line Y calculation).
+ * Returns the MIDI for the natural note at that diatonic step (no accidentals).
+ */
+private fun midiFromDiatonicStep(step: Int): Int {
+    val octave = step / 7
+    val noteIdx = step % 7
+    val semitoneOffsets = intArrayOf(0, 2, 4, 5, 7, 9, 11) // C D E F G A B
+    return (octave + 1) * 12 + semitoneOffsets[noteIdx]
 }
 
 private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toGameState(nowMs: Long): GameState {
@@ -284,25 +448,10 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
                     is MatchResult.Incorrect -> NoteState.WRONG
                     is MatchResult.TooLate   -> NoteState.LATE
                     else                     -> NoteState.NONE
-                }
+                },
+                staff = if (midi >= 60) StaffType.TREBLE else StaffType.BASS
             )
         }
-    }
-
-    // Highlight the chord currently being attempted in a distinct colour.
-    val currentChord = exercise.currentChord
-    val pendingWrong = if (lastResult is MatchResult.Incorrect && currentChord?.isNotEmpty() == true) {
-        listOf(
-            NoteEvent(
-                midi = currentChord.first() + 1,
-                startBeat = exercise.currentIndex.toFloat() * 2f,
-                duration = 1f,
-                expected = false,
-                state = NoteState.WRONG
-            )
-        )
-    } else {
-        emptyList()
     }
 
     val chords = exercise.expectedNotes.mapIndexed { idx, notes ->
@@ -313,17 +462,15 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
         )
     }
 
-    // Cursor sits statically on the current expected chord (not time-driven).
-    val currentBeat = exercise.currentIndex.toFloat() * 2f
-
     return GameState(
         levelTitle = levelTitle,
         elapsedTime = elapsed,
         score = score,
         bpm = bpm,
-        notes = expectedNotes + pendingWrong,
+        notes = expectedNotes,
         chords = chords,
-        currentBeat = currentBeat
+        currentBeat = exercise.currentIndex.toFloat() * 2f,
+        musicalKey = exercise.musicalKey
     )
 }
 
@@ -363,7 +510,8 @@ fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameStat
                 startBeat = index * 2f,
                 duration = listOf(4f, 2f, 1f, 0.5f, 0.25f)[(index + midi) % 5],
                 expected = true,
-                state = state
+                state = state,
+                staff = if (midi >= 60) StaffType.TREBLE else StaffType.BASS
             )
         }
     }
@@ -383,6 +531,7 @@ fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameStat
         bpm = if (phase > 1) 60f + phase * 2f else 0f,
         notes = notes,
         chords = chords,
-        currentBeat = phase / 2f
+        currentBeat = phase / 2f,
+        musicalKey = 0
     )
 }

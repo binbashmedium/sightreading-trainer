@@ -45,13 +45,15 @@ Practice rendering is driven by a dedicated UI model in
 
 ```kotlin
 enum class NoteState { NONE, CORRECT, WRONG, LATE }
+enum class StaffType  { TREBLE, BASS }
 
 data class NoteEvent(
   val midi: Int,
   val startBeat: Float,
   val duration: Float,
   val expected: Boolean,
-  val state: NoteState = NoteState.NONE
+  val state: NoteState = NoteState.NONE,
+  val staff: StaffType = StaffType.TREBLE   // which staff the note renders on
 )
 
 data class Chord(val name: String, val notes: List<Int>, val startBeat: Float)
@@ -60,12 +62,38 @@ data class GameState(
   val levelTitle: String,
   val elapsedTime: Long,
   val score: Int,
-  val bpm: Float,          // live BPM from last inter-chord interval
+  val bpm: Float,
   val notes: List<NoteEvent>,
   val chords: List<Chord>,
-  val currentBeat: Float   // static: exercise.currentIndex * 2f (not time-driven)
+  val currentBeat: Float,
+  val musicalKey: Int = 0   // drives key signature rendering
 )
 ```
+
+## Staff Assignment
+
+In `toGameState`, each MIDI note is assigned a staff:
+- `midi >= 60` → `StaffType.TREBLE` (upper staff, right hand)
+- `midi < 60`  → `StaffType.BASS`   (lower staff, left hand)
+
+Middle C (MIDI 60) goes to treble and appears as a ledger-line note below the treble staff.
+
+## Staff Position Formula
+
+`midiToDiatonicStep(midi)` converts a MIDI note to a diatonic step number (C-1=0, C4=28, E4=30).
+
+`midiToGrandStaffY(midi, staff, trebleTopY, bassTopY, lineSpacing)`:
+- Treble: `Y = (trebleTopY + 4*lineSpacing) - (step - 30) * lineSpacing/2`
+- Bass:   `Y = (bassTopY  + 4*lineSpacing) - (step - 18) * lineSpacing/2`
+
+Ledger lines are drawn by `ledgerStepsBelow` / `ledgerStepsAbove` helpers.
+
+## Key Signature Rendering
+
+`KEY_SIGNATURES[musicalKey]` → `(sharps, flats)` count.
+Accidental glyphs are drawn at standard staff positions defined by:
+- `TREBLE_SHARP_STEPS`, `TREBLE_FLAT_STEPS`
+- `BASS_SHARP_STEPS`,   `BASS_FLAT_STEPS`
 
 ## Mapping from Domain to UI State
 
@@ -78,17 +106,22 @@ data class GameState(
 
 ## Session Lifecycle
 
+Any played chord — correct or wrong — advances `exercise.currentIndex` by 1.
+When `exercise.isComplete == true`, the `PracticeScreen` shows a `SessionCompleteOverlay`
+with the final score, BPM, and a "New Exercise" button.
+
 ```
 GenerateExerciseUseCase.execute(settings)  ← random each call
         │
         ▼
   Exercise (immutable snapshot)
         │
-        ▼  for each detected MIDI chord
-PracticeSessionUseCase.processChord(notes)
+        ▼  for each detected MIDI chord (right or wrong)
+PracticeSessionUseCase.processChord(notes)  → always advances index
         │
         ▼
   PracticeState  ──► toGameState(nowMs) ──► GrandStaffCanvas
+                                       ──► SessionCompleteOverlay (when isComplete)
 ```
 
 ## Extending Exercises

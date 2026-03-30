@@ -52,10 +52,8 @@ class PracticeSessionUseCase(
             Triple(currentState.score, currentState.bpm, currentState.lastCorrectTimestamp)
         }
 
-        val newExercise = if (result == MatchResult.Correct)
-            exercise.copy(currentIndex = exercise.currentIndex + 1)
-        else
-            exercise
+        // Always advance to the next chord regardless of whether the result is correct or not.
+        val newExercise = exercise.copy(currentIndex = exercise.currentIndex + 1)
 
         _state.value = currentState.copy(
             exercise = newExercise,
