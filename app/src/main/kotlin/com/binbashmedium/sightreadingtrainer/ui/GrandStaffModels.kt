@@ -31,9 +31,11 @@ val BASS_FLAT_STEPS = intArrayOf(20, 23, 19, 22, 18, 21, 17)
 
 const val TREBLE_BOTTOM_LINE_STEP = 30
 const val TREBLE_G_LINE_STEP = 32
+const val TREBLE_MIDDLE_LINE_STEP = 34
 const val TREBLE_TOP_LINE_STEP = 38
 const val BASS_BOTTOM_LINE_STEP = 18
 const val BASS_F_LINE_STEP = 24
+const val BASS_MIDDLE_LINE_STEP = 22
 const val BASS_TOP_LINE_STEP = 26
 const val BASS_CLEF_LOWER_DOT_STEP = 23
 const val BASS_CLEF_UPPER_DOT_STEP = 25
@@ -41,11 +43,11 @@ const val TREBLE_CLEF_BASELINE_OFFSET = 0.62f
 const val BASS_CLEF_BASELINE_OFFSET = 2.68f
 const val CLEF_AREA_WIDTH_RATIO = 3.25f
 const val POST_CLEF_GAP_RATIO = 2.15f
-const val ACCIDENTAL_SPACING_RATIO = 0.42f
-const val ACCIDENTAL_TEXT_SIZE_RATIO = 0.96f
+const val ACCIDENTAL_SPACING_RATIO = 0.75f
+const val ACCIDENTAL_TEXT_SIZE_RATIO = 2.2f
 const val TREBLE_CLEF_TEXT_SIZE_RATIO = 4.6f
 const val BASS_CLEF_TEXT_SIZE_RATIO = 5.4f
-const val BASS_CLEF_BASELINE_FROM_TOP_RATIO = 0.84f
+const val BASS_CLEF_BASELINE_FROM_TOP_RATIO = 0.92f
 const val BASS_CLEF_DOT_RADIUS_RATIO = 0.17f
 const val BASS_CLEF_DOT_X_OFFSET_RATIO = 1.02f
 const val BASS_CLEF_GLYPH_X_OFFSET_RATIO = 0.22f
@@ -108,6 +110,14 @@ data class BassClefGeometry(
     val dotRadius: Float
 )
 
+enum class StemDirection { UP, DOWN }
+
+data class StemGeometry(
+    val x: Float,
+    val startY: Float,
+    val endY: Float
+)
+
 fun formatElapsedTime(elapsedTimeMs: Long): String {
     val totalSeconds = (elapsedTimeMs / 1_000L).coerceAtLeast(0L)
     val minutes = totalSeconds / 60L
@@ -152,6 +162,11 @@ fun trebleClefBaselineY(anchorY: Float, lineSpacing: Float): Float =
 
 fun bassClefBaselineY(anchorY: Float, lineSpacing: Float): Float =
     anchorY + lineSpacing * BASS_CLEF_BASELINE_OFFSET
+
+fun middleLineStepForStaff(staff: StaffType): Int = when (staff) {
+    StaffType.TREBLE -> TREBLE_MIDDLE_LINE_STEP
+    StaffType.BASS -> BASS_MIDDLE_LINE_STEP
+}
 
 fun grandStaffLayoutMetrics(lineSpacing: Float, numAccidentals: Int): GrandStaffLayoutMetrics {
     val accidentalSpacing = lineSpacing * ACCIDENTAL_SPACING_RATIO
@@ -212,6 +227,75 @@ fun ledgerStepsAbove(noteDiatonicStep: Int, staffTopStep: Int): List<Int> {
         l += 2
     }
     return lines
+}
+
+fun stemDirectionForSteps(steps: List<Int>, staff: StaffType): StemDirection {
+    if (steps.isEmpty()) return StemDirection.UP
+    val middle = middleLineStepForStaff(staff)
+    val highestDistance = (steps.maxOrNull() ?: middle) - middle
+    val lowestDistance = middle - (steps.minOrNull() ?: middle)
+    return when {
+        highestDistance > lowestDistance -> StemDirection.DOWN
+        lowestDistance > highestDistance -> StemDirection.UP
+        else -> StemDirection.DOWN
+    }
+}
+
+fun chordNoteheadOffsets(
+    stepsAscending: List<Int>,
+    direction: StemDirection,
+    lineSpacing: Float
+): List<Float> {
+    if (stepsAscending.isEmpty()) return emptyList()
+    val offsets = MutableList(stepsAscending.size) { 0f }
+    // Displacement equals one notehead width so the displaced notehead clears the stem
+    val displacement = lineSpacing * 1.1f
+    for (index in 1 until stepsAscending.size) {
+        if (stepsAscending[index] - stepsAscending[index - 1] == 1) {
+            when (direction) {
+                StemDirection.UP -> offsets[index] = displacement
+                StemDirection.DOWN -> offsets[index - 1] = -displacement
+            }
+        }
+    }
+    return offsets
+}
+
+fun stemGeometryForChord(
+    noteXs: List<Float>,
+    noteYs: List<Float>,
+    direction: StemDirection,
+    middleLineY: Float,
+    lineSpacing: Float,
+    noteHeadWidth: Float
+): StemGeometry {
+    val defaultStemLength = lineSpacing * 3.5f
+    return when (direction) {
+        StemDirection.UP -> {
+            // Non-displaced noteheads sit at the minimum x; stem attaches to their right edge.
+            // Displaced noteheads (seconds) are to the right of the stem — do not use them for x.
+            val stemNoteX = noteXs.minOrNull() ?: 0f
+            val startY = noteYs.maxOrNull() ?: middleLineY
+            val referenceY = noteYs.minOrNull() ?: startY
+            StemGeometry(
+                x = stemNoteX + noteHeadWidth * 0.5f,
+                startY = startY,
+                endY = minOf(referenceY - defaultStemLength, middleLineY)
+            )
+        }
+        StemDirection.DOWN -> {
+            // Non-displaced noteheads sit at the maximum x; stem attaches to their left edge.
+            // Displaced noteheads (seconds) are to the left of the stem — do not use them for x.
+            val stemNoteX = noteXs.maxOrNull() ?: 0f
+            val startY = noteYs.minOrNull() ?: middleLineY
+            val referenceY = noteYs.maxOrNull() ?: startY
+            StemGeometry(
+                x = stemNoteX - noteHeadWidth * 0.5f,
+                startY = startY,
+                endY = maxOf(referenceY + defaultStemLength, middleLineY)
+            )
+        }
+    }
 }
 
 fun beatToX(

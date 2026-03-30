@@ -59,16 +59,151 @@ class GrandStaffModelsTest {
     }
 
     @Test
-    fun `key signature proportions stay smaller than the clefs`() {
+    fun `bass clef baseline is placed sufficiently below A line so glyph renders below it`() {
+        val geometry = bassClefGeometry(
+            clefX = 20f,
+            trebleTopY = 100f,
+            bassTopY = 300f,
+            lineSpacing = 20f
+        )
+        // Baseline must be >= 0.88 * textSize below topY so the glyph ascent clears the A line
+        val minBaseline = geometry.topY + geometry.textSize * 0.88f
+        assertTrue(
+            "Baseline ${geometry.baselineY} should be >= $minBaseline",
+            geometry.baselineY >= minBaseline
+        )
+    }
+
+    @Test
+    fun `key signature accidentals are proportionally larger than before`() {
         val metrics = grandStaffLayoutMetrics(lineSpacing = 20f, numAccidentals = 4)
 
         assertEquals(65f, metrics.clefAreaWidth, 0.001f)
         assertEquals(43f, metrics.postClefGap, 0.001f)
-        assertEquals(8.4f, metrics.accidentalSpacing, 0.001f)
-        assertEquals(19.2f, metrics.accidentalTextSize, 0.001f)
+        assertEquals(15f, metrics.accidentalSpacing, 0.001f)       // 20 * 0.75
+        assertEquals(44f, metrics.accidentalTextSize, 0.001f)      // 20 * 2.2
         assertEquals(92f, metrics.trebleClefTextSize, 0.001f)
-        assertTrue(metrics.accidentalTextSize < metrics.trebleClefTextSize / 4f)
+        // Accidentals must be clearly visible (> 1 lineSpacing) but smaller than the clef
+        assertTrue(metrics.accidentalTextSize > metrics.trebleClefTextSize / 4f)
+        assertTrue(metrics.accidentalTextSize < metrics.trebleClefTextSize)
         assertTrue(metrics.keySignatureWidth < metrics.clefAreaWidth)
+    }
+
+    @Test
+    fun `key signature accidental order uses standard staff positions`() {
+        assertEquals(38, TREBLE_SHARP_STEPS.first())
+        assertEquals(24, BASS_SHARP_STEPS.first())
+        assertEquals(34, TREBLE_FLAT_STEPS.first())
+        assertEquals(20, BASS_FLAT_STEPS.first())
+        assertEquals(listOf(38, 35, 39, 36), TREBLE_SHARP_STEPS.take(4))
+        assertEquals(listOf(34, 37, 33, 36), TREBLE_FLAT_STEPS.take(4))
+    }
+
+    @Test
+    fun `ledger line helpers return correct staff lines`() {
+        assertEquals(listOf(28, 26), ledgerStepsBelow(26, TREBLE_BOTTOM_LINE_STEP))
+        assertEquals(listOf(40, 42), ledgerStepsAbove(42, TREBLE_TOP_LINE_STEP))
+        assertEquals(listOf(16, 14), ledgerStepsBelow(14, BASS_BOTTOM_LINE_STEP))
+        assertEquals(listOf(28, 30), ledgerStepsAbove(30, BASS_TOP_LINE_STEP))
+    }
+
+    @Test
+    fun `stem direction follows middle line engraving rules`() {
+        assertEquals(StemDirection.UP, stemDirectionForSteps(listOf(30), StaffType.TREBLE))
+        assertEquals(StemDirection.DOWN, stemDirectionForSteps(listOf(TREBLE_MIDDLE_LINE_STEP), StaffType.TREBLE))
+        assertEquals(StemDirection.DOWN, stemDirectionForSteps(listOf(32, 34, 38), StaffType.TREBLE))
+        assertEquals(StemDirection.UP, stemDirectionForSteps(listOf(18, 20, 23), StaffType.BASS))
+        assertEquals(StemDirection.DOWN, stemDirectionForSteps(listOf(20, 24), StaffType.BASS))
+    }
+
+    @Test
+    fun `seconds in chords displace noteheads by one notehead width`() {
+        // Displacement must equal lineSpacing * 1.1 so displaced note clears the stem
+        val lineSpacing = 20f
+        val expectedDisplacement = lineSpacing * 1.1f  // = 22f
+
+        assertEquals(
+            listOf(0f, expectedDisplacement),
+            chordNoteheadOffsets(listOf(32, 33), StemDirection.UP, lineSpacing)
+        )
+        assertEquals(
+            listOf(-expectedDisplacement, 0f),
+            chordNoteheadOffsets(listOf(32, 33), StemDirection.DOWN, lineSpacing)
+        )
+    }
+
+    @Test
+    fun `cluster noteheads that are adjacent seconds displace away from stem`() {
+        // Three-note cluster: lower two are a second apart
+        val lineSpacing = 20f
+        val d = lineSpacing * 1.1f  // expected displacement
+
+        // UP stem: middle note displaced right (it's adjacent to note below it)
+        val upOffsets = chordNoteheadOffsets(listOf(32, 33, 35), StemDirection.UP, lineSpacing)
+        assertEquals(0f, upOffsets[0])
+        assertEquals(d, upOffsets[1])
+        assertEquals(0f, upOffsets[2])
+
+        // DOWN stem: lower of the adjacent pair displaced left
+        val downOffsets = chordNoteheadOffsets(listOf(32, 33, 35), StemDirection.DOWN, lineSpacing)
+        assertEquals(-d, downOffsets[0])
+        assertEquals(0f, downOffsets[1])
+        assertEquals(0f, downOffsets[2])
+    }
+
+    @Test
+    fun `stem x for cluster uses non-displaced notehead position`() {
+        val noteHeadWidth = 22f
+        val lineSpacing = 20f
+
+        // UP stem: displaced note is at larger x; stem must anchor to leftmost (non-displaced) x
+        val upStem = stemGeometryForChord(
+            noteXs = listOf(100f, 122f),  // non-displaced at 100, displaced at 122
+            noteYs = listOf(210f, 200f),
+            direction = StemDirection.UP,
+            middleLineY = 180f,
+            lineSpacing = lineSpacing,
+            noteHeadWidth = noteHeadWidth
+        )
+        assertEquals(100f + noteHeadWidth * 0.5f, upStem.x, 0.001f)  // 111f
+
+        // DOWN stem: displaced note is at smaller x; stem must anchor to rightmost (non-displaced) x
+        val downStem = stemGeometryForChord(
+            noteXs = listOf(100f, 78f),   // non-displaced at 100, displaced at 78
+            noteYs = listOf(120f, 130f),
+            direction = StemDirection.DOWN,
+            middleLineY = 140f,
+            lineSpacing = lineSpacing,
+            noteHeadWidth = noteHeadWidth
+        )
+        assertEquals(100f - noteHeadWidth * 0.5f, downStem.x, 0.001f)  // 89f
+    }
+
+    @Test
+    fun `stem geometry reaches middle line when notes are far from it`() {
+        val upStem = stemGeometryForChord(
+            noteXs = listOf(100f, 122f),
+            noteYs = listOf(210f, 200f),
+            direction = StemDirection.UP,
+            middleLineY = 180f,
+            lineSpacing = 20f,
+            noteHeadWidth = 22f
+        )
+        val downStem = stemGeometryForChord(
+            noteXs = listOf(100f, 78f),
+            noteYs = listOf(120f, 130f),
+            direction = StemDirection.DOWN,
+            middleLineY = 140f,
+            lineSpacing = 20f,
+            noteHeadWidth = 22f
+        )
+
+        assertEquals(111f, upStem.x, 0.001f)
+        assertEquals(210f, upStem.startY, 0.001f)
+        assertEquals(130f, upStem.endY, 0.001f)   // min(200-70, 180) = min(130,180) = 130
+        assertEquals(89f, downStem.x, 0.001f)
+        assertEquals(120f, downStem.startY, 0.001f)
+        assertEquals(200f, downStem.endY, 0.001f)  // max(130+70, 140) = max(200,140) = 200
     }
 
     @Test

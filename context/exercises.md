@@ -103,7 +103,13 @@ The clefs are anchored to:
 
 Ledger lines are drawn by `ledgerStepsBelow` / `ledgerStepsAbove`.
 
-Current status: the bass clef uses a standard glyph again, with explicit dots still anchored around the F line. Device validation screenshots remain under `validation/`.
+Current status: the renderer was re-validated against `mocks/Standard_music_notation_practice.pdf` (especially page 6 on notehead placement and accidentals). Fixes applied in this round:
+- `BASS_CLEF_BASELINE_FROM_TOP_RATIO` raised to 0.92 so the glyph renders below the A line.
+- Spurious programmatic dot circles removed; the Unicode 𝄢 glyph already includes the two dots.
+- `ACCIDENTAL_TEXT_SIZE_RATIO` increased to 2.2 and `ACCIDENTAL_SPACING_RATIO` to 0.75 for proportional key signatures.
+- Cluster notehead displacement raised to `lineSpacing * 1.1` (one notehead width) per PDF page 6.
+- Stem X for chord groups now anchors to the non-displaced noteheads (min x for upstem, max x for downstem).
+Extracted PDF pages live under `validation/pdf-ref/`, device validation screenshots under `validation/`.
 
 ## Key Signature Rendering
 
@@ -111,6 +117,18 @@ Current status: the bass clef uses a standard glyph again, with explicit dots st
 Accidental glyphs are drawn at standard treble/bass staff positions using:
 - `TREBLE_SHARP_STEPS`, `TREBLE_FLAT_STEPS`
 - `BASS_SHARP_STEPS`, `BASS_FLAT_STEPS`
+
+The standard accidental order and spacing are regression-tested against the notation reference.
+
+## Notehead And Stem Rules
+
+The app now applies these notation rules in pure helpers:
+- notes on or above the middle line stem down
+- notes below the middle line stem up
+- chords use a single stem per staff/start-beat group
+- stem direction for chords is controlled by the note farthest from the middle line; ties default to downstem
+- seconds on one stem displace one notehead to avoid collisions
+- ledger-line notes extend stems far enough to reach at least the middle line
 
 ## Mapping from Domain to UI State
 

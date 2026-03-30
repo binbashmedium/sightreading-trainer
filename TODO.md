@@ -18,6 +18,11 @@
 
 ## Done (recent)
 
+- [x] **Notation rendering fixes (v2)** - Bass clef spurious ":" dots removed (Unicode 𝄢 glyph already includes them); bass clef baseline raised so glyph sits below the A line (`BASS_CLEF_BASELINE_FROM_TOP_RATIO` 0.84→0.92); key signature accidentals enlarged to proper proportion (`ACCIDENTAL_TEXT_SIZE_RATIO` 0.96→2.2, `ACCIDENTAL_SPACING_RATIO` 0.42→0.75); cluster notehead displacement increased to one notehead width (lineSpacing×1.1) so displaced notes actually clear the stem; stem X for clusters now anchored to non-displaced noteheads (min for upstem, max for downstem). New tests cover all changed behaviour. APK rebuilt and validated on VASOUN L10.
+- [x] **PDF notation review** - `mocks/Standard_music_notation_practice.pdf` was extracted into `validation/pdf-ref/` and used as an additional notation reference.
+- [x] **Notation rule tests expanded** - unit tests now cover clefs, key-signature ordering/proportions, ledger lines, stem direction, notehead displacement, and single-stem chord geometry.
+- [x] **Renderer aligned with notation rules** - practice rendering now groups chord noteheads onto a single stem and follows middle-line stem direction rules that match the reference PDF.
+- [x] **Fresh PDF-based device validation** - the app was rebuilt, deployed, and rechecked on-device with a fresh screenshot against the extracted PDF pages.
 - [x] **Bass-clef glyph restored** - the broken custom bass-clef body was replaced with a proper glyph renderer while keeping the F-line dot anchors.
 - [x] **Validation screenshots organized** - device-validation captures now live under `validation/` instead of the repo root.
 - [x] **Bass clef geometry anchored** - the bass clef now uses explicit geometry so the dots center around the F line and the top reaches the A line.

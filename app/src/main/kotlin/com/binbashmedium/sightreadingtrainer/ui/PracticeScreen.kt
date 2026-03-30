@@ -288,17 +288,8 @@ fun GrandStaffCanvas(
             lineSpacing
         )
         drawContext.canvas.nativeCanvas.drawText("\uD834\uDD1E", clefX, trebleClefBaselineY(trebleAnchorY, lineSpacing), trebleClefPaint)
+        // The 𝄢 Unicode glyph already includes both dots; no extra circles needed.
         drawContext.canvas.nativeCanvas.drawText("\uD834\uDD22", bassClefGeometry.glyphX, bassClefGeometry.baselineY, bassClefPaint)
-        drawCircle(
-            color = black,
-            radius = bassClefGeometry.dotRadius,
-            center = Offset(bassClefGeometry.dotCenterX, bassClefGeometry.upperDotY)
-        )
-        drawCircle(
-            color = black,
-            radius = bassClefGeometry.dotRadius,
-            center = Offset(bassClefGeometry.dotCenterX, bassClefGeometry.lowerDotY)
-        )
 
         if (numAccidentals > 0) {
             val accidentalPaint = Paint().asFrameworkPaint().apply {
@@ -341,75 +332,115 @@ fun GrandStaffCanvas(
             )
         }
 
-        gameState.notes.forEach { note ->
-            val noteX = beatToX(note.startBeat, startX, beatWidth)
-            val noteY = midiToGrandStaffY(note.midi, note.staff, trebleTopY, bassTopY, lineSpacing)
-            val noteColor = when (note.state) {
-                NoteState.NONE -> Color.Black
-                NoteState.CORRECT -> Color(0xFF2E7D32)
-                NoteState.WRONG -> Color(0xFFC62828)
-                NoteState.LATE -> Color(0xFFF9A825)
-            }
-
-            val step = midiToDiatonicStep(note.midi)
-            val (bottomStep, topStep) = when (note.staff) {
-                StaffType.TREBLE -> TREBLE_BOTTOM_LINE_STEP to TREBLE_TOP_LINE_STEP
-                StaffType.BASS -> BASS_BOTTOM_LINE_STEP to BASS_TOP_LINE_STEP
-            }
-
-            ledgerStepsBelow(step, bottomStep).forEach { ledgerStep ->
-                val ledgerY = staffLineYForStep(ledgerStep, note.staff, trebleTopY, bassTopY, lineSpacing)
-                drawLine(
-                    color = black,
-                    start = Offset(noteX - lineSpacing * 0.75f, ledgerY),
-                    end = Offset(noteX + lineSpacing * 0.75f, ledgerY),
-                    strokeWidth = staffStroke
-                )
-            }
-
-            ledgerStepsAbove(step, topStep).forEach { ledgerStep ->
-                val ledgerY = staffLineYForStep(ledgerStep, note.staff, trebleTopY, bassTopY, lineSpacing)
-                drawLine(
-                    color = black,
-                    start = Offset(noteX - lineSpacing * 0.75f, ledgerY),
-                    end = Offset(noteX + lineSpacing * 0.75f, ledgerY),
-                    strokeWidth = staffStroke
-                )
-            }
-
-            val glyph = durationToGlyphType(note.duration)
-            val isHollow = glyph == NoteGlyphType.WHOLE || glyph == NoteGlyphType.HALF
-            drawOval(
-                color = noteColor,
-                topLeft = Offset(noteX - lineSpacing * 0.55f, noteY - lineSpacing * 0.38f),
-                size = Size(lineSpacing * 1.1f, lineSpacing * 0.76f),
-                style = if (isHollow) Stroke(width = 2.4f) else Fill
-            )
-
-            if (glyph != NoteGlyphType.WHOLE) {
-                val stemX = noteX + lineSpacing * 0.5f
-                drawLine(
-                    color = noteColor,
-                    start = Offset(stemX, noteY),
-                    end = Offset(stemX, noteY - lineSpacing * 2.8f),
-                    strokeWidth = 2f
-                )
-                val flagCount = when (glyph) {
-                    NoteGlyphType.EIGHTH -> 1
-                    NoteGlyphType.SIXTEENTH -> 2
-                    else -> 0
+        val noteHeadWidth = lineSpacing * 1.1f
+        val noteHeadHeight = lineSpacing * 0.76f
+        gameState.notes
+            .groupBy { it.startBeat to it.staff }
+            .toSortedMap(compareBy<Pair<Float, StaffType>> { it.first }.thenBy { it.second.ordinal })
+            .values
+            .forEach { chordNotes ->
+                val baseX = beatToX(chordNotes.first().startBeat, startX, beatWidth)
+                val staff = chordNotes.first().staff
+                val glyph = durationToGlyphType(chordNotes.first().duration)
+                val noteColor = when (chordNotes.first().state) {
+                    NoteState.NONE -> Color.Black
+                    NoteState.CORRECT -> Color(0xFF2E7D32)
+                    NoteState.WRONG -> Color(0xFFC62828)
+                    NoteState.LATE -> Color(0xFFF9A825)
                 }
-                repeat(flagCount) { flagIndex ->
-                    val flagY = noteY - lineSpacing * (2.7f - flagIndex * 0.7f)
-                    drawLine(
+                val sortedNotes = chordNotes.sortedBy { midiToDiatonicStep(it.midi) }
+                val steps = sortedNotes.map { midiToDiatonicStep(it.midi) }
+                val direction = stemDirectionForSteps(steps, staff)
+                val xOffsets = chordNoteheadOffsets(steps, direction, lineSpacing)
+                val noteCenters = sortedNotes.mapIndexed { index, note ->
+                    val noteX = baseX + xOffsets[index]
+                    val noteY = midiToGrandStaffY(note.midi, note.staff, trebleTopY, bassTopY, lineSpacing)
+                    Triple(note, noteX, noteY)
+                }
+
+                noteCenters.forEach { (note, noteX, noteY) ->
+                    val step = midiToDiatonicStep(note.midi)
+                    val (bottomStep, topStep) = when (note.staff) {
+                        StaffType.TREBLE -> TREBLE_BOTTOM_LINE_STEP to TREBLE_TOP_LINE_STEP
+                        StaffType.BASS -> BASS_BOTTOM_LINE_STEP to BASS_TOP_LINE_STEP
+                    }
+
+                    ledgerStepsBelow(step, bottomStep).forEach { ledgerStep ->
+                        val ledgerY = staffLineYForStep(ledgerStep, note.staff, trebleTopY, bassTopY, lineSpacing)
+                        drawLine(
+                            color = black,
+                            start = Offset(noteX - lineSpacing * 0.75f, ledgerY),
+                            end = Offset(noteX + lineSpacing * 0.75f, ledgerY),
+                            strokeWidth = staffStroke
+                        )
+                    }
+
+                    ledgerStepsAbove(step, topStep).forEach { ledgerStep ->
+                        val ledgerY = staffLineYForStep(ledgerStep, note.staff, trebleTopY, bassTopY, lineSpacing)
+                        drawLine(
+                            color = black,
+                            start = Offset(noteX - lineSpacing * 0.75f, ledgerY),
+                            end = Offset(noteX + lineSpacing * 0.75f, ledgerY),
+                            strokeWidth = staffStroke
+                        )
+                    }
+
+                    val isHollow = glyph == NoteGlyphType.WHOLE || glyph == NoteGlyphType.HALF
+                    drawOval(
                         color = noteColor,
-                        start = Offset(stemX, flagY),
-                        end = Offset(stemX + lineSpacing * 0.85f, flagY + lineSpacing * 0.5f),
-                        strokeWidth = 2f
+                        topLeft = Offset(noteX - noteHeadWidth / 2f, noteY - noteHeadHeight / 2f),
+                        size = Size(noteHeadWidth, noteHeadHeight),
+                        style = if (isHollow) Stroke(width = 2.4f) else Fill
                     )
                 }
+
+                if (glyph != NoteGlyphType.WHOLE) {
+                    val middleY = staffLineYForStep(
+                        middleLineStepForStaff(staff),
+                        staff,
+                        trebleTopY,
+                        bassTopY,
+                        lineSpacing
+                    )
+                    val stem = stemGeometryForChord(
+                        noteXs = noteCenters.map { it.second },
+                        noteYs = noteCenters.map { it.third },
+                        direction = direction,
+                        middleLineY = middleY,
+                        lineSpacing = lineSpacing,
+                        noteHeadWidth = noteHeadWidth
+                    )
+                    drawLine(
+                        color = noteColor,
+                        start = Offset(stem.x, stem.startY),
+                        end = Offset(stem.x, stem.endY),
+                        strokeWidth = 2f
+                    )
+                    val flagCount = when (glyph) {
+                        NoteGlyphType.EIGHTH -> 1
+                        NoteGlyphType.SIXTEENTH -> 2
+                        else -> 0
+                    }
+                    repeat(flagCount) { flagIndex ->
+                        val flagY = if (direction == StemDirection.UP) {
+                            stem.endY + lineSpacing * (0.1f + flagIndex * 0.7f)
+                        } else {
+                            stem.endY - lineSpacing * (0.1f + flagIndex * 0.7f)
+                        }
+                        val flagEnd = if (direction == StemDirection.UP) {
+                            Offset(stem.x + lineSpacing * 0.85f, flagY + lineSpacing * 0.5f)
+                        } else {
+                            Offset(stem.x - lineSpacing * 0.85f, flagY - lineSpacing * 0.5f)
+                        }
+                        drawLine(
+                            color = noteColor,
+                            start = Offset(stem.x, flagY),
+                            end = flagEnd,
+                            strokeWidth = 2f
+                        )
+                    }
+                }
             }
-        }
 
         val cursorX = beatToX(gameState.currentBeat, startX, beatWidth)
         drawLine(
