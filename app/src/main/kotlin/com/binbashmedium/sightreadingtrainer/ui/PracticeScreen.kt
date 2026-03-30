@@ -379,12 +379,6 @@ fun GrandStaffCanvas(
                 val baseX = beatToX(chordNotes.first().startBeat, startX, beatWidth)
                 val staff = chordNotes.first().staff
                 val glyph = durationToGlyphType(chordNotes.first().duration)
-                val noteColor = when (chordNotes.first().state) {
-                    NoteState.NONE -> Color.Black
-                    NoteState.CORRECT -> Color(0xFF2E7D32)
-                    NoteState.WRONG -> Color(0xFFC62828)
-                    NoteState.LATE -> Color(0xFFF9A825)
-                }
                 val sortedNotes = chordNotes.sortedBy { displayDiatonicStep(it.midi, it.accidental) }
                 val steps = sortedNotes.map { displayDiatonicStep(it.midi, it.accidental) }
                 val direction = stemDirectionForSteps(steps, staff)
@@ -424,6 +418,7 @@ fun GrandStaffCanvas(
                     }
 
                     val isHollow = glyph == NoteGlyphType.WHOLE || glyph == NoteGlyphType.HALF
+                    val noteColor = colorForNoteState(note.state)
                     drawOval(
                         color = noteColor,
                         topLeft = Offset(noteX - noteHeadWidth / 2f, noteY - noteHeadHeight / 2f),
@@ -458,8 +453,9 @@ fun GrandStaffCanvas(
                         lineSpacing = lineSpacing,
                         noteHeadWidth = noteHeadWidth
                     )
+                    val stemColor = stemColorForStates(noteCenters.map { it.first.state })
                     drawLine(
-                        color = noteColor,
+                        color = stemColor,
                         start = Offset(stem.x, stem.startY),
                         end = Offset(stem.x, stem.endY),
                         strokeWidth = 2f
@@ -481,7 +477,7 @@ fun GrandStaffCanvas(
                             Offset(stem.x - lineSpacing * 0.85f, flagY - lineSpacing * 0.5f)
                         }
                         drawLine(
-                            color = noteColor,
+                            color = stemColor,
                             start = Offset(stem.x, flagY),
                             end = flagEnd,
                             strokeWidth = 2f
@@ -674,4 +670,17 @@ fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameStat
         currentBeat = phase / 2f,
         musicalKey = 0
     )
+}
+
+internal fun colorForNoteState(state: NoteState): Color = when (state) {
+    NoteState.NONE -> Color.Black
+    NoteState.CORRECT -> Color(0xFF2E7D32)
+    NoteState.WRONG -> Color(0xFFC62828)
+    NoteState.LATE -> Color(0xFFF9A825)
+}
+
+internal fun stemColorForStates(states: List<NoteState>): Color {
+    if (states.isEmpty()) return Color.Black
+    val first = states.first()
+    return if (states.all { it == first }) colorForNoteState(first) else Color.Black
 }

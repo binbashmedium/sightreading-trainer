@@ -18,6 +18,10 @@
 
 ## Done (recent)
 
+- [x] **Mixed notehead-color regression fixed** - `GrandStaffCanvas` no longer derives color from the first note in a beat group; each notehead now uses its own state color, so mixed correct/missing/extra note outcomes render correctly in one chord.
+- [x] **Stem-color fallback for mixed note states** - stems/flags now use neutral black when a grouped chord contains mixed note states, preventing a single-note state from visually overriding the full chord.
+- [x] **Renderer helper tests added** - new `PracticeScreenColorTest` verifies note-state palette mapping and mixed-state stem color behavior.
+- [x] **Verification rerun** - full `test` passed; debug APK rebuilt, installed, and launched on the VASOUN L10.
 - [x] **Per-note error coloring implemented** - note display now distinguishes matched expected notes (green), missing expected notes (red), and extra played notes (additional yellow noteheads on the same beat/staff).
 - [x] **Pedal error coloring split implemented** - expected pedal symbols are evaluated independently (green/red), and unexpected pedal actions now render as additional yellow pedal marks below the staff.
 - [x] **Input snapshot tracking added** - `PracticeState` now stores per-beat played input snapshots (`inputByBeat`) so UI rendering uses actual played notes/pedal context instead of blanket beat color.

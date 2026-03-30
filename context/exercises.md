@@ -154,6 +154,7 @@ The app now applies these notation rules in pure helpers:
   - matched expected notes -> green
   - missing expected notes -> red
   - extra played notes -> additional yellow noteheads
+  - mixed-state chords render mixed notehead colors in the same beat (no blanket first-note color)
 - `currentBeat` = `exercise.currentIndex * 2f` (static, input-driven cursor)
 
 ## Session Lifecycle
