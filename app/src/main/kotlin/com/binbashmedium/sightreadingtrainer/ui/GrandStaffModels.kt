@@ -1,6 +1,8 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import kotlin.math.absoluteValue
 
 val KEY_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
@@ -39,13 +41,13 @@ const val BASS_MIDDLE_LINE_STEP = 22
 const val BASS_TOP_LINE_STEP = 26
 const val BASS_CLEF_LOWER_DOT_STEP = 23
 const val BASS_CLEF_UPPER_DOT_STEP = 25
-const val TREBLE_CLEF_BASELINE_OFFSET = 0.62f
+const val TREBLE_CLEF_BASELINE_OFFSET = 0.95f
 const val BASS_CLEF_BASELINE_OFFSET = 2.68f
 const val CLEF_AREA_WIDTH_RATIO = 3.8f
 const val POST_CLEF_GAP_RATIO = 2.15f
 const val ACCIDENTAL_SPACING_RATIO = 0.75f
 const val ACCIDENTAL_TEXT_SIZE_RATIO = 2.2f
-const val TREBLE_CLEF_TEXT_SIZE_RATIO = 4.6f
+const val TREBLE_CLEF_TEXT_SIZE_RATIO = 4.0f
 const val BASS_CLEF_TEXT_SIZE_RATIO = 4.0f
 const val BASS_CLEF_BASELINE_FROM_TOP_RATIO = 0.92f
 const val BASS_CLEF_DOT_RADIUS_RATIO = 0.17f
@@ -53,6 +55,7 @@ const val BASS_CLEF_DOT_X_OFFSET_RATIO = 1.02f
 const val BASS_CLEF_GLYPH_X_OFFSET_RATIO = 0.22f
 const val KEY_SIGNATURE_LEAD_IN_RATIO = 0.72f
 const val KEY_SIGNATURE_X_OFFSET_RATIO = 0.38f
+const val NOTE_ACCIDENTAL_TEXT_SIZE_RATIO = 1.08f
 
 enum class NoteState {
     NONE,
@@ -69,7 +72,14 @@ data class NoteEvent(
     val duration: Float,
     val expected: Boolean,
     val state: NoteState = NoteState.NONE,
-    val staff: StaffType = StaffType.TREBLE
+    val staff: StaffType = StaffType.TREBLE,
+    val accidental: NoteAccidental = NoteAccidental.NONE
+)
+
+data class PedalMark(
+    val startBeat: Float,
+    val action: PedalAction,
+    val state: NoteState = NoteState.NONE
 )
 
 data class Chord(
@@ -87,6 +97,7 @@ data class GameState(
     val bpm: Float,
     val notes: List<NoteEvent>,
     val chords: List<Chord>,
+    val pedalMarks: List<PedalMark>,
     val currentBeat: Float,
     val musicalKey: Int = 0
 )
@@ -134,13 +145,17 @@ fun midiToDiatonicStep(midi: Int): Int {
     return octave * 7 + noteIdx
 }
 
+fun displayDiatonicStep(midi: Int, accidental: NoteAccidental = NoteAccidental.NONE): Int =
+    midiToDiatonicStep(midi) + if (accidental == NoteAccidental.FLAT) 1 else 0
+
 fun midiToGrandStaffY(
     midi: Int,
     staff: StaffType,
     trebleTopY: Float,
     bassTopY: Float,
-    lineSpacing: Float
-): Float = staffLineYForStep(midiToDiatonicStep(midi), staff, trebleTopY, bassTopY, lineSpacing)
+    lineSpacing: Float,
+    accidental: NoteAccidental = NoteAccidental.NONE
+): Float = staffLineYForStep(displayDiatonicStep(midi, accidental), staff, trebleTopY, bassTopY, lineSpacing)
 
 fun staffLineYForStep(
     diatonicStep: Int,
@@ -187,6 +202,32 @@ fun keySignatureWidth(numAccidentals: Int, lineSpacing: Float): Float {
     if (numAccidentals <= 0) return 0f
     val accidentalSpacing = lineSpacing * ACCIDENTAL_SPACING_RATIO
     return (numAccidentals - 1) * accidentalSpacing + lineSpacing * KEY_SIGNATURE_LEAD_IN_RATIO
+}
+
+fun noteAccidentalSymbol(accidental: NoteAccidental): String? = when (accidental) {
+    NoteAccidental.SHARP -> "♯"
+    NoteAccidental.FLAT -> "♭"
+    NoteAccidental.NATURAL -> "♮"
+    NoteAccidental.NONE -> null
+}
+
+fun pedalMarkText(action: PedalAction): String? = when (action) {
+    PedalAction.PRESS -> "Ped."
+    PedalAction.RELEASE -> "✱"
+    PedalAction.NONE -> null
+}
+
+fun accidentalColumnsForSteps(stepsAscending: List<Int>): List<Int> {
+    if (stepsAscending.isEmpty()) return emptyList()
+    val columns = MutableList(stepsAscending.size) { 0 }
+    for (index in 1 until stepsAscending.size) {
+        columns[index] = if (stepsAscending[index] - stepsAscending[index - 1] < 4) {
+            columns[index - 1] + 1
+        } else {
+            0
+        }
+    }
+    return columns
 }
 
 fun bassClefGeometry(

@@ -6,13 +6,25 @@ import com.binbashmedium.sightreadingtrainer.core.midi.AndroidMidiManager
 import com.binbashmedium.sightreadingtrainer.core.midi.ChordDetector
 import com.binbashmedium.sightreadingtrainer.data.ExerciseRepository
 import com.binbashmedium.sightreadingtrainer.data.SettingsRepository
+import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.PracticeState
 import com.binbashmedium.sightreadingtrainer.domain.usecase.PracticeSessionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class SessionResultUi(
+    val score: Int,
+    val correctNotes: Int,
+    val wrongNotes: Int,
+    val highScore: Int,
+    val isNewHighScore: Boolean
+)
 
 @HiltViewModel
 class PracticeViewModel @Inject constructor(
@@ -23,8 +35,15 @@ class PracticeViewModel @Inject constructor(
 ) : ViewModel() {
 
     val practiceState: StateFlow<PracticeState?> = practiceSessionUseCase.state
+    private val _sessionResult = MutableStateFlow<SessionResultUi?>(null)
+    val sessionResult: StateFlow<SessionResultUi?> = _sessionResult.asStateFlow()
 
     private var chordDetector: ChordDetector? = null
+    private var noteCollectorJob: Job? = null
+    private var pedalCollectorJob: Job? = null
+    private var chordCollectorJob: Job? = null
+    private var sessionSettings: AppSettings? = null
+    private var sessionKey: Int = 0
 
     init {
         setupMidi()
@@ -35,7 +54,10 @@ class PracticeViewModel @Inject constructor(
         viewModelScope.launch {
             val settings = settingsRepository.settings.first()
             val exercise = exerciseRepository.generateExercise(settings)
-            practiceSessionUseCase.startSession(exercise)
+            sessionSettings = settings
+            sessionKey = exercise.musicalKey
+            _sessionResult.value = null
+            practiceSessionUseCase.startSession(exercise, settings.exerciseTimeSec)
         }
     }
 
@@ -51,24 +73,72 @@ class PracticeViewModel @Inject constructor(
                 chordDetector = ChordDetector(chordWindowMs = appSettings.chordWindowMs.toLong())
                 midiManager.openDevice(appSettings.midiDeviceName.ifEmpty { null })
 
-                launch {
+                noteCollectorJob?.cancel()
+                noteCollectorJob = launch {
                     midiManager.noteEvents.collect { noteEvent ->
                         chordDetector?.onNoteOn(noteEvent.midiNote, noteEvent.velocity, noteEvent.timestamp)
                     }
                 }
 
-                launch {
-                    chordDetector!!.chords.collect { chord ->
-                        practiceSessionUseCase.processChord(chord, appSettings.timingToleranceMs.toLong())
+                pedalCollectorJob?.cancel()
+                pedalCollectorJob = launch {
+                    midiManager.pedalEvents.collect { pedalEvent ->
+                        chordDetector?.onPedalChange(pedalEvent.action, pedalEvent.timestamp)
+                    }
+                }
+
+                chordCollectorJob?.cancel()
+                chordCollectorJob = launch {
+                    chordDetector!!.chords.collect { input ->
+                        if (_sessionResult.value != null) return@collect
+                        practiceSessionUseCase.processInput(input, appSettings.timingToleranceMs.toLong())
+                        val state = practiceSessionUseCase.state.value ?: return@collect
+                        if (!state.exercise.isComplete) return@collect
+
+                        val elapsedMs = System.currentTimeMillis() - state.startTimeMs
+                        val durationMs = state.sessionDurationSec * 1_000L
+                        if (elapsedMs < durationMs) {
+                            val baseSettings = sessionSettings ?: appSettings
+                            val nextExercise = exerciseRepository.generateExercise(baseSettings, forcedKey = sessionKey)
+                            practiceSessionUseCase.loadNextExercise(nextExercise)
+                        } else {
+                            completeAndPersist(state)
+                        }
                     }
                 }
             }
         }
     }
 
+    private suspend fun completeAndPersist(state: PracticeState) {
+        if (_sessionResult.value != null) return
+
+        val settings = settingsRepository.settings.first()
+        val highScore = maxOf(settings.highScore, state.score)
+        val isNewHighScore = state.score > settings.highScore
+        val updatedSettings = settings.copy(
+            highScore = highScore,
+            totalCorrectNotes = settings.totalCorrectNotes + state.correctNotesCount,
+            totalWrongNotes = settings.totalWrongNotes + state.wrongNotesCount
+        )
+        settingsRepository.save(updatedSettings)
+
+        _sessionResult.value = SessionResultUi(
+            score = state.score,
+            correctNotes = state.correctNotesCount,
+            wrongNotes = state.wrongNotesCount,
+            highScore = highScore,
+            isNewHighScore = isNewHighScore
+        )
+    }
+
     fun stopSession() {
         practiceSessionUseCase.resetSession()
+        _sessionResult.value = null
         chordDetector?.reset()
+        noteCollectorJob?.cancel()
+        pedalCollectorJob?.cancel()
+        chordCollectorJob?.cancel()
         midiManager.close()
     }
 

@@ -7,6 +7,8 @@ import android.media.midi.MidiManager
 import android.media.midi.MidiOutputPort
 import android.media.midi.MidiReceiver
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalEvent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,8 @@ class AndroidMidiManager @Inject constructor(
 
     private val _noteEvents = MutableSharedFlow<NoteEvent>(extraBufferCapacity = 64)
     val noteEvents: SharedFlow<NoteEvent> = _noteEvents.asSharedFlow()
+    private val _pedalEvents = MutableSharedFlow<PedalEvent>(extraBufferCapacity = 32)
+    val pedalEvents: SharedFlow<PedalEvent> = _pedalEvents.asSharedFlow()
 
     private var outputPort: MidiOutputPort? = null
 
@@ -52,11 +56,18 @@ class AndroidMidiManager @Inject constructor(
                     if (count < 3) return
                     val statusByte = msg[offset].toInt() and 0xFF
                     val isNoteOn = (statusByte and 0xF0) == 0x90
+                    val isControlChange = (statusByte and 0xF0) == 0xB0
+                    val data1 = msg[offset + 1].toInt() and 0xFF
                     val velocity = msg[offset + 2].toInt() and 0xFF
                     if (isNoteOn && velocity > 0) {
-                        val midiNote = msg[offset + 1].toInt() and 0xFF
+                        val midiNote = data1
                         scope.launch {
                             _noteEvents.emit(NoteEvent(midiNote, velocity, System.currentTimeMillis()))
+                        }
+                    } else if (isControlChange && data1 == 64) {
+                        val action = if (velocity >= 64) PedalAction.PRESS else PedalAction.RELEASE
+                        scope.launch {
+                            _pedalEvents.emit(PedalEvent(action, System.currentTimeMillis()))
                         }
                     }
                 }

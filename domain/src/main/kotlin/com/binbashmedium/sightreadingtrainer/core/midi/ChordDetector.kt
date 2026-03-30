@@ -1,6 +1,8 @@
 package com.binbashmedium.sightreadingtrainer.core.midi
 
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
+import com.binbashmedium.sightreadingtrainer.domain.model.PerformanceInput
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,8 +25,10 @@ class ChordDetector(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
 ) {
     private val pendingNotes = mutableListOf<NoteEvent>()
-    private val _chords = MutableSharedFlow<List<NoteEvent>>(extraBufferCapacity = 16)
-    val chords: SharedFlow<List<NoteEvent>> = _chords.asSharedFlow()
+    private var pendingPedalAction: PedalAction = PedalAction.NONE
+    private var pendingTimestamp: Long = 0L
+    private val _chords = MutableSharedFlow<PerformanceInput>(extraBufferCapacity = 16)
+    val chords: SharedFlow<PerformanceInput> = _chords.asSharedFlow()
 
     private var chordJob: Job? = null
 
@@ -36,14 +40,32 @@ class ChordDetector(
     ) {
         val event = NoteEvent(midiNote, velocity, timestamp)
         pendingNotes.add(event)
+        if (pendingTimestamp == 0L) pendingTimestamp = timestamp
 
+        scheduleEmission()
+    }
+
+    fun onPedalChange(
+        action: PedalAction,
+        timestamp: Long = System.currentTimeMillis()
+    ) {
+        pendingPedalAction = action
+        if (pendingTimestamp == 0L) pendingTimestamp = timestamp
+        scheduleEmission()
+    }
+
+    private fun scheduleEmission() {
         chordJob?.cancel()
         chordJob = scope.launch {
             delay(chordWindowMs)
             val chord = pendingNotes.toList()
+            val pedalAction = pendingPedalAction
+            val timestamp = pendingTimestamp.takeIf { it > 0L } ?: System.currentTimeMillis()
             pendingNotes.clear()
-            if (chord.isNotEmpty()) {
-                _chords.emit(chord)
+            pendingPedalAction = PedalAction.NONE
+            pendingTimestamp = 0L
+            if (chord.isNotEmpty() || pedalAction != PedalAction.NONE) {
+                _chords.emit(PerformanceInput(chord, pedalAction, timestamp))
             }
         }
     }
@@ -53,5 +75,7 @@ class ChordDetector(
         chordJob?.cancel()
         chordJob = null
         pendingNotes.clear()
+        pendingPedalAction = PedalAction.NONE
+        pendingTimestamp = 0L
     }
 }

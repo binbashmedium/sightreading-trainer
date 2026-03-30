@@ -2,13 +2,14 @@
 
 ## MatchNotesUseCase (`domain/usecase/MatchNotesUseCase.kt`)
 
-Stateless use-case called for each detected chord event.
+Stateless use-case called for each grouped performance input.
 
 ### Signature
 ```kotlin
 fun execute(
     playedNotes: List<NoteEvent>,
-    expectedNotes: List<Int>,
+    playedPedalAction: PedalAction,
+    expectedStep: ExerciseStep,
     toleranceMs: Long = 200L,
     expectedTimeMs: Long? = null
 ): MatchResult
@@ -18,52 +19,54 @@ fun execute(
 
 1. **Pitch matching (strict)**
    - Extract MIDI note numbers from played notes
-   - Compare sorted lists with expected notes
-   - Mismatch → `MatchResult.Incorrect`
+   - Compare sorted lists with `expectedStep.notes`
+   - Mismatch returns `MatchResult.Incorrect`
 
-2. **Timing check (optional)**
+2. **Pedal matching**
+   - Compare `playedPedalAction` with `expectedStep.pedalAction`
+   - Mismatch returns `MatchResult.Incorrect`
+
+3. **Timing check (optional)**
    - Runs only when `expectedTimeMs` is provided
    - `delta = playedNotes[0].timestamp - expectedTimeMs`
-   - `delta < -toleranceMs` → `TooEarly`
-   - `delta > toleranceMs` → `TooLate`
-   - otherwise → `Correct`
+   - `delta < -toleranceMs` -> `TooEarly`
+   - `delta > toleranceMs` -> `TooLate`
+   - otherwise -> `Correct`
 
 ## MatchResult States
 
 | State | Meaning |
 |---|---|
-| `Correct` | Notes match, timing within tolerance |
-| `Incorrect` | Wrong/missing/extra pitch set |
-| `TooEarly` | Correct pitch set but too soon |
-| `TooLate` | Correct pitch set but too late |
+| `Correct` | Notes/pedal match, timing within tolerance |
+| `Incorrect` | Wrong/missing/extra pitch set or pedal mismatch |
+| `TooEarly` | Correct input but too soon |
+| `TooLate` | Correct input but too late |
 | `Waiting` | Initial/idle state |
 
 ## Practice Session Wrapper
 
-`PracticeSessionUseCase` stores session progress and updates `PracticeState` after each chord:
+`PracticeSessionUseCase` stores session progress and updates `PracticeState` after each step:
 
-- **Score**: base **+10 pts** per correct chord; **fluency bonus** of up to +10 pts for fast
-  consecutive playing (`max(0, (2000 - interChordMs) / 200)` integer pts).
-- **BPM**: calculated from last inter-chord interval: `60000 / interChordMs`, capped at 300.
-  Updated only on correct chords. Shown as `PracticeState.bpm`.
-- **Per-beat results**: `PracticeState.resultByBeat: Map<Int, MatchResult>` stores the latest
-  result for each chord index — used by the UI for accurate note colouring per beat.
+- **Score**: base +10 pts per correct step; fluency bonus up to +10 for fast consecutive correct steps.
+- **BPM**: calculated from last inter-correct-step interval (`60000 / interStepMs`, capped at 300).
+- **Per-beat results**: `resultByBeat: Map<Int, MatchResult>` stores latest result for each step index.
+- **Note counters**: `correctNotesCount` and `wrongNotesCount` accumulate expected note counts per matched step.
 
 ## UI Visualization Mapping
 
 `PracticeScreen.toGameState` maps `resultByBeat[beatIndex]` to `NoteState`:
-- `Correct`   → green (`NoteState.CORRECT`, `#2E7D32`)
-- `Incorrect` → red (`NoteState.WRONG`, `#C62828`)
-- `TooLate`   → yellow (`NoteState.LATE`, `#F9A825`)
-- pending/unplayed → black (`NoteState.NONE`)
+- `Correct` -> green (`NoteState.CORRECT`, `#2E7D32`)
+- `Incorrect` -> red (`NoteState.WRONG`, `#C62828`)
+- `TooLate` -> yellow (`NoteState.LATE`, `#F9A825`)
+- pending/unplayed -> black (`NoteState.NONE`)
 
-## Cursor Behaviour
+## Cursor Behavior
 
-The red time cursor sits **statically** at `exercise.currentIndex * 2f` beats. It advances
-only when the user plays the correct notes — the app waits for input rather than advancing
-on wall-clock time.
+The red cursor sits at `exercise.currentIndex * 2f` beats for the active chunk. When a chunk
+completes before the configured session timer ends, `PracticeViewModel` generates another chunk
+in the same key and continues the session.
 
 ## Future Matching Modes
 
-Only strict equality is currently implemented. A tolerant mode (`expected ⊆ played`) can be
-introduced by extending `MatchNotesUseCase` and the UI mapper.
+Only strict equality is currently implemented. A tolerant mode (`expected subset of played`) can
+be introduced by extending `MatchNotesUseCase` and the UI mapper.

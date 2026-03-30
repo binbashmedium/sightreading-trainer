@@ -20,18 +20,20 @@ Contains all business logic. Has zero Android dependencies.
 domain/
   model/
     NoteEvent.kt          - raw MIDI note-on event (midiNote, velocity, timestamp)
-    Exercise.kt           - sequence of expected note groups, current position + generated musicalKey + handMode
+    Exercise.kt           - sequence of ExerciseStep entries, current position + generated musicalKey + handMode
+    ExerciseStep.kt       - per-beat notes + per-note accidentals + optional pedal action
     MatchResult.kt        - sealed class: Correct | Incorrect | TooEarly | TooLate | Waiting
-    PracticeState.kt      - session snapshot: exercise, score, resultByBeat, bpm, lastCorrectTimestamp
-    AppSettings.kt        - all user-configurable settings + HandMode enum + selected key pool + exercise type pool + exerciseLength
+    PracticeState.kt      - session snapshot: exercise, timer, score, correct/wrong note counts, resultByBeat, bpm
+    AppSettings.kt        - all user-configurable settings + exerciseTimeSec + stats/highscore + selected key/type pools
+    PerformanceInput.kt   - grouped notes + pedal action passed to matching
     NoteValue.kt          - rhythmic duration enum (WHOLE/HALF/QUARTER/EIGHTH) with beats: Float helper
   usecase/
-    MatchNotesUseCase.kt       - compares played chord against expected notes and checks timing
-    GenerateExerciseUseCase.kt - creates Exercise from selected exercise types + hand mode + exercise length
-    PracticeSessionUseCase.kt  - stateful session: advances through exercise, accumulates score
+    MatchNotesUseCase.kt       - compares played input (notes + pedal) against expected ExerciseStep
+    GenerateExerciseUseCase.kt - creates Exercise from selected exercise types + hand mode + max-note budget
+    PracticeSessionUseCase.kt  - stateful session: advances through steps, accumulates score + note counters
 core/
   midi/
-    ChordDetector.kt      - groups note-on events within a time window into chords
+    ChordDetector.kt      - groups note-on + pedal changes within a time window into one PerformanceInput
   util/
     NoteNames.kt          - MIDI number to note name (for example 60 -> C4)
 ```
@@ -67,10 +69,10 @@ USB MIDI keyboard
 AndroidMidiManager           (SharedFlow<domain.NoteEvent>)
       |
       v
-ChordDetector                groups events within chordWindowMs
+ChordDetector                groups notes + pedal events within chordWindowMs
       |
       v
-PracticeViewModel            collects chords, calls PracticeSessionUseCase
+PracticeViewModel            collects grouped input, calls PracticeSessionUseCase, rolls exercises in same key until timer ends
       |
       v
 PracticeScreen               maps PracticeState -> ui.GameState
@@ -84,7 +86,7 @@ GrandStaffCanvas             draws the grand staff, clefs, notes, cursor, and la
 1. `PracticeScreen` starts a session on `LaunchedEffect(Unit)` by calling `PracticeViewModel.startSession()`.
 2. Domain `PracticeState` is transformed into UI `GameState` with `toGameState(nowMs)`.
 3. `HeaderCard` shows level title, elapsed time, live BPM, and score.
-4. `GrandStaffCanvas` draws a connected grand staff with staff lines behind the clefs, a dedicated clef area, the generated key signature, harmonic chord labels, note glyphs, stem-direction-aware chord groups, and a static cursor at the current expected chord.
+4. `GrandStaffCanvas` draws a connected grand staff with staff lines behind the clefs, a dedicated clef area, the generated key signature, harmonic chord labels, optional pedal marks, note glyphs, stem-direction-aware chord groups, and a static cursor at the current expected step.
 5. The single "New Exercise" button regenerates notes via `PracticeViewModel.reloadSession()`.
 
 ## Dependency Injection

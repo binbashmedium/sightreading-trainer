@@ -30,16 +30,20 @@ Raw bytes: `[status, note, velocity]`
 
 Emitted through `noteEvents: SharedFlow<domain.NoteEvent>`.
 
+### Pedal support
+Sustain pedal is normally MIDI Control Change 64 (`0xB_`, controller `64`, value >= 64 down / < 64 up).
+The app now parses CC64 pedal press/release messages and surfaces them through `AndroidMidiManager`, then groups them with nearby note-on events in `ChordDetector` so pedal marks can be validated on the same beat as notes.
+
 ## ChordDetector (`domain/core/midi/ChordDetector.kt`)
 
-Groups near-simultaneous note-on events into one chord event using `chordWindowMs`.
+Groups near-simultaneous note-on and pedal events into one performance input using `chordWindowMs`.
 
 Algorithm:
 1. append note to pending buffer
 2. restart debounce timer
 3. emit accumulated list after silence of `chordWindowMs`
 
-Output: `SharedFlow<List<domain.NoteEvent>>`.
+Output: `SharedFlow<domain.PerformanceInput>`.
 
 ## Staff Split Mapping (UI)
 

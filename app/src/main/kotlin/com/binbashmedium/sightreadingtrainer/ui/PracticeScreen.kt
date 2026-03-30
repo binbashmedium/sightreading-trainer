@@ -41,6 +41,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.MatchResult
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import kotlinx.coroutines.delay
 import kotlin.math.max
 
@@ -54,6 +56,7 @@ fun PracticeScreen(
     }
 
     val state by viewModel.practiceState.collectAsState()
+    val sessionResult by viewModel.sessionResult.collectAsState()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
@@ -67,7 +70,7 @@ fun PracticeScreen(
         state?.toGameState(now) ?: generateExampleGameState(now)
     }
 
-    val isComplete = state?.exercise?.isComplete == true
+    val isComplete = sessionResult != null
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -103,8 +106,13 @@ fun PracticeScreen(
         }
 
         if (isComplete) {
+            val result = sessionResult!!
             SessionCompleteOverlay(
-                score = gameState.score,
+                score = result.score,
+                highScore = result.highScore,
+                isNewHighScore = result.isNewHighScore,
+                correctNotes = result.correctNotes,
+                wrongNotes = result.wrongNotes,
                 bpm = gameState.bpm,
                 onRestart = { viewModel.reloadSession() }
             )
@@ -113,7 +121,15 @@ fun PracticeScreen(
 }
 
 @Composable
-private fun SessionCompleteOverlay(score: Int, bpm: Float, onRestart: () -> Unit) {
+private fun SessionCompleteOverlay(
+    score: Int,
+    highScore: Int,
+    isNewHighScore: Boolean,
+    correctNotes: Int,
+    wrongNotes: Int,
+    bpm: Float,
+    onRestart: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -144,6 +160,18 @@ private fun SessionCompleteOverlay(score: Int, bpm: Float, onRestart: () -> Unit
                     color = Color(0xFFFFD700),
                     fontSize = 48.sp,
                     fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "Highscore: $highScore pts",
+                    color = if (isNewHighScore) Color(0xFFB7FFB7) else Color(0xFFB0C4DE),
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "Correct / Wrong: $correctNotes / $wrongNotes",
+                    color = Color(0xFFB0C4DE),
+                    style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center
                 )
                 if (bpm > 0f) {
@@ -243,6 +271,11 @@ fun GrandStaffCanvas(
         val black = Color(0xFF111111)
         val staffStroke = 2f
         val staffEndX = size.width - lineSpacing
+        val noteAccidentalPaint = Paint().asFrameworkPaint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = lineSpacing * NOTE_ACCIDENTAL_TEXT_SIZE_RATIO
+            isAntiAlias = true
+        }
 
         for (i in 0..4) {
             drawLine(
@@ -351,18 +384,19 @@ fun GrandStaffCanvas(
                     NoteState.WRONG -> Color(0xFFC62828)
                     NoteState.LATE -> Color(0xFFF9A825)
                 }
-                val sortedNotes = chordNotes.sortedBy { midiToDiatonicStep(it.midi) }
-                val steps = sortedNotes.map { midiToDiatonicStep(it.midi) }
+                val sortedNotes = chordNotes.sortedBy { displayDiatonicStep(it.midi, it.accidental) }
+                val steps = sortedNotes.map { displayDiatonicStep(it.midi, it.accidental) }
                 val direction = stemDirectionForSteps(steps, staff)
                 val xOffsets = chordNoteheadOffsets(steps, direction, lineSpacing)
+                val accidentalColumns = accidentalColumnsForSteps(steps)
                 val noteCenters = sortedNotes.mapIndexed { index, note ->
                     val noteX = baseX + xOffsets[index]
-                    val noteY = midiToGrandStaffY(note.midi, note.staff, trebleTopY, bassTopY, lineSpacing)
+                    val noteY = midiToGrandStaffY(note.midi, note.staff, trebleTopY, bassTopY, lineSpacing, note.accidental)
                     Triple(note, noteX, noteY)
                 }
 
-                noteCenters.forEach { (note, noteX, noteY) ->
-                    val step = midiToDiatonicStep(note.midi)
+                noteCenters.forEachIndexed { index, (note, noteX, noteY) ->
+                    val step = displayDiatonicStep(note.midi, note.accidental)
                     val (bottomStep, topStep) = when (note.staff) {
                         StaffType.TREBLE -> TREBLE_BOTTOM_LINE_STEP to TREBLE_TOP_LINE_STEP
                         StaffType.BASS -> BASS_BOTTOM_LINE_STEP to BASS_TOP_LINE_STEP
@@ -395,6 +429,16 @@ fun GrandStaffCanvas(
                         size = Size(noteHeadWidth, noteHeadHeight),
                         style = if (isHollow) Stroke(width = 2.4f) else Fill
                     )
+
+                    noteAccidentalSymbol(note.accidental)?.let { symbol ->
+                        val accidentalX = noteX - lineSpacing * (1.15f + accidentalColumns[index] * 0.58f)
+                        drawContext.canvas.nativeCanvas.drawText(
+                            symbol,
+                            accidentalX,
+                            noteY + lineSpacing * 0.34f,
+                            noteAccidentalPaint
+                        )
+                    }
                 }
 
                 if (glyph != NoteGlyphType.WHOLE) {
@@ -445,6 +489,30 @@ fun GrandStaffCanvas(
                 }
             }
 
+        val pedalPaint = Paint().asFrameworkPaint().apply {
+            isAntiAlias = true
+            textSize = lineSpacing * 0.85f
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+        val pedalY = bassTopY + lineSpacing * 7.2f
+        gameState.pedalMarks.forEach { pedalMark ->
+            val color = when (pedalMark.state) {
+                NoteState.NONE -> android.graphics.Color.BLACK
+                NoteState.CORRECT -> android.graphics.Color.parseColor("#2E7D32")
+                NoteState.WRONG -> android.graphics.Color.parseColor("#C62828")
+                NoteState.LATE -> android.graphics.Color.parseColor("#F9A825")
+            }
+            pedalPaint.color = color
+            pedalMarkText(pedalMark.action)?.let { label ->
+                drawContext.canvas.nativeCanvas.drawText(
+                    label,
+                    beatToX(pedalMark.startBeat, startX, beatWidth) + beatWidth * 0.3f,
+                    pedalY,
+                    pedalPaint
+                )
+            }
+        }
+
         val cursorX = beatToX(gameState.currentBeat, startX, beatWidth)
         drawLine(
             color = Color.Red,
@@ -458,7 +526,7 @@ fun GrandStaffCanvas(
 private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toGameState(nowMs: Long): GameState {
     val elapsed = (nowMs - startTimeMs).coerceAtLeast(0L)
     val keyName = KEY_NAMES.getOrElse(exercise.musicalKey) { "C" }
-    val sizes = exercise.expectedNotes.map { it.size }.distinct().sorted()
+    val sizes = exercise.steps.map { it.notes.size }.filter { it > 0 }.distinct().sorted()
     val levelDesc = when {
         sizes.size > 1 -> "Mixed Practice"
         sizes.singleOrNull() == 1 -> "Single Notes"
@@ -470,8 +538,8 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
     }
     val levelTitle = "$keyName - $levelDesc"
 
-    val expectedNotes = exercise.expectedNotes.flatMapIndexed { beatIndex, chordNotes ->
-        chordNotes.map { midi ->
+    val expectedNotes = exercise.steps.flatMapIndexed { beatIndex, step ->
+        step.notes.mapIndexed { noteIndex, midi ->
             NoteEvent(
                 midi = midi,
                 startBeat = beatIndex.toFloat() * 2f,
@@ -483,12 +551,15 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
                     is MatchResult.TooLate -> NoteState.LATE
                     else -> NoteState.NONE
                 },
-                staff = staffForExercise(midi, exercise.handMode)
+                staff = staffForExercise(midi, exercise.handMode),
+                accidental = step.noteAccidentals.getOrElse(noteIndex) { NoteAccidental.NONE }
             )
         }
     }
 
-    val chords = exercise.expectedNotes.mapIndexed { idx, notes ->
+    val chords = exercise.steps.mapIndexedNotNull { idx, step ->
+        val notes = step.notes
+        if (notes.isEmpty()) return@mapIndexedNotNull null
         val chordStaff = if (notes.all { staffForExercise(it, exercise.handMode) == StaffType.BASS })
             StaffType.BASS else StaffType.TREBLE
         Chord(
@@ -499,6 +570,20 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
         )
     }
 
+    val pedalMarks = exercise.steps.mapIndexedNotNull { idx, step ->
+        if (step.pedalAction == PedalAction.NONE) return@mapIndexedNotNull null
+        PedalMark(
+            startBeat = idx.toFloat() * 2f,
+            action = step.pedalAction,
+            state = when (resultByBeat[idx]) {
+                is MatchResult.Correct -> NoteState.CORRECT
+                is MatchResult.Incorrect -> NoteState.WRONG
+                is MatchResult.TooLate -> NoteState.LATE
+                else -> NoteState.NONE
+            }
+        )
+    }
+
     return GameState(
         levelTitle = levelTitle,
         elapsedTime = elapsed,
@@ -506,6 +591,7 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
         bpm = bpm,
         notes = expectedNotes,
         chords = chords,
+        pedalMarks = pedalMarks,
         currentBeat = exercise.currentIndex.toFloat() * 2f,
         musicalKey = exercise.musicalKey
     )
@@ -536,7 +622,8 @@ fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameStat
                 duration = listOf(4f, 2f, 1f, 0.5f, 0.25f)[(index + midi) % 5],
                 expected = true,
                 state = state,
-                staff = staffForExercise(midi, HandMode.BOTH)
+                staff = staffForExercise(midi, HandMode.BOTH),
+                accidental = NoteAccidental.NONE
             )
         }
     }
@@ -558,6 +645,10 @@ fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameStat
         bpm = if (phase > 1) 60f + phase * 2f else 0f,
         notes = notes,
         chords = chords,
+        pedalMarks = listOf(
+            PedalMark(startBeat = 0f, action = PedalAction.PRESS, state = NoteState.NONE),
+            PedalMark(startBeat = 4f, action = PedalAction.RELEASE, state = NoteState.NONE)
+        ),
         currentBeat = phase / 2f,
         musicalKey = 0
     )

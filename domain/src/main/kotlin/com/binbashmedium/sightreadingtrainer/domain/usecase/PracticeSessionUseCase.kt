@@ -3,6 +3,7 @@ package com.binbashmedium.sightreadingtrainer.domain.usecase
 import com.binbashmedium.sightreadingtrainer.domain.model.Exercise
 import com.binbashmedium.sightreadingtrainer.domain.model.MatchResult
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
+import com.binbashmedium.sightreadingtrainer.domain.model.PerformanceInput
 import com.binbashmedium.sightreadingtrainer.domain.model.PracticeState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,16 +15,28 @@ class PracticeSessionUseCase(
     private val _state = MutableStateFlow<PracticeState?>(null)
     val state: StateFlow<PracticeState?> = _state.asStateFlow()
 
-    fun startSession(exercise: Exercise) {
-        _state.value = PracticeState(exercise = exercise)
+    fun startSession(exercise: Exercise, sessionDurationSec: Int = 60) {
+        _state.value = PracticeState(
+            exercise = exercise,
+            sessionDurationSec = sessionDurationSec.coerceAtLeast(10)
+        )
     }
 
-    fun processChord(playedNotes: List<NoteEvent>, toleranceMs: Long = 200L): MatchResult {
+    fun loadNextExercise(exercise: Exercise) {
+        val currentState = _state.value ?: return
+        _state.value = currentState.copy(
+            exercise = exercise.copy(currentIndex = 0),
+            lastResult = MatchResult.Waiting,
+            resultByBeat = emptyMap()
+        )
+    }
+
+    fun processInput(input: PerformanceInput, toleranceMs: Long = 200L): MatchResult {
         val currentState = _state.value ?: return MatchResult.Waiting
         val exercise = currentState.exercise
-        val expectedNotes = exercise.currentChord ?: return MatchResult.Waiting
+        val expectedStep = exercise.currentStep ?: return MatchResult.Waiting
 
-        val result = matchNotesUseCase.execute(playedNotes, expectedNotes, toleranceMs)
+        val result = matchNotesUseCase.execute(input.notes, input.pedalAction, expectedStep, toleranceMs)
         val nowMs = System.currentTimeMillis()
 
         // Record result for this beat index (overwrites previous attempts on same chord).
@@ -52,7 +65,15 @@ class PracticeSessionUseCase(
             Triple(currentState.score, currentState.bpm, currentState.lastCorrectTimestamp)
         }
 
-        // Always advance to the next chord regardless of whether the result is correct or not.
+        val expectedNotesCount = expectedStep.notes.size
+        val (newCorrectNotes, newWrongNotes) = when (result) {
+            MatchResult.Correct -> (currentState.correctNotesCount + expectedNotesCount) to currentState.wrongNotesCount
+            MatchResult.Incorrect, MatchResult.TooEarly, MatchResult.TooLate ->
+                currentState.correctNotesCount to (currentState.wrongNotesCount + expectedNotesCount)
+            MatchResult.Waiting -> currentState.correctNotesCount to currentState.wrongNotesCount
+        }
+
+        // Always advance to the next step regardless of whether the result is correct or not.
         val newExercise = exercise.copy(currentIndex = exercise.currentIndex + 1)
 
         _state.value = currentState.copy(
@@ -60,6 +81,8 @@ class PracticeSessionUseCase(
             lastResult = result,
             score = newScore,
             totalAttempts = currentState.totalAttempts + 1,
+            correctNotesCount = newCorrectNotes,
+            wrongNotesCount = newWrongNotes,
             resultByBeat = newResultByBeat,
             bpm = newBpm,
             lastCorrectTimestamp = newLastCorrectTs
@@ -67,6 +90,9 @@ class PracticeSessionUseCase(
 
         return result
     }
+
+    fun processChord(playedNotes: List<NoteEvent>, toleranceMs: Long = 200L): MatchResult =
+        processInput(PerformanceInput(notes = playedNotes), toleranceMs)
 
     fun resetSession() {
         _state.value = null

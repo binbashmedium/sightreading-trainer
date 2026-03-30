@@ -2,9 +2,12 @@ package com.binbashmedium.sightreadingtrainer.domain.model
 
 data class PracticeState(
     val exercise: Exercise,
+    val sessionDurationSec: Int = 60,
     val lastResult: MatchResult = MatchResult.Waiting,
     val score: Int = 0,
     val totalAttempts: Int = 0,
+    val correctNotesCount: Int = 0,
+    val wrongNotesCount: Int = 0,
     val startTimeMs: Long = System.currentTimeMillis(),
     /** Per-chord match results keyed by chord index, for accurate per-beat colouring. */
     val resultByBeat: Map<Int, MatchResult> = emptyMap(),

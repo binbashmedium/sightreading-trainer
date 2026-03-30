@@ -10,6 +10,6 @@ import javax.inject.Singleton
 class ExerciseRepository @Inject constructor(
     private val generateExerciseUseCase: GenerateExerciseUseCase
 ) {
-    fun generateExercise(settings: AppSettings): Exercise =
-        generateExerciseUseCase.execute(settings)
+    fun generateExercise(settings: AppSettings, forcedKey: Int? = null): Exercise =
+        generateExerciseUseCase.execute(settings, forcedKey)
 }

@@ -2,8 +2,11 @@ package com.binbashmedium.sightreadingtrainer.domain.usecase
 
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.Exercise
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 
 class GenerateExerciseUseCase {
 
@@ -38,32 +41,61 @@ class GenerateExerciseUseCase {
             listOf(4, 7, 11, 14),  // clustered major ninth without root doubling
             listOf(3, 7, 10, 14)   // clustered minor ninth shell
         )
+        private val ARPEGGIO_CONTOURS = listOf(
+            listOf(0, 1, 2, 1),
+            listOf(0, 1, 2, 3),
+            listOf(0, 1, 2, 3, 2, 1)
+        )
     }
 
-    fun execute(settings: AppSettings): Exercise {
-        val generatedKey = settings.selectedKeys.ifEmpty { setOf(0) }.toList().random()
+    fun execute(settings: AppSettings, forcedKey: Int? = null): Exercise {
+        val generatedKey = (forcedKey ?: settings.selectedKeys.ifEmpty { setOf(0) }.toList().random()).coerceIn(0, 11)
         val rightRoot = 60 + generatedKey
         val leftRoot = 48 + generatedKey
-        val exerciseLength = settings.exerciseLength.coerceAtLeast(1)
+        val maxDisplayedNotes = settings.exerciseLength.coerceAtLeast(1)
         val selectedTypes = settings.exerciseTypes.ifEmpty { setOf(ExerciseContentType.SINGLE_NOTES) }
 
-        val material = selectedTypes.flatMap { type ->
+        val materialByType = selectedTypes.associateWith { type ->
             patternsForType(type, settings.handMode, rightRoot, leftRoot)
-        }.ifEmpty {
-            patternsForType(ExerciseContentType.SINGLE_NOTES, settings.handMode, rightRoot, leftRoot)
+        }.filterValues { it.isNotEmpty() }
+
+        val effectiveMaterialByType = if (materialByType.isEmpty()) {
+            mapOf(
+                ExerciseContentType.SINGLE_NOTES to patternsForType(
+                    ExerciseContentType.SINGLE_NOTES,
+                    settings.handMode,
+                    rightRoot,
+                    leftRoot
+                )
+            )
+        } else {
+            materialByType
         }
 
-        val mixedExercise = material.shuffled().let { base ->
-            buildList(exerciseLength) {
-                var index = 0
-                repeat(exerciseLength) {
-                    add(base[index % base.size])
-                    index++
-                }
+        val seededMix = effectiveMaterialByType.entries
+            .shuffled()
+            .map { entry -> entry.value.random() }
+
+        val material = seededMix + effectiveMaterialByType.values.flatten().shuffled()
+
+        val accidentalPolicyMaterial = if (settings.noteAccidentalsEnabled) {
+            material
+        } else {
+            material.map { step ->
+                val constrainedNotes = step.notes.map { constrainNoteToScale(it, generatedKey) }
+                step.copy(
+                    notes = constrainedNotes,
+                    noteAccidentals = List(constrainedNotes.size) { NoteAccidental.NONE }
+                )
             }
         }
 
-        return Exercise(mixedExercise.shuffled(), musicalKey = generatedKey, handMode = settings.handMode)
+        val mixedExercise = stepsByMaxNotes(accidentalPolicyMaterial.shuffled(), maxDisplayedNotes)
+
+        val accidentalsApplied = applyGeneratedAccidentals(mixedExercise, settings.noteAccidentalsEnabled)
+        val pedalApplied = applyPedalMarks(accidentalsApplied, settings.pedalEventsEnabled)
+
+        return Exercise(steps = pedalApplied, musicalKey = generatedKey, handMode = settings.handMode)
     }
 
     private fun patternsForType(
@@ -71,61 +103,205 @@ class GenerateExerciseUseCase {
         handMode: HandMode,
         rightRoot: Int,
         leftRoot: Int
-        ): List<List<Int>> = when (type) {
+        ): List<ExerciseStep> = when (type) {
         ExerciseContentType.SINGLE_NOTES -> sequenceForHandMode(
             handMode,
-            SINGLE_NOTE_MOTION.map { listOf(leftRoot + it) },
-            SINGLE_NOTE_MOTION.map { listOf(rightRoot + it) }
+            SINGLE_NOTE_MOTION.map { ExerciseStep(notes = listOf(leftRoot + it)) },
+            SINGLE_NOTE_MOTION.map { ExerciseStep(notes = listOf(rightRoot + it)) }
         )
         ExerciseContentType.OCTAVES -> when (handMode) {
-            HandMode.RIGHT -> SCALE_7.map { i -> listOf(rightRoot + i, rightRoot + i + 12) }
-            HandMode.LEFT -> SCALE_7.map { i -> listOf(leftRoot + i - 12, leftRoot + i) }
-            HandMode.BOTH -> SCALE_7.map { i -> listOf(leftRoot + i, rightRoot + i) }
+            HandMode.RIGHT -> SCALE_7.map { i -> ExerciseStep(notes = listOf(rightRoot + i, rightRoot + i + 12)) }
+            HandMode.LEFT -> SCALE_7.map { i -> ExerciseStep(notes = listOf(leftRoot + i - 12, leftRoot + i)) }
+            HandMode.BOTH -> SCALE_7.map { i -> ExerciseStep(notes = listOf(leftRoot + i, rightRoot + i)) }
         }
         ExerciseContentType.THIRDS -> sequenceForHandMode(
             handMode,
-            THIRDS.map { (a, b) -> listOf(leftRoot + a, leftRoot + b) },
-            THIRDS.map { (a, b) -> listOf(rightRoot + a, rightRoot + b) }
+            THIRDS.map { (a, b) -> ExerciseStep(notes = listOf(leftRoot + a, leftRoot + b)) },
+            THIRDS.map { (a, b) -> ExerciseStep(notes = listOf(rightRoot + a, rightRoot + b)) }
         )
         ExerciseContentType.FIFTHS -> sequenceForHandMode(
             handMode,
-            FIFTHS.map { (a, b) -> listOf(leftRoot + a, leftRoot + b) },
-            FIFTHS.map { (a, b) -> listOf(rightRoot + a, rightRoot + b) }
+            FIFTHS.map { (a, b) -> ExerciseStep(notes = listOf(leftRoot + a, leftRoot + b)) },
+            FIFTHS.map { (a, b) -> ExerciseStep(notes = listOf(rightRoot + a, rightRoot + b)) }
         )
         ExerciseContentType.SIXTHS -> sequenceForHandMode(
             handMode,
-            SIXTHS.map { (a, b) -> listOf(leftRoot + a, leftRoot + b) },
-            SIXTHS.map { (a, b) -> listOf(rightRoot + a, rightRoot + b) }
+            SIXTHS.map { (a, b) -> ExerciseStep(notes = listOf(leftRoot + a, leftRoot + b)) },
+            SIXTHS.map { (a, b) -> ExerciseStep(notes = listOf(rightRoot + a, rightRoot + b)) }
+        )
+        ExerciseContentType.ARPEGGIOS -> sequenceForHandMode(
+            handMode,
+            arpeggioPatterns(leftRoot),
+            arpeggioPatterns(rightRoot)
         )
         ExerciseContentType.TRIADS -> sequenceForHandMode(
             handMode,
-            TRIADS.map { chord -> chord.map { leftRoot + it } },
-            TRIADS.map { chord -> chord.map { rightRoot + it } }
+            TRIADS.map { chord -> ExerciseStep(notes = chord.map { leftRoot + it }) },
+            TRIADS.map { chord -> ExerciseStep(notes = chord.map { rightRoot + it }) }
         )
         ExerciseContentType.SEVENTHS -> sequenceForHandMode(
             handMode,
-            SEVENTHS.map { chord -> chord.map { leftRoot + it } },
-            SEVENTHS.map { chord -> chord.map { rightRoot + it } }
+            SEVENTHS.map { chord -> ExerciseStep(notes = chord.map { leftRoot + it }) },
+            SEVENTHS.map { chord -> ExerciseStep(notes = chord.map { rightRoot + it }) }
         )
         ExerciseContentType.NINTHS -> sequenceForHandMode(
             handMode,
-            NINTHS.map { chord -> chord.map { leftRoot + it } },
-            NINTHS.map { chord -> chord.map { rightRoot + it } }
+            NINTHS.map { chord -> ExerciseStep(notes = chord.map { leftRoot + it }) },
+            NINTHS.map { chord -> ExerciseStep(notes = chord.map { rightRoot + it }) }
         )
         ExerciseContentType.CLUSTERED_CHORDS -> sequenceForHandMode(
             handMode,
-            CLUSTERED_CHORDS.map { chord -> chord.map { leftRoot + it } },
-            CLUSTERED_CHORDS.map { chord -> chord.map { rightRoot + it } }
+            CLUSTERED_CHORDS.map { chord -> ExerciseStep(notes = chord.map { leftRoot + it }) },
+            CLUSTERED_CHORDS.map { chord -> ExerciseStep(notes = chord.map { rightRoot + it }) }
         )
     }
 
     private fun sequenceForHandMode(
         handMode: HandMode,
-        leftPattern: List<List<Int>>,
-        rightPattern: List<List<Int>>
-    ): List<List<Int>> = when (handMode) {
+        leftPattern: List<ExerciseStep>,
+        rightPattern: List<ExerciseStep>
+    ): List<ExerciseStep> = when (handMode) {
         HandMode.LEFT -> leftPattern
         HandMode.RIGHT -> rightPattern
         HandMode.BOTH -> (leftPattern + rightPattern).shuffled()
+    }
+
+    private fun arpeggioPatterns(root: Int): List<ExerciseStep> {
+        val chordPool = TRIADS + SEVENTHS + NINTHS + CLUSTERED_CHORDS
+        return chordPool.flatMapIndexed { index, chord ->
+            val notes = chord.map { root + it }
+            val contour = ARPEGGIO_CONTOURS[index % ARPEGGIO_CONTOURS.size]
+            contour
+                .filter { it < notes.size }
+                .map { ExerciseStep(notes = listOf(notes[it])) }
+        }
+    }
+
+    private fun applyGeneratedAccidentals(
+        steps: List<ExerciseStep>,
+        enabled: Boolean
+    ): List<ExerciseStep> {
+        if (!enabled) return steps
+
+        val mutable = steps.map { it.copy() }.toMutableList()
+        var index = 1
+        while (index < mutable.lastIndex) {
+            val current = mutable[index]
+            if (current.notes.size != 1 || current.noteAccidentals.any { it != NoteAccidental.NONE }) {
+                index++
+                continue
+            }
+
+            val naturalMidi = naturalMidiFor(current.notes.first())
+            val variant = accidentalVariantForNatural(naturalMidi)
+            if (variant != null && mutable[index + 1].notes.size == 1) {
+                mutable[index] = current.copy(
+                    notes = listOf(variant.first),
+                    noteAccidentals = listOf(variant.second)
+                )
+                mutable[index + 1] = mutable[index + 1].copy(
+                    notes = listOf(naturalMidi),
+                    noteAccidentals = listOf(NoteAccidental.NATURAL)
+                )
+                index += 4
+            } else {
+                index++
+            }
+        }
+        return mutable
+    }
+
+    private fun applyPedalMarks(
+        steps: List<ExerciseStep>,
+        enabled: Boolean
+    ): List<ExerciseStep> {
+        if (!enabled || steps.size < 2) return steps
+
+        val mutable = steps.map { it.copy() }.toMutableList()
+        var index = 0
+        while (index < mutable.lastIndex) {
+            val shouldAddPedal = mutable[index].pedalAction == PedalAction.NONE && index % 5 == 0
+            if (!shouldAddPedal) {
+                index++
+                continue
+            }
+
+            val releaseIndex = (index + 1..minOf(index + 3, mutable.lastIndex))
+                .firstOrNull { mutable[it].pedalAction == PedalAction.NONE }
+
+            if (releaseIndex != null) {
+                mutable[index] = mutable[index].copy(pedalAction = PedalAction.PRESS)
+                mutable[releaseIndex] = mutable[releaseIndex].copy(pedalAction = PedalAction.RELEASE)
+                index = releaseIndex + 1
+            } else {
+                index++
+            }
+        }
+
+        return mutable
+    }
+
+    private fun naturalMidiFor(midi: Int): Int = when (midi % 12) {
+        1, 3, 6, 8, 10 -> midi - 1
+        else -> midi
+    }
+
+    private fun accidentalVariantForNatural(naturalMidi: Int): Pair<Int, NoteAccidental>? = when (naturalMidi % 12) {
+        0, 5 -> (naturalMidi + 1) to NoteAccidental.SHARP
+        2, 7, 9 -> if ((naturalMidi / 12) % 2 == 0) {
+            (naturalMidi + 1) to NoteAccidental.SHARP
+        } else {
+            (naturalMidi - 1) to NoteAccidental.FLAT
+        }
+        4, 11 -> (naturalMidi - 1) to NoteAccidental.FLAT
+        else -> null
+    }
+
+    private fun stepsByMaxNotes(base: List<ExerciseStep>, maxNotes: Int): List<ExerciseStep> {
+        if (base.isEmpty()) return emptyList()
+
+        val result = mutableListOf<ExerciseStep>()
+        var noteBudget = 0
+        var index = 0
+        while (noteBudget < maxNotes) {
+            val step = base[index % base.size]
+            val notesCount = step.notes.size
+            val candidate = if (notesCount > maxNotes) {
+                step.copy(
+                    notes = step.notes.take(maxNotes),
+                    noteAccidentals = step.noteAccidentals.take(maxNotes)
+                )
+            } else {
+                step
+            }
+            val candidateCount = candidate.notes.size
+            if (result.isNotEmpty() && noteBudget + candidateCount > maxNotes) break
+            result += candidate
+            noteBudget += candidateCount
+            if (candidateCount == 0 && result.size > maxNotes) break
+            index++
+        }
+        return if (result.isEmpty()) listOf(base.first()) else result
+    }
+
+    private fun constrainNoteToScale(note: Int, key: Int): Int {
+        val scalePitchClasses = SCALE_7.map { (it + key) % 12 }.toSet()
+        if ((note % 12 + 12) % 12 in scalePitchClasses) return note
+
+        val quickCandidates = listOf(1, -1, 2, -2)
+        quickCandidates.forEach { delta ->
+            val candidate = note + delta
+            if (((candidate % 12) + 12) % 12 in scalePitchClasses) {
+                return candidate
+            }
+        }
+
+        for (delta in 3..6) {
+            val up = note + delta
+            if (((up % 12) + 12) % 12 in scalePitchClasses) return up
+            val down = note - delta
+            if (((down % 12) + 12) % 12 in scalePitchClasses) return down
+        }
+        return note
     }
 }

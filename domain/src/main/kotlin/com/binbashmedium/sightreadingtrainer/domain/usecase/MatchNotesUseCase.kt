@@ -1,20 +1,23 @@
 package com.binbashmedium.sightreadingtrainer.domain.usecase
 
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep
 import com.binbashmedium.sightreadingtrainer.domain.model.MatchResult
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 
 class MatchNotesUseCase {
 
     fun execute(
         playedNotes: List<NoteEvent>,
-        expectedNotes: List<Int>,
+        playedPedalAction: PedalAction,
+        expectedStep: ExerciseStep,
         toleranceMs: Long = 200L,
         expectedTimeMs: Long? = null
     ): MatchResult {
         val playedMidiNotes = playedNotes.map { it.midiNote }.sorted()
-        val sortedExpected = expectedNotes.sorted()
+        val sortedExpected = expectedStep.notes.sorted()
 
-        if (playedMidiNotes != sortedExpected) {
+        if (playedMidiNotes != sortedExpected || playedPedalAction != expectedStep.pedalAction) {
             return MatchResult.Incorrect
         }
 

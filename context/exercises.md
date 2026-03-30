@@ -4,21 +4,25 @@
 
 ```kotlin
 data class Exercise(
-    val expectedNotes: List<List<Int>>,
+    val steps: List<ExerciseStep>,
     val currentIndex: Int = 0,
     val musicalKey: Int = 0,
     val handMode: HandMode = HandMode.RIGHT
 )
 ```
 
-`currentChord` returns the chord at `currentIndex`, or `null` if complete.
-`isComplete` is true when `currentIndex >= expectedNotes.size`.
+`ExerciseStep` holds note groups plus optional per-note accidentals and optional pedal actions.
+`currentStep` returns the step at `currentIndex`, or `null` if complete.
+`isComplete` is true when `currentIndex >= steps.size`.
 
 ## GenerateExerciseUseCase (`domain/usecase/GenerateExerciseUseCase.kt`)
 
 Creates an `Exercise` from current `AppSettings` using selected exercise content types, `handMode`, a selected-key pool, and `exerciseLength`.
 
-The generator chooses one key from the selected key pool, transposes the material by that key, then shuffles/repeats/trims until it reaches the target `exerciseLength`.
+The generator chooses one key from the selected key pool (or an externally forced key for in-session rollover), transposes the material by that key, then fills steps until the max displayed note budget (`exerciseLength`) is reached.
+
+Exercises now use timed steps that can carry note groups, explicit note accidentals, and optional sustain-pedal actions per beat.
+When note accidentals are disabled, generated notes are constrained to the current key's major scale, preventing out-of-scale labels (for example `Bb` in C major without an accidental).
 
 ### Exercise type pool
 
@@ -32,6 +36,8 @@ The generator builds each exercise from a selected pool of content types, for ex
 - sevenths
 - ninths
 - clustered chords
+
+Chord-based material may also be emitted as arpeggio patterns instead of only stacked simultaneous notes.
 
 If multiple types are selected, the generated exercise mixes them together. For example, selecting single notes and triads produces an exercise that contains both.
 
@@ -103,7 +109,7 @@ The clefs are anchored to:
 
 Ledger lines are drawn by `ledgerStepsBelow` / `ledgerStepsAbove`.
 
-Current status: the renderer was validated against `mocks/Standard_music_notation_practice.pdf` across three rounds of fixes and 20 on-device screenshots (all keys). Latest fixes applied:
+Current status: the treble clef now uses the same scale ratio as the bass clef, which brought it much closer to the proportion in `mocks/img.png` while keeping the corrected vertical placement. Latest fixes already in place:
 - `CLEF_AREA_WIDTH_RATIO` raised to 3.8 to eliminate key-signature/clef overlap.
 - `BASS_CLEF_BASELINE_FROM_TOP_RATIO` raised to 0.92 so the glyph renders below the A line.
 - Spurious programmatic dot circles removed; the Unicode 𝄢 glyph already includes the two dots.
@@ -124,6 +130,9 @@ Accidental glyphs are drawn at standard treble/bass staff positions using:
 - `BASS_SHARP_STEPS`, `BASS_FLAT_STEPS`
 
 The standard accidental order and spacing are regression-tested against the notation reference.
+Individual noteheads now render their own accidentals for black-key pitches, with staggered left columns for close-position chord spellings so adjacent accidentals do not collide.
+
+Generated note accidentals are now optional in settings and use explicit `#`, `b`, and `natural` symbols rather than being inferred only from pitch class at render time.
 
 ## Notehead And Stem Rules
 
@@ -146,8 +155,11 @@ The app now applies these notation rules in pure helpers:
 
 ## Session Lifecycle
 
-Any played chord, correct or wrong, advances `exercise.currentIndex` by 1.
-When `exercise.isComplete == true`, `PracticeScreen` shows a `SessionCompleteOverlay` with the final score, BPM, and a "New Exercise" button.
+Any played step input (notes and optional pedal), correct or wrong, advances `exercise.currentIndex` by 1.
+When a chunk is complete before timeout, a new chunk is generated in the same key and the session continues.
+When session time is up and the current chunk is complete, `PracticeScreen` shows `SessionCompleteOverlay` with final score, highscore, and correct/wrong note counts.
+
+Sustain-pedal press and release events are now represented directly on exercise steps so they can be checked alongside notes in the session pipeline.
 
 ## Chord Labels
 
@@ -162,5 +174,16 @@ Clustered chord voicings and inversions should still resolve to their harmonic c
 ## Extending Exercises
 
 1. Add generation logic in `GenerateExerciseUseCase`.
-2. Ensure the output is `List<List<Int>>` MIDI groups.
+2. Ensure the output is a list of `ExerciseStep` entries (notes + optional accidentals + optional pedal action).
 3. Update tests for the new hand-mode or exercise-length behavior if the pattern changes.
+
+## Validation Artifacts
+
+Recent device captures for notation and exercise-generation validation live under `validation/`, including:
+- `validation/accidentals-arpeggios-check.png`
+- `validation/accidentals-arpeggios-practice.png`
+- `validation/validation-run1.png`
+- `validation/validation-run2.png`
+- `validation/validation-run3.png`
+- `validation/validation-run4.png`
+- `validation/validation-run5.png`

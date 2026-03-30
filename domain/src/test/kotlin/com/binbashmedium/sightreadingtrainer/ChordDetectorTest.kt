@@ -1,6 +1,7 @@
 package com.binbashmedium.sightreadingtrainer
 
 import com.binbashmedium.sightreadingtrainer.core.midi.ChordDetector
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -21,8 +22,8 @@ class ChordDetectorTest {
         val receivedChords = mutableListOf<List<Int>>()
 
         val collectJob = launch(testDispatcher) {
-            detector.chords.collect { chord ->
-                receivedChords.add(chord.map { it.midiNote })
+            detector.chords.collect { input ->
+                receivedChords.add(input.notes.map { it.midiNote })
             }
         }
 
@@ -44,8 +45,8 @@ class ChordDetectorTest {
         val receivedChords = mutableListOf<List<Int>>()
 
         val collectJob = launch(testDispatcher) {
-            detector.chords.collect { chord ->
-                receivedChords.add(chord.map { it.midiNote }.sorted())
+            detector.chords.collect { input ->
+                receivedChords.add(input.notes.map { it.midiNote }.sorted())
             }
         }
 
@@ -69,8 +70,8 @@ class ChordDetectorTest {
         val receivedChords = mutableListOf<List<Int>>()
 
         val collectJob = launch(testDispatcher) {
-            detector.chords.collect { chord ->
-                receivedChords.add(chord.map { it.midiNote })
+            detector.chords.collect { input ->
+                receivedChords.add(input.notes.map { it.midiNote })
             }
         }
 
@@ -95,8 +96,8 @@ class ChordDetectorTest {
         val receivedChords = mutableListOf<List<Int>>()
 
         val collectJob = launch(testDispatcher) {
-            detector.chords.collect { chord ->
-                receivedChords.add(chord.map { it.midiNote })
+            detector.chords.collect { input ->
+                receivedChords.add(input.notes.map { it.midiNote })
             }
         }
 
@@ -107,6 +108,53 @@ class ChordDetectorTest {
         collectJob.cancel()
         scope.cancel()
 
-        assertTrue("No chord should be emitted after reset", receivedChords.isEmpty())
+        assertTrue(receivedChords.isEmpty())
+    }
+
+    @Test
+    fun `pedal event can be emitted without notes`() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        val scope = CoroutineScope(testDispatcher)
+        val detector = ChordDetector(chordWindowMs = 50L, scope = scope)
+        val receivedPedals = mutableListOf<PedalAction>()
+
+        val collectJob = launch(testDispatcher) {
+            detector.chords.collect { input ->
+                receivedPedals.add(input.pedalAction)
+            }
+        }
+
+        detector.onPedalChange(PedalAction.PRESS)
+        advanceTimeBy(100)
+
+        collectJob.cancel()
+        scope.cancel()
+
+        assertEquals(listOf(PedalAction.PRESS), receivedPedals)
+    }
+
+    @Test
+    fun `notes and pedal within window are grouped together`() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        val scope = CoroutineScope(testDispatcher)
+        val detector = ChordDetector(chordWindowMs = 50L, scope = scope)
+        val received = mutableListOf<Pair<List<Int>, PedalAction>>()
+
+        val collectJob = launch(testDispatcher) {
+            detector.chords.collect { input ->
+                received.add(input.notes.map { it.midiNote }.sorted() to input.pedalAction)
+            }
+        }
+
+        detector.onNoteOn(60, 100)
+        detector.onPedalChange(PedalAction.PRESS)
+        advanceTimeBy(100)
+
+        collectJob.cancel()
+        scope.cancel()
+
+        assertEquals(1, received.size)
+        assertEquals(listOf(60), received.first().first)
+        assertEquals(PedalAction.PRESS, received.first().second)
     }
 }

@@ -3,6 +3,8 @@ package com.binbashmedium.sightreadingtrainer
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.usecase.GenerateExerciseUseCase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,11 +46,14 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.TRIADS, ExerciseContentType.SEVENTHS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 12
+                exerciseLength = 12,
+                selectedKeys = setOf(0)
             )
         )
 
-        assertEquals(12, exercise.expectedNotes.size)
+        val displayedNotes = exercise.expectedNotes.sumOf { it.size }
+        assertTrue(displayedNotes <= 12)
+        assertTrue(displayedNotes > 0)
     }
 
     @Test
@@ -151,6 +156,23 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
+    fun `arpeggios generate broken chord single notes`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.ARPEGGIOS),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 24,
+                selectedKeys = setOf(0)
+            )
+        )
+
+        assertTrue(exercise.expectedNotes.all { it.size == 1 })
+        val notes = exercise.expectedNotes.flatten()
+        assertTrue(notes.any { it == 60 || it == 64 || it == 67 || it == 71 })
+        assertTrue(notes.any { it > 67 })
+    }
+
+    @Test
     fun `exercise starts at index 0 and is not complete`() {
         val exercise = useCase.execute(AppSettings())
 
@@ -167,8 +189,8 @@ class GenerateExerciseUseCaseTest {
             AppSettings(exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES), handMode = HandMode.RIGHT, selectedKeys = setOf(7))
         )
 
-        assertTrue(cExercise.expectedNotes.flatten().all { it in 60..72 })
-        assertTrue(gExercise.expectedNotes.flatten().all { it in 67..79 })
+        assertTrue(cExercise.expectedNotes.flatten().all { it in 60..84 })
+        assertTrue(gExercise.expectedNotes.flatten().all { it in 67..91 })
     }
 
     @Test
@@ -183,5 +205,85 @@ class GenerateExerciseUseCaseTest {
 
         assertEquals(5, exercise.musicalKey)
         assertEquals(HandMode.LEFT, exercise.handMode)
+    }
+
+    @Test
+    fun `forced key is used for regeneration`() {
+        val exercise = useCase.execute(
+            settings = AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                selectedKeys = setOf(0, 5, 9),
+                handMode = HandMode.RIGHT
+            ),
+            forcedKey = 7
+        )
+        assertEquals(7, exercise.musicalKey)
+    }
+
+    @Test
+    fun `disabled accidentals leave all note modifiers empty`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES, ExerciseContentType.CLUSTERED_CHORDS),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 24,
+                noteAccidentalsEnabled = false,
+                selectedKeys = setOf(0)
+            )
+        )
+
+        assertTrue(exercise.steps.all { step -> step.noteAccidentals.all { it == NoteAccidental.NONE } })
+        val cMajorPitchClasses = setOf(0, 2, 4, 5, 7, 9, 11)
+        assertTrue(exercise.expectedNotes.flatten().all { ((it % 12) + 12) % 12 in cMajorPitchClasses })
+    }
+
+    @Test
+    fun `enabled accidentals generate only sharp flat or valid natural cancellations`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 48,
+                noteAccidentalsEnabled = true,
+                selectedKeys = setOf(0)
+            )
+        )
+
+        val accidentals = exercise.steps.flatMap { it.noteAccidentals }
+        assertTrue(accidentals.any { it == NoteAccidental.SHARP || it == NoteAccidental.FLAT || it == NoteAccidental.NATURAL })
+
+        var seenAltered = false
+        accidentals.forEach { accidental ->
+            if (accidental == NoteAccidental.SHARP || accidental == NoteAccidental.FLAT) {
+                seenAltered = true
+            }
+            if (accidental == NoteAccidental.NATURAL) {
+                assertTrue(seenAltered)
+            }
+        }
+    }
+
+    @Test
+    fun `enabled pedal events always include a later release for each press`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES, ExerciseContentType.TRIADS),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 24,
+                pedalEventsEnabled = true,
+                selectedKeys = setOf(0)
+            )
+        )
+
+        val pressIndices = exercise.steps.mapIndexedNotNull { index, step ->
+            index.takeIf { step.pedalAction == PedalAction.PRESS }
+        }
+        val releaseIndices = exercise.steps.mapIndexedNotNull { index, step ->
+            index.takeIf { step.pedalAction == PedalAction.RELEASE }
+        }
+
+        pressIndices.forEach { pressIndex ->
+            assertTrue(releaseIndices.any { it > pressIndex })
+        }
     }
 }

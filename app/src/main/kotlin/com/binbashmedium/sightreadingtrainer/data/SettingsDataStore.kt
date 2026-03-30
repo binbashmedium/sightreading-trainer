@@ -26,9 +26,15 @@ class SettingsDataStore @Inject constructor(
         val MIDI_DEVICE = stringPreferencesKey("midi_device")
         val TIMING_TOLERANCE = intPreferencesKey("timing_tolerance_ms")
         val CHORD_WINDOW = intPreferencesKey("chord_window_ms")
+        val EXERCISE_TIME_SEC = intPreferencesKey("exercise_time_sec")
         val EXERCISE_LENGTH = intPreferencesKey("exercise_length")
         val EXERCISE_TYPES = stringPreferencesKey("exercise_types")
         val HAND_MODE = stringPreferencesKey("hand_mode")
+        val NOTE_ACCIDENTALS_ENABLED = booleanPreferencesKey("note_accidentals_enabled")
+        val PEDAL_EVENTS_ENABLED = booleanPreferencesKey("pedal_events_enabled")
+        val HIGH_SCORE = intPreferencesKey("high_score")
+        val TOTAL_CORRECT_NOTES = intPreferencesKey("total_correct_notes")
+        val TOTAL_WRONG_NOTES = intPreferencesKey("total_wrong_notes")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val SELECTED_KEYS = stringPreferencesKey("selected_keys")
         val MUSICAL_KEY = intPreferencesKey("musical_key")
@@ -39,6 +45,7 @@ class SettingsDataStore @Inject constructor(
             midiDeviceName = prefs[Keys.MIDI_DEVICE] ?: "",
             timingToleranceMs = prefs[Keys.TIMING_TOLERANCE] ?: 200,
             chordWindowMs = prefs[Keys.CHORD_WINDOW] ?: 50,
+            exerciseTimeSec = (prefs[Keys.EXERCISE_TIME_SEC] ?: 60).coerceAtLeast(10),
             exerciseLength = prefs[Keys.EXERCISE_LENGTH] ?: 8,
             exerciseTypes = parseExerciseTypes(
                 prefs[Keys.EXERCISE_TYPES],
@@ -48,6 +55,11 @@ class SettingsDataStore @Inject constructor(
                 prefs[intPreferencesKey("difficulty")] ?: 1
             ),
             handMode = HandMode.valueOf(prefs[Keys.HAND_MODE] ?: HandMode.RIGHT.name),
+            noteAccidentalsEnabled = prefs[Keys.NOTE_ACCIDENTALS_ENABLED] ?: false,
+            pedalEventsEnabled = prefs[Keys.PEDAL_EVENTS_ENABLED] ?: false,
+            highScore = prefs[Keys.HIGH_SCORE] ?: 0,
+            totalCorrectNotes = prefs[Keys.TOTAL_CORRECT_NOTES] ?: 0,
+            totalWrongNotes = prefs[Keys.TOTAL_WRONG_NOTES] ?: 0,
             soundEnabled = prefs[Keys.SOUND_ENABLED] ?: true,
             selectedKeys = parseSelectedKeys(
                 prefs[Keys.SELECTED_KEYS],
@@ -61,9 +73,15 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.MIDI_DEVICE] = settings.midiDeviceName
             prefs[Keys.TIMING_TOLERANCE] = settings.timingToleranceMs
             prefs[Keys.CHORD_WINDOW] = settings.chordWindowMs
+            prefs[Keys.EXERCISE_TIME_SEC] = settings.exerciseTimeSec
             prefs[Keys.EXERCISE_LENGTH] = settings.exerciseLength
             prefs[Keys.EXERCISE_TYPES] = settings.exerciseTypes.sortedBy { it.ordinal }.joinToString(",") { it.name }
             prefs[Keys.HAND_MODE] = settings.handMode.name
+            prefs[Keys.NOTE_ACCIDENTALS_ENABLED] = settings.noteAccidentalsEnabled
+            prefs[Keys.PEDAL_EVENTS_ENABLED] = settings.pedalEventsEnabled
+            prefs[Keys.HIGH_SCORE] = settings.highScore
+            prefs[Keys.TOTAL_CORRECT_NOTES] = settings.totalCorrectNotes
+            prefs[Keys.TOTAL_WRONG_NOTES] = settings.totalWrongNotes
             prefs[Keys.SOUND_ENABLED] = settings.soundEnabled
             prefs[Keys.SELECTED_KEYS] = settings.selectedKeys.sorted().joinToString(",")
             prefs[Keys.MUSICAL_KEY] = settings.selectedKeys.minOrNull() ?: 0
@@ -100,8 +118,8 @@ class SettingsDataStore @Inject constructor(
             1 -> setOf(ExerciseContentType.SINGLE_NOTES)
             2 -> setOf(ExerciseContentType.OCTAVES)
             3 -> setOf(ExerciseContentType.THIRDS)
-            4 -> setOf(ExerciseContentType.TRIADS, ExerciseContentType.SEVENTHS, ExerciseContentType.NINTHS)
-            5 -> setOf(ExerciseContentType.TRIADS, ExerciseContentType.SEVENTHS, ExerciseContentType.NINTHS)
+            4 -> setOf(ExerciseContentType.TRIADS, ExerciseContentType.ARPEGGIOS)
+            5 -> setOf(ExerciseContentType.TRIADS, ExerciseContentType.SEVENTHS, ExerciseContentType.NINTHS, ExerciseContentType.ARPEGGIOS)
             else -> setOf(ExerciseContentType.SINGLE_NOTES)
         }
     }

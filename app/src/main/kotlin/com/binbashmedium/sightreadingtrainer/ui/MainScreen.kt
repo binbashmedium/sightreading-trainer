@@ -35,9 +35,12 @@ fun MainScreen(
         Spacer(Modifier.height(32.dp))
 
         Text("Length: ${settings.exerciseLength}")
+        Text("Time: ${settings.exerciseTimeSec}s")
         Text("Types: ${settings.exerciseTypes.sortedBy { it.ordinal }.joinToString(", ") { it.name.replace('_', ' ') }}")
         Text("Keys: ${settings.selectedKeys.sorted().joinToString(", ") { KEY_NAMES[it] }}")
         Text("Hand: ${settings.handMode.name}")
+        Text("Highscore: ${settings.highScore} pts")
+        Text("Correct / Wrong: ${settings.totalCorrectNotes} / ${settings.totalWrongNotes}")
 
         Spacer(Modifier.height(32.dp))
 

@@ -60,6 +60,16 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        Text("Exercise Time: ${settings.exerciseTimeSec} s")
+        Slider(
+            value = settings.exerciseTimeSec.toFloat(),
+            onValueChange = { viewModel.updateSettings(settings.copy(exerciseTimeSec = it.toInt())) },
+            valueRange = 30f..300f,
+            steps = 26
+        )
+
+        Spacer(Modifier.height(16.dp))
+
         Text("${stringResource(R.string.exercise_length)}: ${settings.exerciseLength}")
         Slider(
             value = settings.exerciseLength.toFloat(),
@@ -106,6 +116,38 @@ fun SettingsScreen(
                     label = { Text(mode.name) }
                 )
             }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Generated Note Accidentals")
+            Switch(
+                checked = settings.noteAccidentalsEnabled,
+                onCheckedChange = {
+                    viewModel.updateSettings(settings.copy(noteAccidentalsEnabled = it))
+                }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Generated Pedal Marks")
+            Switch(
+                checked = settings.pedalEventsEnabled,
+                onCheckedChange = {
+                    viewModel.updateSettings(settings.copy(pedalEventsEnabled = it))
+                }
+            )
         }
 
         Spacer(Modifier.height(16.dp))

@@ -1,6 +1,8 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,7 +39,7 @@ class GrandStaffModelsTest {
 
     @Test
     fun `clef baselines are aligned from their correct anchor lines`() {
-        assertEquals(172.4f, trebleClefBaselineY(160f, 20f))
+        assertEquals(179f, trebleClefBaselineY(160f, 20f))
         assertEquals(373.6f, bassClefBaselineY(320f, 20f))
     }
 
@@ -82,7 +84,7 @@ class GrandStaffModelsTest {
         assertEquals(43f, metrics.postClefGap, 0.001f)
         assertEquals(15f, metrics.accidentalSpacing, 0.001f)       // 20 * 0.75
         assertEquals(44f, metrics.accidentalTextSize, 0.001f)      // 20 * 2.2
-        assertEquals(92f, metrics.trebleClefTextSize, 0.001f)
+        assertEquals(80f, metrics.trebleClefTextSize, 0.001f)
         // Accidentals must be clearly visible (> 1 lineSpacing) but smaller than the clef
         assertTrue(metrics.accidentalTextSize > metrics.trebleClefTextSize / 4f)
         assertTrue(metrics.accidentalTextSize < metrics.trebleClefTextSize)
@@ -124,6 +126,34 @@ class GrandStaffModelsTest {
         assertEquals(20, BASS_FLAT_STEPS.first())
         assertEquals(listOf(38, 35, 39, 36), TREBLE_SHARP_STEPS.take(4))
         assertEquals(listOf(34, 37, 33, 36), TREBLE_FLAT_STEPS.take(4))
+    }
+
+    @Test
+    fun `note accidental symbols expose sharp flat and natural glyphs`() {
+        assertEquals("♯", noteAccidentalSymbol(NoteAccidental.SHARP))
+        assertEquals("♭", noteAccidentalSymbol(NoteAccidental.FLAT))
+        assertEquals("♮", noteAccidentalSymbol(NoteAccidental.NATURAL))
+        assertEquals(null, noteAccidentalSymbol(NoteAccidental.NONE))
+    }
+
+    @Test
+    fun `flat accidentals shift display step to the upper natural note`() {
+        assertEquals(midiToDiatonicStep(61) + 1, displayDiatonicStep(61, NoteAccidental.FLAT))
+        assertEquals(midiToDiatonicStep(61), displayDiatonicStep(61, NoteAccidental.SHARP))
+    }
+
+    @Test
+    fun `pedal marks map to the expected text`() {
+        assertEquals("Ped.", pedalMarkText(PedalAction.PRESS))
+        assertEquals("✱", pedalMarkText(PedalAction.RELEASE))
+        assertEquals(null, pedalMarkText(PedalAction.NONE))
+    }
+
+    @Test
+    fun `close accidentals in chords use additional left columns`() {
+        assertEquals(listOf(0, 1, 2), accidentalColumnsForSteps(listOf(32, 33, 34)))
+        assertEquals(listOf(0, 0, 1), accidentalColumnsForSteps(listOf(30, 35, 37)))
+        assertEquals(emptyList<Int>(), accidentalColumnsForSteps(emptyList()))
     }
 
     @Test
