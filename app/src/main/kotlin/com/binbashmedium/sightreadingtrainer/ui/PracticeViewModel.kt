@@ -55,6 +55,7 @@ class PracticeViewModel @Inject constructor(
     /** Generate a new exercise from current settings and start the session. */
     fun startSession() {
         viewModelScope.launch {
+            chordDetector?.reset()
             val settings = settingsRepository.settings.first()
             val exercise = exerciseRepository.generateExercise(settings)
             sessionSettings = settings

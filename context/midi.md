@@ -23,6 +23,14 @@ fun openDevice(deviceName: String? = null)
 ```
 Opens matching device (or first available) and listens to output port 0.
 
+Connection lifecycle is now guarded against stale async callbacks:
+- existing output port/device are closed before each reopen
+- each open request gets a monotonically increasing request ID
+- callback attachment is applied only if request ID is still current
+- `close()` invalidates pending opens and closes both the port and device
+
+This prevents duplicate receiver attachments after settings-driven reopens (for example after a completed session updates highscore/counters).
+
 ### Note parsing
 Raw bytes: `[status, note, velocity]`
 - `0x9_` + velocity > 0 => NOTE_ON event emitted

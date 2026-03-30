@@ -18,6 +18,10 @@
 
 ## Done (recent)
 
+- [x] **MIDI reopen regression fixed** - `AndroidMidiManager` now closes existing port/device before reopen, rejects stale async open callbacks with request IDs, and invalidates pending opens on `close()`, preventing duplicate receivers that caused all-played-notes to be marked wrong after starting a new exercise.
+- [x] **Session reset hardening** - `PracticeViewModel.startSession()` now resets `ChordDetector` before generating/starting the next exercise so pending grouped input cannot leak across exercises.
+- [x] **MIDI reopen regression tests added** - new `MidiOpenRequestTrackerTest` verifies request rollover and invalidation behavior used to block stale callback attachment.
+- [x] **Verification rerun** - full `test` passed; debug APK rebuilt, installed, and launched on the VASOUN L10.
 - [x] **Timeout finish-screen regression fixed** - the practice timer loop now calls `PracticeViewModel.finalizeIfTimedOut(...)`, so the session-complete overlay (score, highscore, correct/wrong) appears even if no new MIDI input arrives after time expires.
 - [x] **Timeout boundary tests added** - new `PracticeViewModelTimeoutTest` verifies pre-boundary, boundary, and post-boundary behavior for `hasSessionTimedOut(...)`.
 - [x] **Verification rerun** - full `test` passed; debug APK rebuilt, installed, and launched on the VASOUN L10.
