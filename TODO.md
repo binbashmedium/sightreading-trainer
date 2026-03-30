@@ -6,11 +6,7 @@
 
 ## Features
 
-- [ ] **MIDI reconnect flow** - `AndroidMidiManager` has no disconnect/reconnect handling. Device loss silently breaks the session.
-- [ ] **Multi-port MIDI** - only port index 0 is opened. Support devices that expose notes on other ports.
-- [ ] **MIDI channel to hand assignment** - channel information is parsed but ignored. Could drive `HandMode` automatically (ch 1 = right, ch 2 = left).
-- [ ] **Tolerant pitch matching** - only strict equality is implemented. A future `expected subset played` mode would allow extra notes.
-- [ ] **Sostenuto / soft pedal support** - only sustain pedal CC64 is handled; other pedal controllers are still ignored.
+*(none)*
 
 ## Polish / UX
 
@@ -18,6 +14,11 @@
 
 ## Done (recent)
 
+- [x] **MIDI reconnect flow implemented** - `AndroidMidiManager` now registers a `MidiManager.DeviceCallback`, tracks desired device selection, refreshes available devices reactively, and auto-reconnects when devices are reattached.
+- [x] **Statistics tracking + page implemented** - session now records group- and note-level correct/incorrect counters, persists them in DataStore, and exposes a new `Statistics` screen with Top 5 correct/incorrect groups and notes.
+- [x] **Exercise-step source typing added** - `ExerciseStep.contentType` now tags generated steps by exercise type so statistics are grouped consistently with settings types (single notes, triads, etc.).
+- [x] **Stats/reconnect test coverage added** - tests now cover content-type tagging, session stat accumulation, and top-5 statistics mapping.
+- [x] **Verification rerun** - full `test` passed; debug APK rebuilt, installed, and launched on the VASOUN L10.
 - [x] **Mixed notehead-color regression fixed** - `GrandStaffCanvas` no longer derives color from the first note in a beat group; each notehead now uses its own state color, so mixed correct/missing/extra note outcomes render correctly in one chord.
 - [x] **Stem-color fallback for mixed note states** - stems/flags now use neutral black when a grouped chord contains mixed note states, preventing a single-note state from visually overriding the full chord.
 - [x] **Renderer helper tests added** - new `PracticeScreenColorTest` verifies note-state palette mapping and mixed-state stem color behavior.

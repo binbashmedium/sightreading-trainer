@@ -13,6 +13,12 @@ data class PracticeState(
     val resultByBeat: Map<Int, MatchResult> = emptyMap(),
     /** Played input snapshot for each resolved beat index (notes + pedal context). */
     val inputByBeat: Map<Int, StepInputSnapshot> = emptyMap(),
+    /** Session-local performance counters by generated exercise group (for example TRIADS). */
+    val correctGroupStats: Map<String, Int> = emptyMap(),
+    val wrongGroupStats: Map<String, Int> = emptyMap(),
+    /** Session-local per-note performance counters (for example C4, F#3). */
+    val correctNoteStats: Map<String, Int> = emptyMap(),
+    val wrongNoteStats: Map<String, Int> = emptyMap(),
     /** Live BPM from the last inter-chord interval (0 until 2nd correct chord). */
     val bpm: Float = 0f,
     /** Timestamp of the most-recent correct chord (for BPM + fluency scoring). */

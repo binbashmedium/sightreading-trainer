@@ -54,6 +54,7 @@ fun execute(
 - **Per-beat results**: `resultByBeat: Map<Int, MatchResult>` stores latest result for each step index.
 - **Per-beat input snapshots**: `inputByBeat: Map<Int, StepInputSnapshot>` stores played notes, pedal action, and pedal context used for rendering per-note/per-pedal feedback.
 - **Note counters**: `correctNotesCount` and `wrongNotesCount` accumulate expected note counts per matched step.
+- **Stats counters**: session-local `correct/wrong` maps for groups and notes are accumulated per resolved step and persisted at session end.
 - **Pedal-only gating**: inputs with no notes update pedal state only and return `Waiting`; they do not advance `currentIndex`.
 
 ## UI Visualization Mapping

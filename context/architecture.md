@@ -56,6 +56,7 @@ app/
   ui/
     GrandStaffModels.kt   - UI state + render helpers (GameState/Chord/UI NoteEvent/NoteState)
     MainScreen.kt + MainViewModel.kt
+    StatisticsScreen.kt + StatisticsViewModel.kt
     PracticeScreen.kt + PracticeViewModel.kt
     SettingsScreen.kt + SettingsViewModel.kt
 ```
@@ -104,3 +105,4 @@ Single-activity Compose navigation with three destinations:
 - `main` -> `MainScreen`
 - `practice` -> `PracticeScreen`
 - `settings` -> `SettingsScreen`
+- `statistics` -> `StatisticsScreen`

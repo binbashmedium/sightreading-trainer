@@ -16,6 +16,10 @@ data class AppSettings(
     val highScore: Int = 0,
     val totalCorrectNotes: Int = 0,
     val totalWrongNotes: Int = 0,
+    val correctGroupStats: Map<String, Int> = emptyMap(),
+    val wrongGroupStats: Map<String, Int> = emptyMap(),
+    val correctNoteStats: Map<String, Int> = emptyMap(),
+    val wrongNoteStats: Map<String, Int> = emptyMap(),
     val soundEnabled: Boolean = true,
     val selectedKeys: Set<Int> = setOf(0)
 )
@@ -41,6 +45,9 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 
 - `SettingsDataStore` maps preference keys to fields, including the selected key pool and `exercise_length`.
 - Highscore and cumulative note counters are persisted in DataStore as part of `AppSettings`.
+- Group/note performance statistics are persisted in DataStore as serialized maps:
+  - `correctGroupStats`, `wrongGroupStats`
+  - `correctNoteStats`, `wrongNoteStats`
 - `SettingsRepository` exposes `Flow<AppSettings>` and the save API.
 - `SettingsViewModel` and other consumers collect from the repository flow.
 
@@ -76,6 +83,16 @@ The screen includes:
 - chord-window slider
 - sound toggle
 - MIDI device radio list
+
+## Statistics Screen
+
+Main navigation now includes a `Statistics` page with Top 5 sections:
+- correct groups
+- incorrect groups
+- correct notes
+- incorrect notes
+
+Group stats are aligned with exercise types (for example `SINGLE_NOTES`, `TRIADS`, `SEVENTHS`) via `ExerciseStep.contentType`.
 
 ## UI Notes
 

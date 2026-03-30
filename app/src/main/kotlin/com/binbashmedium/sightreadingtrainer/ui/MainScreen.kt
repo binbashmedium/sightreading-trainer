@@ -59,5 +59,14 @@ fun MainScreen(
         ) {
             Text(stringResource(R.string.settings))
         }
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = { navController.navigate("statistics") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Statistics")
+        }
     }
 }

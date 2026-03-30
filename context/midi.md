@@ -31,6 +31,16 @@ Connection lifecycle is now guarded against stale async callbacks:
 
 This prevents duplicate receiver attachments after settings-driven reopens (for example after a completed session updates highscore/counters).
 
+### Reconnect behavior
+
+`AndroidMidiManager` now registers a `MidiManager.DeviceCallback` and keeps a desired device name.
+When device topology changes:
+- available MIDI device names are refreshed reactively
+- disconnected active devices are closed
+- if no active port is open, the manager attempts to reconnect to the desired device (or first available device)
+
+This prevents silent MIDI failure after unplug/replug.
+
 ### Note parsing
 Raw bytes: `[status, note, velocity]`
 - `0x9_` + velocity > 0 => NOTE_ON event emitted

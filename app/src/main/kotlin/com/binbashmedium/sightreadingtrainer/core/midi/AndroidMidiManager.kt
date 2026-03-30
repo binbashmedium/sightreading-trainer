@@ -6,6 +6,7 @@ import android.media.midi.MidiDeviceInfo
 import android.media.midi.MidiManager
 import android.media.midi.MidiOutputPort
 import android.media.midi.MidiReceiver
+import android.media.midi.MidiDeviceStatus
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalEvent
@@ -13,8 +14,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -34,10 +38,27 @@ class AndroidMidiManager @Inject constructor(
     val noteEvents: SharedFlow<NoteEvent> = _noteEvents.asSharedFlow()
     private val _pedalEvents = MutableSharedFlow<PedalEvent>(extraBufferCapacity = 32)
     val pedalEvents: SharedFlow<PedalEvent> = _pedalEvents.asSharedFlow()
+    private val _availableDeviceNames = MutableStateFlow<List<String>>(emptyList())
+    val availableDeviceNames: StateFlow<List<String>> = _availableDeviceNames.asStateFlow()
 
     private val openRequestTracker = MidiOpenRequestTracker()
     private var midiDevice: MidiDevice? = null
     private var outputPort: MidiOutputPort? = null
+    private var desiredDeviceName: String? = null
+    private var connectedDeviceId: Int? = null
+    private val deviceCallback = object : MidiManager.DeviceCallback() {
+        override fun onDeviceAdded(device: MidiDeviceInfo) {
+            handleDeviceTopologyChanged()
+        }
+
+        override fun onDeviceRemoved(device: MidiDeviceInfo) {
+            handleDeviceTopologyChanged()
+        }
+
+        override fun onDeviceStatusChanged(status: MidiDeviceStatus) {
+            handleDeviceTopologyChanged()
+        }
+    }
     private val midiReceiver = object : MidiReceiver() {
         override fun onSend(msg: ByteArray, offset: Int, count: Int, timestamp: Long) {
             if (count < 3) return
@@ -60,18 +81,25 @@ class AndroidMidiManager @Inject constructor(
         }
     }
 
+    init {
+        refreshAvailableDeviceNames()
+        midiManager.registerDeviceCallback(deviceCallback, null)
+    }
+
     /** Returns the names of all currently attached MIDI devices. */
     fun getDeviceNames(): List<String> =
-        midiManager.devices.map { it.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unknown" }
+        availableDeviceNames.value
 
     /** Opens the first available MIDI input (from the device's perspective, an output port). */
     fun openDevice(deviceName: String? = null) {
-        val deviceInfo = midiManager.devices.firstOrNull { info ->
-            deviceName == null ||
-                info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) == deviceName
-        }
+        desiredDeviceName = deviceName?.takeIf { it.isNotBlank() }
+        val deviceInfo = resolveTargetDeviceInfo()
         if (deviceInfo == null) {
-            close()
+            synchronized(this) {
+                closeConnectionLocked()
+                openRequestTracker.invalidate()
+            }
+            refreshAvailableDeviceNames()
             return
         }
 
@@ -88,6 +116,7 @@ class AndroidMidiManager @Inject constructor(
                     } else {
                         closeConnectionLocked()
                         midiDevice = openedDevice
+                        connectedDeviceId = openedDevice.info.id
                         val newOutputPort = openedDevice.openOutputPort(0)
                         if (newOutputPort == null) {
                             closeConnectionLocked()
@@ -108,11 +137,44 @@ class AndroidMidiManager @Inject constructor(
         }
     }
 
+    private fun handleDeviceTopologyChanged() {
+        refreshAvailableDeviceNames()
+        val shouldReconnect = synchronized(this) {
+            val currentId = connectedDeviceId
+            if (currentId != null && midiManager.devices.none { it.id == currentId }) {
+                closeConnectionLocked()
+            }
+            outputPort == null
+        }
+        if (shouldReconnect) {
+            openDevice(desiredDeviceName)
+        }
+    }
+
+    private fun refreshAvailableDeviceNames() {
+        val names = midiManager.devices
+            .map { it.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unknown" }
+        _availableDeviceNames.value = names
+    }
+
+    private fun resolveTargetDeviceInfo(): MidiDeviceInfo? {
+        val devices = midiManager.devices
+        val desired = desiredDeviceName
+        return if (desired.isNullOrBlank()) {
+            devices.firstOrNull()
+        } else {
+            devices.firstOrNull { info ->
+                info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) == desired
+            }
+        }
+    }
+
     private fun closeConnectionLocked() {
         outputPort?.close()
         outputPort = null
         midiDevice?.close()
         midiDevice = null
+        connectedDeviceId = null
     }
 }
 

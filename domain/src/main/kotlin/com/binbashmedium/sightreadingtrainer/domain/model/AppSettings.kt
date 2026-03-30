@@ -13,6 +13,10 @@ data class AppSettings(
     val highScore: Int = 0,
     val totalCorrectNotes: Int = 0,
     val totalWrongNotes: Int = 0,
+    val correctGroupStats: Map<String, Int> = emptyMap(),
+    val wrongGroupStats: Map<String, Int> = emptyMap(),
+    val correctNoteStats: Map<String, Int> = emptyMap(),
+    val wrongNoteStats: Map<String, Int> = emptyMap(),
     val soundEnabled: Boolean = true,
     /** Selectable pool of keys (0 = C, 1 = C#/Db, 2 = D, …, 11 = B). */
     val selectedKeys: Set<Int> = setOf(0)

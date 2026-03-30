@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import com.binbashmedium.sightreadingtrainer.ui.MainScreen
 import com.binbashmedium.sightreadingtrainer.ui.PracticeScreen
 import com.binbashmedium.sightreadingtrainer.ui.SettingsScreen
+import com.binbashmedium.sightreadingtrainer.ui.StatisticsScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -28,6 +29,7 @@ class MainActivity : ComponentActivity() {
                         composable("main") { MainScreen(navController) }
                         composable("practice") { PracticeScreen(navController) }
                         composable("settings") { SettingsScreen(navController) }
+                        composable("statistics") { StatisticsScreen(navController) }
                     }
                 }
             }

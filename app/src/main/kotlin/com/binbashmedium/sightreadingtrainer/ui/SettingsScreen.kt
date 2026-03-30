@@ -24,6 +24,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
+    val devices by viewModel.availableMidiDevices.collectAsState()
 
     Column(
         modifier = Modifier
@@ -188,7 +189,6 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
 
         // MIDI device selector
-        val devices = viewModel.availableMidiDevices
         if (devices.isNotEmpty()) {
             Text(stringResource(R.string.midi_device))
             devices.forEach { deviceName ->

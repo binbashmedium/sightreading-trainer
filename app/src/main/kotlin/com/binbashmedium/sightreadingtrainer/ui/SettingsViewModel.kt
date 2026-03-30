@@ -21,8 +21,8 @@ class SettingsViewModel @Inject constructor(
     val settings: StateFlow<AppSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
 
-    val availableMidiDevices: List<String>
-        get() = midiManager.getDeviceNames()
+    val availableMidiDevices: StateFlow<List<String>> = midiManager.availableDeviceNames
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), midiManager.getDeviceNames())
 
     fun updateSettings(settings: AppSettings) {
         viewModelScope.launch { settingsRepository.save(settings) }

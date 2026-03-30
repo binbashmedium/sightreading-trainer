@@ -1,5 +1,6 @@
 package com.binbashmedium.sightreadingtrainer.domain.usecase
 
+import com.binbashmedium.sightreadingtrainer.core.util.NoteNames
 import com.binbashmedium.sightreadingtrainer.domain.model.Exercise
 import com.binbashmedium.sightreadingtrainer.domain.model.MatchResult
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
@@ -82,6 +83,27 @@ class PracticeSessionUseCase(
         // Record result for this beat index (overwrites previous attempts on same chord).
         val newResultByBeat = currentState.resultByBeat + (exercise.currentIndex to result)
         val newInputByBeat = currentState.inputByBeat + (exercise.currentIndex to inputSnapshot)
+        val noteOutcome = classifyNoteOutcome(expectedStep.notes, input.notes.map { it.midiNote })
+        val stepGroup = stepGroupKey(expectedStep)
+
+        val newCorrectGroupStats = if (result == MatchResult.Correct) {
+            currentState.correctGroupStats.increment(stepGroup, 1)
+        } else {
+            currentState.correctGroupStats
+        }
+        val newWrongGroupStats = if (result == MatchResult.Correct) {
+            currentState.wrongGroupStats
+        } else {
+            currentState.wrongGroupStats.increment(stepGroup, 1)
+        }
+
+        val newCorrectNoteStats = noteOutcome.correctMidi.fold(currentState.correctNoteStats) { acc, midi ->
+            acc.increment(NoteNames.fromMidi(midi), 1)
+        }
+        val newWrongNoteStats = (noteOutcome.missingMidi + noteOutcome.extraMidi)
+            .fold(currentState.wrongNoteStats) { acc, midi ->
+                acc.increment(NoteNames.fromMidi(midi), 1)
+            }
 
         val (newScore, newBpm, newLastCorrectTs) = if (result == MatchResult.Correct) {
             val interChordMs = if (currentState.lastCorrectTimestamp > 0L)
@@ -126,6 +148,10 @@ class PracticeSessionUseCase(
             wrongNotesCount = newWrongNotes,
             resultByBeat = newResultByBeat,
             inputByBeat = newInputByBeat,
+            correctGroupStats = newCorrectGroupStats,
+            wrongGroupStats = newWrongGroupStats,
+            correctNoteStats = newCorrectNoteStats,
+            wrongNoteStats = newWrongNoteStats,
             bpm = newBpm,
             lastCorrectTimestamp = newLastCorrectTs
         )
@@ -142,3 +168,54 @@ class PracticeSessionUseCase(
         _state.value = null
     }
 }
+
+private data class NoteOutcome(
+    val correctMidi: List<Int>,
+    val missingMidi: List<Int>,
+    val extraMidi: List<Int>
+)
+
+private fun classifyNoteOutcome(expected: List<Int>, played: List<Int>): NoteOutcome {
+    val playedCounts = played.groupingBy { it }.eachCount().toMutableMap()
+    val correct = mutableListOf<Int>()
+    val missing = mutableListOf<Int>()
+    expected.forEach { midi ->
+        val count = playedCounts[midi] ?: 0
+        if (count > 0) {
+            correct += midi
+            playedCounts[midi] = count - 1
+        } else {
+            missing += midi
+        }
+    }
+    val extra = buildList {
+        playedCounts.forEach { (midi, count) ->
+            repeat(count.coerceAtLeast(0)) { add(midi) }
+        }
+    }
+    return NoteOutcome(correctMidi = correct, missingMidi = missing, extraMidi = extra)
+}
+
+private fun stepGroupKey(step: com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep): String {
+    step.contentType?.let { return it.name }
+    return when (step.notes.size) {
+        1 -> "SINGLE_NOTES"
+        2 -> {
+            val interval = kotlin.math.abs(step.notes[1] - step.notes[0])
+            when (interval) {
+                12 -> "OCTAVES"
+                3, 4 -> "THIRDS"
+                7 -> "FIFTHS"
+                8, 9 -> "SIXTHS"
+                else -> "INTERVALS"
+            }
+        }
+        3 -> "TRIADS"
+        4 -> "SEVENTHS"
+        5 -> "NINTHS"
+        else -> "CHORDS"
+    }
+}
+
+private fun Map<String, Int>.increment(key: String, delta: Int): Map<String, Int> =
+    this + (key to ((this[key] ?: 0) + delta))

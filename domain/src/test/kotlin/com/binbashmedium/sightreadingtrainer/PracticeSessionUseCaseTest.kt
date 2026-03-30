@@ -1,6 +1,7 @@
 package com.binbashmedium.sightreadingtrainer
 
 import com.binbashmedium.sightreadingtrainer.domain.model.Exercise
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep
 import com.binbashmedium.sightreadingtrainer.domain.model.MatchResult
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
@@ -280,5 +281,41 @@ class PracticeSessionUseCaseTest {
         assertEquals(1, state.correctNotesCount)
         assertTrue(state.resultByBeat.isEmpty())
         assertTrue(state.inputByBeat.isEmpty())
+    }
+
+    @Test
+    fun `session tracks correct and wrong group stats`() = runTest {
+        val exercise = Exercise(
+            steps = listOf(
+                ExerciseStep(notes = listOf(60), contentType = ExerciseContentType.SINGLE_NOTES),
+                ExerciseStep(notes = listOf(62), contentType = ExerciseContentType.SINGLE_NOTES)
+            )
+        )
+        useCase.startSession(exercise)
+
+        useCase.processChord(listOf(NoteEvent(60, 100)))
+        useCase.processChord(listOf(NoteEvent(64, 100)))
+
+        val state = useCase.state.value!!
+        assertEquals(1, state.correctGroupStats["SINGLE_NOTES"])
+        assertEquals(1, state.wrongGroupStats["SINGLE_NOTES"])
+    }
+
+    @Test
+    fun `session tracks note stats including extra played note as wrong`() = runTest {
+        val exercise = Exercise(
+            steps = listOf(ExerciseStep(notes = listOf(60)))
+        )
+        useCase.startSession(exercise)
+
+        useCase.processInput(
+            PerformanceInput(
+                notes = listOf(NoteEvent(60, 100), NoteEvent(69, 100))
+            )
+        )
+
+        val state = useCase.state.value!!
+        assertEquals(1, state.correctNoteStats["C4"])
+        assertEquals(1, state.wrongNoteStats["A4"])
     }
 }

@@ -16,7 +16,8 @@ enum class PedalAction {
 data class ExerciseStep(
     val notes: List<Int> = emptyList(),
     val noteAccidentals: List<NoteAccidental> = List(notes.size) { NoteAccidental.NONE },
-    val pedalAction: PedalAction = PedalAction.NONE
+    val pedalAction: PedalAction = PedalAction.NONE,
+    val contentType: ExerciseContentType? = null
 ) {
     init {
         require(noteAccidentals.size == notes.size) {

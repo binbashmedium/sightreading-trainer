@@ -286,4 +286,19 @@ class GenerateExerciseUseCaseTest {
             assertTrue(releaseIndices.any { it > pressIndex })
         }
     }
+
+    @Test
+    fun `generated steps keep source content type`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.TRIADS),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 12,
+                selectedKeys = setOf(0)
+            )
+        )
+
+        assertTrue(exercise.steps.isNotEmpty())
+        assertTrue(exercise.steps.all { it.contentType == ExerciseContentType.TRIADS })
+    }
 }

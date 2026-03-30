@@ -35,6 +35,10 @@ class SettingsDataStore @Inject constructor(
         val HIGH_SCORE = intPreferencesKey("high_score")
         val TOTAL_CORRECT_NOTES = intPreferencesKey("total_correct_notes")
         val TOTAL_WRONG_NOTES = intPreferencesKey("total_wrong_notes")
+        val CORRECT_GROUP_STATS = stringPreferencesKey("correct_group_stats")
+        val WRONG_GROUP_STATS = stringPreferencesKey("wrong_group_stats")
+        val CORRECT_NOTE_STATS = stringPreferencesKey("correct_note_stats")
+        val WRONG_NOTE_STATS = stringPreferencesKey("wrong_note_stats")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val SELECTED_KEYS = stringPreferencesKey("selected_keys")
         val MUSICAL_KEY = intPreferencesKey("musical_key")
@@ -60,6 +64,10 @@ class SettingsDataStore @Inject constructor(
             highScore = prefs[Keys.HIGH_SCORE] ?: 0,
             totalCorrectNotes = prefs[Keys.TOTAL_CORRECT_NOTES] ?: 0,
             totalWrongNotes = prefs[Keys.TOTAL_WRONG_NOTES] ?: 0,
+            correctGroupStats = parseStatsMap(prefs[Keys.CORRECT_GROUP_STATS]),
+            wrongGroupStats = parseStatsMap(prefs[Keys.WRONG_GROUP_STATS]),
+            correctNoteStats = parseStatsMap(prefs[Keys.CORRECT_NOTE_STATS]),
+            wrongNoteStats = parseStatsMap(prefs[Keys.WRONG_NOTE_STATS]),
             soundEnabled = prefs[Keys.SOUND_ENABLED] ?: true,
             selectedKeys = parseSelectedKeys(
                 prefs[Keys.SELECTED_KEYS],
@@ -82,6 +90,10 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.HIGH_SCORE] = settings.highScore
             prefs[Keys.TOTAL_CORRECT_NOTES] = settings.totalCorrectNotes
             prefs[Keys.TOTAL_WRONG_NOTES] = settings.totalWrongNotes
+            prefs[Keys.CORRECT_GROUP_STATS] = serializeStatsMap(settings.correctGroupStats)
+            prefs[Keys.WRONG_GROUP_STATS] = serializeStatsMap(settings.wrongGroupStats)
+            prefs[Keys.CORRECT_NOTE_STATS] = serializeStatsMap(settings.correctNoteStats)
+            prefs[Keys.WRONG_NOTE_STATS] = serializeStatsMap(settings.wrongNoteStats)
             prefs[Keys.SOUND_ENABLED] = settings.soundEnabled
             prefs[Keys.SELECTED_KEYS] = settings.selectedKeys.sorted().joinToString(",")
             prefs[Keys.MUSICAL_KEY] = settings.selectedKeys.minOrNull() ?: 0
@@ -123,4 +135,23 @@ class SettingsDataStore @Inject constructor(
             else -> setOf(ExerciseContentType.SINGLE_NOTES)
         }
     }
+
+    private fun parseStatsMap(raw: String?): Map<String, Int> =
+        raw
+            ?.split(";")
+            ?.mapNotNull { entry ->
+                val idx = entry.indexOf('=')
+                if (idx <= 0) return@mapNotNull null
+                val key = entry.substring(0, idx)
+                val value = entry.substring(idx + 1).toIntOrNull() ?: return@mapNotNull null
+                key to value
+            }
+            ?.toMap()
+            .orEmpty()
+
+    private fun serializeStatsMap(map: Map<String, Int>): String =
+        map.entries
+            .filter { it.key.isNotBlank() && it.value > 0 }
+            .sortedBy { it.key }
+            .joinToString(";") { "${it.key}=${it.value}" }
 }

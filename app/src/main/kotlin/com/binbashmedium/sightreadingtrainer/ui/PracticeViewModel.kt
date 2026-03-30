@@ -131,7 +131,11 @@ class PracticeViewModel @Inject constructor(
         val updatedSettings = settings.copy(
             highScore = highScore,
             totalCorrectNotes = settings.totalCorrectNotes + state.correctNotesCount,
-            totalWrongNotes = settings.totalWrongNotes + state.wrongNotesCount
+            totalWrongNotes = settings.totalWrongNotes + state.wrongNotesCount,
+            correctGroupStats = settings.correctGroupStats.mergeCounts(state.correctGroupStats),
+            wrongGroupStats = settings.wrongGroupStats.mergeCounts(state.wrongGroupStats),
+            correctNoteStats = settings.correctNoteStats.mergeCounts(state.correctNoteStats),
+            wrongNoteStats = settings.wrongNoteStats.mergeCounts(state.wrongNoteStats)
         )
         _sessionResult.value = SessionResultUi(
             score = state.score,
@@ -157,4 +161,13 @@ class PracticeViewModel @Inject constructor(
         super.onCleared()
         stopSession()
     }
+}
+
+private fun Map<String, Int>.mergeCounts(delta: Map<String, Int>): Map<String, Int> {
+    if (delta.isEmpty()) return this
+    val merged = toMutableMap()
+    delta.forEach { (key, value) ->
+        if (value > 0) merged[key] = (merged[key] ?: 0) + value
+    }
+    return merged
 }

@@ -103,7 +103,7 @@ class GenerateExerciseUseCase {
         handMode: HandMode,
         rightRoot: Int,
         leftRoot: Int
-        ): List<ExerciseStep> = when (type) {
+    ): List<ExerciseStep> = when (type) {
         ExerciseContentType.SINGLE_NOTES -> sequenceForHandMode(
             handMode,
             SINGLE_NOTE_MOTION.map { ExerciseStep(notes = listOf(leftRoot + it)) },
@@ -154,7 +154,7 @@ class GenerateExerciseUseCase {
             CLUSTERED_CHORDS.map { chord -> ExerciseStep(notes = chord.map { leftRoot + it }) },
             CLUSTERED_CHORDS.map { chord -> ExerciseStep(notes = chord.map { rightRoot + it }) }
         )
-    }
+    }.map { it.copy(contentType = type) }
 
     private fun sequenceForHandMode(
         handMode: HandMode,
