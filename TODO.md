@@ -18,6 +18,11 @@
 
 ## Done (recent)
 
+- [x] **Per-note error coloring implemented** - note display now distinguishes matched expected notes (green), missing expected notes (red), and extra played notes (additional yellow noteheads on the same beat/staff).
+- [x] **Pedal error coloring split implemented** - expected pedal symbols are evaluated independently (green/red), and unexpected pedal actions now render as additional yellow pedal marks below the staff.
+- [x] **Input snapshot tracking added** - `PracticeState` now stores per-beat played input snapshots (`inputByBeat`) so UI rendering uses actual played notes/pedal context instead of blanket beat color.
+- [x] **Regression coverage expanded** - added tests for note classification, pedal expectation checks, pedal-only gating, and snapshot persistence/reset behavior.
+- [x] **Verification rerun** - full `test` passed; debug APK rebuilt, installed, and launched on the VASOUN L10.
 - [x] **Pedal-only events no longer advance steps** - `PracticeSessionUseCase` now treats input with no notes as state-only pedal updates (`MatchResult.Waiting`), so pressing/releasing pedal alone never moves to the next expected note/chord.
 - [x] **Pedal press-before-note support** - steps marked with pedal press now validate when the pedal is already held down before the played notes arrive.
 - [x] **Pedal release lead-window support** - steps marked with pedal release now validate if release happened on the same input or within 1 second before the played notes.

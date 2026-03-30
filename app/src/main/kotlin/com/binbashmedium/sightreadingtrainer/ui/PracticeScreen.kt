@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
-import com.binbashmedium.sightreadingtrainer.domain.model.MatchResult
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import kotlinx.coroutines.delay
@@ -541,22 +540,39 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
     val levelTitle = "$keyName - $levelDesc"
 
     val expectedNotes = exercise.steps.flatMapIndexed { beatIndex, step ->
-        step.notes.mapIndexed { noteIndex, midi ->
+        val stepBeat = beatIndex.toFloat() * 2f
+        val snapshot = inputByBeat[beatIndex]
+        val noteOutcome = if (snapshot != null) {
+            classifyStepNotes(step.notes, snapshot.playedNotes)
+        } else {
+            StepNoteDisplayOutcome(
+                expectedStates = List(step.notes.size) { NoteState.NONE },
+                extraNotes = emptyList()
+            )
+        }
+        val expectedEvents = step.notes.mapIndexed { noteIndex, midi ->
             NoteEvent(
                 midi = midi,
-                startBeat = beatIndex.toFloat() * 2f,
+                startBeat = stepBeat,
                 duration = 1f,
                 expected = true,
-                state = when (resultByBeat[beatIndex]) {
-                    is MatchResult.Correct -> NoteState.CORRECT
-                    is MatchResult.Incorrect -> NoteState.WRONG
-                    is MatchResult.TooLate -> NoteState.LATE
-                    else -> NoteState.NONE
-                },
+                state = noteOutcome.expectedStates.getOrElse(noteIndex) { NoteState.NONE },
                 staff = staffForExercise(midi, exercise.handMode),
                 accidental = step.noteAccidentals.getOrElse(noteIndex) { NoteAccidental.NONE }
             )
         }
+        val extraEvents = noteOutcome.extraNotes.map { midi ->
+            NoteEvent(
+                midi = midi,
+                startBeat = stepBeat,
+                duration = 1f,
+                expected = false,
+                state = NoteState.LATE,
+                staff = staffForExercise(midi, exercise.handMode),
+                accidental = accidentalForPlayedMidi(midi)
+            )
+        }
+        expectedEvents + extraEvents
     }
 
     val chords = exercise.steps.mapIndexedNotNull { idx, step ->
@@ -572,18 +588,22 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
         )
     }
 
-    val pedalMarks = exercise.steps.mapIndexedNotNull { idx, step ->
-        if (step.pedalAction == PedalAction.NONE) return@mapIndexedNotNull null
-        PedalMark(
-            startBeat = idx.toFloat() * 2f,
-            action = step.pedalAction,
-            state = when (resultByBeat[idx]) {
-                is MatchResult.Correct -> NoteState.CORRECT
-                is MatchResult.Incorrect -> NoteState.WRONG
-                is MatchResult.TooLate -> NoteState.LATE
-                else -> NoteState.NONE
+    val pedalMarks = exercise.steps.flatMapIndexed { idx, step ->
+        val beat = idx.toFloat() * 2f
+        val snapshot = inputByBeat[idx]
+        val marks = mutableListOf<PedalMark>()
+        if (step.pedalAction != PedalAction.NONE) {
+            val state = when {
+                snapshot == null -> NoteState.NONE
+                isExpectedPedalSatisfied(step.pedalAction, snapshot) -> NoteState.CORRECT
+                else -> NoteState.WRONG
             }
-        )
+            marks += PedalMark(startBeat = beat, action = step.pedalAction, state = state)
+        }
+        if (snapshot != null && snapshot.playedPedalAction != PedalAction.NONE && snapshot.playedPedalAction != step.pedalAction) {
+            marks += PedalMark(startBeat = beat, action = snapshot.playedPedalAction, state = NoteState.LATE)
+        }
+        marks
     }
 
     return GameState(

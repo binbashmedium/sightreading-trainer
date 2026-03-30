@@ -150,7 +150,10 @@ The app now applies these notation rules in pure helpers:
 - `levelTitle` reflects the generated key chosen from the selected key pool
 - `elapsedTime` = wall-clock elapsed since session start
 - `score` and `bpm` come directly from `PracticeState`
-- note colors come from `PracticeState.resultByBeat[beatIndex]`
+- note colors and extra played-note overlays come from `PracticeState.inputByBeat[beatIndex]`:
+  - matched expected notes -> green
+  - missing expected notes -> red
+  - extra played notes -> additional yellow noteheads
 - `currentBeat` = `exercise.currentIndex * 2f` (static, input-driven cursor)
 
 ## Session Lifecycle
@@ -160,6 +163,7 @@ Pedal-only inputs (no notes) do not advance the exercise; they only update pedal
 When a chunk is complete before timeout, a new chunk is generated in the same key and the session continues.
 Timeout finalization is now checked from both input handling and the UI timer tick (`PracticeViewModel.finalizeIfTimedOut(...)`), so session completion is persisted even when no new MIDI events arrive after time expires.
 When session time is up, `PracticeScreen` shows `SessionCompleteOverlay` with final score, highscore, and correct/wrong note counts.
+Expected pedal symbols are colored independently from note correctness (green/red), and unexpected pedal actions are rendered as additional yellow pedal marks.
 
 Sustain-pedal press and release events are now represented directly on exercise steps so they can be checked alongside notes in the session pipeline.
 

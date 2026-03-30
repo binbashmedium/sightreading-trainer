@@ -11,6 +11,8 @@ data class PracticeState(
     val startTimeMs: Long = System.currentTimeMillis(),
     /** Per-chord match results keyed by chord index, for accurate per-beat colouring. */
     val resultByBeat: Map<Int, MatchResult> = emptyMap(),
+    /** Played input snapshot for each resolved beat index (notes + pedal context). */
+    val inputByBeat: Map<Int, StepInputSnapshot> = emptyMap(),
     /** Live BPM from the last inter-chord interval (0 until 2nd correct chord). */
     val bpm: Float = 0f,
     /** Timestamp of the most-recent correct chord (for BPM + fluency scoring). */

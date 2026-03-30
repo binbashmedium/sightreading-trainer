@@ -6,6 +6,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.model.PerformanceInput
 import com.binbashmedium.sightreadingtrainer.domain.model.PracticeState
+import com.binbashmedium.sightreadingtrainer.domain.model.StepInputSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,7 +37,8 @@ class PracticeSessionUseCase(
         _state.value = currentState.copy(
             exercise = exercise.copy(currentIndex = 0),
             lastResult = MatchResult.Waiting,
-            resultByBeat = emptyMap()
+            resultByBeat = emptyMap(),
+            inputByBeat = emptyMap()
         )
     }
 
@@ -58,6 +60,13 @@ class PracticeSessionUseCase(
             return MatchResult.Waiting
         }
 
+        val inputSnapshot = StepInputSnapshot(
+            playedNotes = input.notes.map { it.midiNote },
+            playedPedalAction = input.pedalAction,
+            inputTimestampMs = input.timestamp,
+            pedalPressedAtInput = pedalIsPressed,
+            lastPedalReleaseTimestampMs = lastPedalReleaseTimestampMs
+        )
         val result = matchNotesUseCase.execute(
             playedNotes = input.notes,
             playedPedalAction = input.pedalAction,
@@ -72,6 +81,7 @@ class PracticeSessionUseCase(
 
         // Record result for this beat index (overwrites previous attempts on same chord).
         val newResultByBeat = currentState.resultByBeat + (exercise.currentIndex to result)
+        val newInputByBeat = currentState.inputByBeat + (exercise.currentIndex to inputSnapshot)
 
         val (newScore, newBpm, newLastCorrectTs) = if (result == MatchResult.Correct) {
             val interChordMs = if (currentState.lastCorrectTimestamp > 0L)
@@ -115,6 +125,7 @@ class PracticeSessionUseCase(
             correctNotesCount = newCorrectNotes,
             wrongNotesCount = newWrongNotes,
             resultByBeat = newResultByBeat,
+            inputByBeat = newInputByBeat,
             bpm = newBpm,
             lastCorrectTimestamp = newLastCorrectTs
         )

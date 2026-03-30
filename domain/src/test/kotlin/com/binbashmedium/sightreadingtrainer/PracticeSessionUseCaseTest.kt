@@ -61,6 +61,7 @@ class PracticeSessionUseCaseTest {
         assertEquals(1, useCase.state.value!!.correctNotesCount)
         assertEquals(0, useCase.state.value!!.wrongNotesCount)
         assertEquals(1, useCase.state.value!!.totalAttempts)
+        assertEquals(listOf(60), useCase.state.value!!.inputByBeat[0]?.playedNotes)
     }
 
     @Test
@@ -202,6 +203,7 @@ class PracticeSessionUseCaseTest {
         assertEquals(0, state.exercise.currentIndex)
         assertEquals(0, state.totalAttempts)
         assertTrue(state.resultByBeat.isEmpty())
+        assertTrue(state.inputByBeat.isEmpty())
     }
 
     @Test
@@ -277,5 +279,6 @@ class PracticeSessionUseCaseTest {
         assertEquals(10, state.score)
         assertEquals(1, state.correctNotesCount)
         assertTrue(state.resultByBeat.isEmpty())
+        assertTrue(state.inputByBeat.isEmpty())
     }
 }

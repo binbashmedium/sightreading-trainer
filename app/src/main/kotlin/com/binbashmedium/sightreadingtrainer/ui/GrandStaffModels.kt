@@ -3,6 +3,7 @@ package com.binbashmedium.sightreadingtrainer.ui
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
+import com.binbashmedium.sightreadingtrainer.domain.model.StepInputSnapshot
 import kotlin.math.absoluteValue
 
 val KEY_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
@@ -131,6 +132,11 @@ data class StemGeometry(
     val endY: Float
 )
 
+data class StepNoteDisplayOutcome(
+    val expectedStates: List<NoteState>,
+    val extraNotes: List<Int>
+)
+
 fun formatElapsedTime(elapsedTimeMs: Long): String {
     val totalSeconds = (elapsedTimeMs / 1_000L).coerceAtLeast(0L)
     val minutes = totalSeconds / 60L
@@ -209,6 +215,47 @@ fun noteAccidentalSymbol(accidental: NoteAccidental): String? = when (accidental
     NoteAccidental.FLAT -> "♭"
     NoteAccidental.NATURAL -> "♮"
     NoteAccidental.NONE -> null
+}
+
+fun classifyStepNotes(expectedNotes: List<Int>, playedNotes: List<Int>): StepNoteDisplayOutcome {
+    val playedCounts = playedNotes.groupingBy { it }.eachCount().toMutableMap()
+    val expectedStates = expectedNotes.map { expectedMidi ->
+        val count = playedCounts[expectedMidi] ?: 0
+        if (count > 0) {
+            playedCounts[expectedMidi] = count - 1
+            NoteState.CORRECT
+        } else {
+            NoteState.WRONG
+        }
+    }
+    val extras = buildList {
+        playedCounts.forEach { (midi, count) ->
+            repeat(count.coerceAtLeast(0)) { add(midi) }
+        }
+    }
+    return StepNoteDisplayOutcome(expectedStates = expectedStates, extraNotes = extras)
+}
+
+fun isExpectedPedalSatisfied(
+    expectedAction: PedalAction,
+    snapshot: StepInputSnapshot,
+    releaseLeadToleranceMs: Long = 1_000L
+): Boolean = when (expectedAction) {
+    PedalAction.NONE -> true
+    PedalAction.PRESS -> snapshot.playedPedalAction == PedalAction.PRESS || snapshot.pedalPressedAtInput
+    PedalAction.RELEASE -> {
+        val releasedOnThisInput = snapshot.playedPedalAction == PedalAction.RELEASE
+        val releaseTs = snapshot.lastPedalReleaseTimestampMs
+        val recentRelease = releaseTs != null &&
+            snapshot.inputTimestampMs >= releaseTs &&
+            snapshot.inputTimestampMs - releaseTs <= releaseLeadToleranceMs
+        releasedOnThisInput || recentRelease
+    }
+}
+
+fun accidentalForPlayedMidi(midi: Int): NoteAccidental = when ((midi % 12 + 12) % 12) {
+    1, 3, 6, 8, 10 -> NoteAccidental.SHARP
+    else -> NoteAccidental.NONE
 }
 
 fun pedalMarkText(action: PedalAction): String? = when (action) {

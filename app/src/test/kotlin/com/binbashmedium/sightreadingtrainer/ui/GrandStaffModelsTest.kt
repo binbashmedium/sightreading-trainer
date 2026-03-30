@@ -3,6 +3,8 @@ package com.binbashmedium.sightreadingtrainer.ui
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
+import com.binbashmedium.sightreadingtrainer.domain.model.StepInputSnapshot
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -327,5 +329,55 @@ class GrandStaffModelsTest {
     fun `generateExampleGameState bpm field is non-negative`() {
         val state = generateExampleGameState(System.currentTimeMillis())
         assertTrue(state.bpm >= 0f)
+    }
+
+    @Test
+    fun `classifyStepNotes marks matched missing and extra notes separately`() {
+        val outcome = classifyStepNotes(
+            expectedNotes = listOf(60),
+            playedNotes = listOf(60, 69)
+        )
+
+        assertEquals(listOf(NoteState.CORRECT), outcome.expectedStates)
+        assertEquals(listOf(69), outcome.extraNotes)
+    }
+
+    @Test
+    fun `classifyStepNotes preserves expected-note order for mixed matches`() {
+        val outcome = classifyStepNotes(
+            expectedNotes = listOf(60, 64),
+            playedNotes = listOf(64)
+        )
+
+        assertEquals(listOf(NoteState.WRONG, NoteState.CORRECT), outcome.expectedStates)
+        assertTrue(outcome.extraNotes.isEmpty())
+    }
+
+    @Test
+    fun `isExpectedPedalSatisfied accepts press when pedal already held`() {
+        val snapshot = StepInputSnapshot(
+            playedNotes = listOf(60),
+            playedPedalAction = PedalAction.NONE,
+            inputTimestampMs = 1_500L,
+            pedalPressedAtInput = true,
+            lastPedalReleaseTimestampMs = null
+        )
+
+        assertTrue(isExpectedPedalSatisfied(PedalAction.PRESS, snapshot))
+    }
+
+    @Test
+    fun `isExpectedPedalSatisfied accepts only recent release lead window`() {
+        val recentSnapshot = StepInputSnapshot(
+            playedNotes = listOf(60),
+            playedPedalAction = PedalAction.NONE,
+            inputTimestampMs = 2_700L,
+            pedalPressedAtInput = false,
+            lastPedalReleaseTimestampMs = 2_000L
+        )
+        val staleSnapshot = recentSnapshot.copy(inputTimestampMs = 3_500L)
+
+        assertTrue(isExpectedPedalSatisfied(PedalAction.RELEASE, recentSnapshot, releaseLeadToleranceMs = 1_000L))
+        assertFalse(isExpectedPedalSatisfied(PedalAction.RELEASE, staleSnapshot, releaseLeadToleranceMs = 1_000L))
     }
 }
