@@ -1,0 +1,9 @@
+Initial release.
+
+• Grand staff rendering with treble and bass clef
+• Real-time MIDI note matching with per-notehead color feedback
+• Multiple exercise types: single notes, intervals, triads, arpeggios, clustered chords, pedal exercises
+• Multi-key and configurable hand mode support
+• Timed session mode with automatic exercise rollover
+• Session statistics screen
+• USB and Bluetooth MIDI with auto-reconnect

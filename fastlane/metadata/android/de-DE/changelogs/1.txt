@@ -1,0 +1,9 @@
+Erste Veröffentlichung.
+
+• Grand-Staff-Darstellung mit Violin- und Bassschlüssel
+• Echtzeit-MIDI-Notenabgleich mit farbigem Feedback pro Notenkopf
+• Mehrere Übungstypen: Einzelnoten, Intervalle, Dreiklänge, Arpeggios, dichte Akkorde, Pedalübungen
+• Unterstützung mehrerer Tonarten und konfigurierbarer Handmodus
+• Zeitgesteuerte Übungen mit automatischer Fortsetzung
+• Statistikbildschirm für Sitzungen
+• USB- und Bluetooth-MIDI mit automatischer Wiederverbindung

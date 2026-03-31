@@ -1,0 +1,22 @@
+Sightreading Trainer hilft Pianisten und Keyboardspielern, ihre Notenlese-Fähigkeiten durch strukturierte, interaktive Übungen zu verbessern.
+
+Schließe ein USB- oder Bluetooth-MIDI-Keyboard an und spiele die Übungen nach, die auf einem Notensystem (Grand Staff) angezeigt werden. Die App bewertet jede Note und jeden Akkord in Echtzeit und gibt sofortiges visuelles Feedback: richtige Noten werden grün, falsche Noten rot, und verpasste Noten werden markiert.
+
+FUNKTIONEN
+
+• Notensystem (Grand Staff) — Violin- und Bassschlüssel mit Vorzeichen, Akzidentien und Hilfslinien, vollständig auf dem Gerät gerendert
+• Echtzeit-MIDI-Auswertung — Noten werden beim Spielen abgeglichen, mit farbigem Feedback pro Notenkopf
+• Mehrere Übungstypen — Einzelnoten, Intervalle, Dreiklänge, Arpeggios, dichte Akkorde und Haltepedal-Übungen
+• Mehrere Tonarten — wähle eine oder mehrere Durtonarten; die App wählt für jede Übung eine neue Tonart
+• Konfigurierbarer Schwierigkeitsgrad — Übungslänge, Zeitlimit, Handmodus (links / rechts / beide) und Akzidentien-Sichtbarkeit
+• Zeitgesteuerte Übungen — ein Countdown-Timer bestimmt die Übungslänge; abgeschlossene Übungen werden automatisch fortgesetzt
+• Statistiken — verfolge deine häufigsten richtigen und falschen Notengruppen über Sitzungen hinweg
+• Automatische Wiederverbindung — die App stellt die MIDI-Verbindung wieder her, wenn das Gerät neu angesteckt wird
+
+DATENSCHUTZ
+
+Diese App benötigt keine Internetverbindung und erfasst keine Daten. Alle Einstellungen und Statistiken werden lokal auf deinem Gerät gespeichert.
+
+VORAUSSETZUNGEN
+
+Android 10 (API 29) oder höher. Ein USB- oder Bluetooth-MIDI-fähiges Keyboard wird empfohlen, ist aber nicht erforderlich, um die App zu erkunden.

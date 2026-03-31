@@ -1,6 +1,7 @@
 # TODO
 
 ## Immediate
+
 *(none)*
 
 
@@ -13,6 +14,11 @@
 *(none - session-complete screen now implemented)*
 
 ## Done (recent)
+
+- [x] **Apache License 2.0 added** — `LICENSE` and `NOTICE` files created; Apache 2.0 header prepended to all 39 Kotlin source files.
+- [x] **F-Droid eligibility verified** — app has no proprietary deps, no Firebase/Play Services, no tracking/ads; qualifies for F-Droid inclusion under Apache 2.0.
+- [x] **F-Droid fastlane metadata added** — `fastlane/metadata/android/` created with English and German `title.txt`, `short_description.txt`, `full_description.txt`, and `changelogs/1.txt`.
+
 
 - [x] **MIDI reconnect flow implemented** - `AndroidMidiManager` now registers a `MidiManager.DeviceCallback`, tracks desired device selection, refreshes available devices reactively, and auto-reconnects when devices are reattached.
 - [x] **Statistics tracking + page implemented** - session now records group- and note-level correct/incorrect counters, persists them in DataStore, and exposes a new `Statistics` screen with Top 5 correct/incorrect groups and notes.
@@ -30,7 +36,7 @@
 - [x] **Verification rerun** - full `test` passed; debug APK rebuilt, installed, and launched on the VASOUN L10.
 - [x] **Pedal-only events no longer advance steps** - `PracticeSessionUseCase` now treats input with no notes as state-only pedal updates (`MatchResult.Waiting`), so pressing/releasing pedal alone never moves to the next expected note/chord.
 - [x] **Pedal press-before-note support** - steps marked with pedal press now validate when the pedal is already held down before the played notes arrive.
-- [x] **Pedal release lead-window support** - steps marked with pedal release now validate if release happened on the same input or within 1 second before the played notes.
+- [x] **Pedal release lead-window support** - steps marked with pedal release now validate if release happened on the same input or within 1 second before the played notes arrive.
 - [x] **Regression coverage expanded** - new tests verify pedal-only gating plus press-before and release-before behavior in both `MatchNotesUseCaseTest` and `PracticeSessionUseCaseTest`.
 - [x] **Verification rerun** - full `test` passed; debug APK rebuilt, installed, and launched on the VASOUN L10.
 - [x] **MIDI reopen regression fixed** - `AndroidMidiManager` now closes existing port/device before reopen, rejects stale async open callbacks with request IDs, and invalidates pending opens on `close()`, preventing duplicate receivers that caused all-played-notes to be marked wrong after starting a new exercise.
