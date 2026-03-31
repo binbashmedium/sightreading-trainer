@@ -1,0 +1,22 @@
+Sightreading Trainer helps pianists and keyboard players build fluent music reading skills through structured, interactive exercises.
+
+Connect a USB or Bluetooth MIDI keyboard and play along with exercises displayed on a grand staff. The app evaluates each note and chord you play in real time, giving instant visual feedback: correct notes turn green, wrong notes turn red, and missed notes are highlighted.
+
+FEATURES
+
+• Grand staff notation — treble and bass clef with key signatures, accidentals, and ledger lines rendered entirely on-device
+• Real-time MIDI evaluation — notes are matched as you play, with per-notehead color feedback
+• Multiple exercise types — single notes, intervals, triads, arpeggios, clustered chords, and sustain-pedal exercises
+• Multi-key practice — select one or more major keys; the app picks a new key for each exercise
+• Configurable difficulty — choose exercise length, time limit, hand mode (left / right / both), and accidental visibility
+• Timed session mode — a countdown timer drives session length; completed exercises roll over automatically until time runs out
+• Statistics — track your top correct and incorrect note groups across sessions
+• Auto-reconnect — the app restores the MIDI connection when the device is replugged
+
+PRIVACY
+
+This app requires no internet connection and collects no data. All settings and statistics are stored locally on your device.
+
+REQUIREMENTS
+
+Android 10 (API 29) or later. A USB or Bluetooth MIDI-capable keyboard is strongly recommended but not required to explore the app.
