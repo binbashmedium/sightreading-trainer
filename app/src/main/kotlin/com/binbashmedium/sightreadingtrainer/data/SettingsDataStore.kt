@@ -114,9 +114,7 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.SOUND_ENABLED] = settings.soundEnabled
             prefs[Keys.SELECTED_KEYS] = settings.selectedKeys.sorted().joinToString(",")
             prefs[Keys.MUSICAL_KEY] = settings.selectedKeys.minOrNull() ?: 0
-            prefs[Keys.SELECTED_PROGRESSIONS] = settings.selectedProgressions
-                .sortedBy { it.ordinal }
-                .joinToString(",") { it.name }
+            prefs[Keys.SELECTED_PROGRESSIONS] = serializeProgressions(settings.selectedProgressions)
         }
     }
 
@@ -175,12 +173,20 @@ class SettingsDataStore @Inject constructor(
             .sortedBy { it.key }
             .joinToString(";") { "${it.key}=${it.value}" }
 
-    private fun parseProgressions(raw: String?): Set<ChordProgression> {
-        val parsed = raw
-            ?.split(",")
-            ?.mapNotNull { name -> ChordProgression.entries.find { it.name == name.trim() } }
-            ?.toSet()
-            .orEmpty()
-        return if (parsed.isNotEmpty()) parsed else setOf(ChordProgression.I_IV_V_I)
-    }
+    private fun parseProgressions(raw: String?): Set<ChordProgression> = parseSelectedProgressions(raw)
+}
+
+internal fun serializeProgressions(progressions: Set<ChordProgression>): String =
+    progressions
+        .sortedBy { it.ordinal }
+        .joinToString(",") { it.name }
+
+internal fun parseSelectedProgressions(raw: String?): Set<ChordProgression> {
+    val parsed = raw
+        ?.split(",")
+        ?.mapNotNull { name -> ChordProgression.entries.find { it.name == name.trim() } }
+        ?.toSet()
+        .orEmpty()
+
+    return if (parsed.isNotEmpty()) parsed else setOf(ChordProgression.I_IV_V_I)
 }
