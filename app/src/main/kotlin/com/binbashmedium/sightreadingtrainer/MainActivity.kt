@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.binbashmedium.sightreadingtrainer.ui.HelpScreen
 import com.binbashmedium.sightreadingtrainer.ui.MainScreen
 import com.binbashmedium.sightreadingtrainer.ui.PracticeScreen
 import com.binbashmedium.sightreadingtrainer.ui.SettingsScreen
@@ -44,6 +45,7 @@ class MainActivity : ComponentActivity() {
                         composable("practice") { PracticeScreen(navController) }
                         composable("settings") { SettingsScreen(navController) }
                         composable("statistics") { StatisticsScreen(navController) }
+                        composable("help") { HelpScreen(navController) }
                     }
                 }
             }

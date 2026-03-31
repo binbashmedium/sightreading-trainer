@@ -82,5 +82,14 @@ fun MainScreen(
         ) {
             Text("Statistics")
         }
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = { navController.navigate("help") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Help")
+        }
     }
 }
