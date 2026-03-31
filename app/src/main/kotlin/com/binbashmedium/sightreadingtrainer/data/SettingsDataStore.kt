@@ -66,7 +66,7 @@ class SettingsDataStore @Inject constructor(
             timingToleranceMs = prefs[Keys.TIMING_TOLERANCE] ?: 200,
             chordWindowMs = prefs[Keys.CHORD_WINDOW] ?: 50,
             exerciseTimeSec = (prefs[Keys.EXERCISE_TIME_SEC] ?: 60).coerceAtLeast(10),
-            exerciseLength = prefs[Keys.EXERCISE_LENGTH] ?: 8,
+            exerciseLength = prefs[Keys.EXERCISE_LENGTH] ?: 64,
             exerciseTypes = parseExerciseTypes(
                 prefs[Keys.EXERCISE_TYPES],
                 prefs[Keys.MUSICAL_KEY],

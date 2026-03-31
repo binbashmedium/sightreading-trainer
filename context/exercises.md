@@ -156,7 +156,11 @@ The app now applies these notation rules in pure helpers:
   - missing expected notes -> red
   - extra played notes -> additional yellow noteheads
   - mixed-state chords render mixed notehead colors in the same beat (no blanket first-note color)
-- `currentBeat` = `exercise.currentIndex * 2f` (static, input-driven cursor)
+- `currentBeat` = `exercise.currentIndex * 2f` (static, input-driven cursor; `BEATS_PER_STEP = 2f`)
+
+## Portrait Page Layout
+
+In portrait mode, `GrandStaffCanvas` is called once per row with `startBeat`/`endBeat` to filter content. The page is determined by `beatToPage(currentBeat)` and `pageStartBeat(page)`. Each page contains `ROWS_PER_PAGE = 4` rows of `BEATS_PER_ROW = 32f` beat-units. Minimum exercise length is `MIN_EXERCISE_NOTES = 64` to fill one full portrait page.
 
 ## Session Lifecycle
 

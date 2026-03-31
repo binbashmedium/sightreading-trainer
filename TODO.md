@@ -1,17 +1,21 @@
 # TODO
 
-## Immediate
-
-*(none)*
-
 ## Done (recent)
 
-- [x] **Piano launcher icon added** — vector piano keyboard foreground (`ic_launcher_foreground.xml`) with dark blue background (`ic_launcher_background.xml`); adaptive icon wired in `mipmap-anydpi-v26/` and `mipmap-hdpi/`; replaces previous placeholder blue-square icon.
+- [x] **Portrait mode with 4 grand staff rows** — All items completed and tested:
+  - Removed `sensorLandscape` orientation lock from `AndroidManifest.xml` → `sensor`
+  - Added layout constants: `BEATS_PER_MEASURE_UNITS=8`, `BEATS_PER_ROW=32`, `BEATS_PER_PAGE=128`, `MIN_EXERCISE_NOTES=64`
+  - Refactored `GrandStaffCanvas` to accept `startBeat`/`endBeat`/`beatsPerMeasure`/`measureNumberLabel` params
+  - Added bar lines (vertical at measure boundaries, thicker at row ends)
+  - Portrait: 4 grand-staff rows per page (4 measures × 4 rows), cursor wraps between rows, page flip on last row
+  - Landscape: single row, bar lines added
+  - Default `exerciseLength` raised from 8 → 64 in `SettingsDataStore`
+  - Measure number label drawn top-left of each portrait row
+  - 13 unit tests added in `PortraitLayoutTest` covering all layout helpers and constants
 
 ## Done (recent)
 
 - [x] **Progressions exercise mode added** — `ChordProgression` enum (7 named progressions: I-IV-V-I, I-V-vi-IV, ii-V-I, I-vi-IV-V, I-IV-I-V, vi-IV-I-V, I-iii-IV-V) added to domain model; `PROGRESSIONS` added to `ExerciseContentType`; `GenerateExerciseUseCase` generates progression steps in order (not shuffled) via `buildProgressionSteps()`; `AppSettings.selectedProgressions` persisted in `SettingsDataStore`; progression chip selector shown in `SettingsScreen` when PROGRESSIONS type is active; `HelpScreen` updated with Progressions section and settings entry; 7 new progression tests added to `GenerateExerciseUseCaseTest`.
-
 
 ## Features
 

@@ -14,6 +14,7 @@
 
 package com.binbashmedium.sightreadingtrainer.ui
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -86,6 +88,8 @@ fun PracticeScreen(
     }
 
     val isComplete = sessionResult != null
+    val configuration = LocalConfiguration.current
+    val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -104,12 +108,37 @@ fun PracticeScreen(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                GrandStaffCanvas(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    gameState = gameState
-                )
+                if (isPortrait) {
+                    // Portrait: 4 grand-staff rows, each covering BEATS_PER_ROW beat-units.
+                    val page = beatToPage(gameState.currentBeat)
+                    val pageStart = pageStartBeat(page)
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        repeat(ROWS_PER_PAGE) { rowIdx ->
+                            val rowStart = pageStart + rowIdx * BEATS_PER_ROW
+                            val rowEnd = rowStart + BEATS_PER_ROW
+                            GrandStaffCanvas(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                gameState = gameState,
+                                startBeat = rowStart,
+                                endBeat = rowEnd,
+                                beatsPerMeasure = BEATS_PER_MEASURE_UNITS,
+                                measureNumberLabel = rowMeasureLabel(rowStart)
+                            )
+                        }
+                    }
+                } else {
+                    // Landscape: single row showing all notes with bar lines.
+                    GrandStaffCanvas(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        gameState = gameState,
+                        beatsPerMeasure = BEATS_PER_MEASURE_UNITS
+                    )
+                }
             }
 
             Button(
@@ -261,8 +290,18 @@ private fun HeaderCard(gameState: GameState) {
 @Composable
 fun GrandStaffCanvas(
     modifier: Modifier = Modifier,
-    gameState: GameState
+    gameState: GameState,
+    /** First beat-unit shown in this canvas (inclusive). 0 for landscape / row-start for portrait. */
+    startBeat: Float = 0f,
+    /** Last beat-unit shown in this canvas (exclusive). Float.MAX_VALUE means "show all". */
+    endBeat: Float = Float.MAX_VALUE,
+    /** Beat-units between bar lines (= BEATS_PER_MEASURE_UNITS for standard 4/4). */
+    beatsPerMeasure: Float = BEATS_PER_MEASURE_UNITS,
+    /** 1-based measure number shown top-left of each portrait row; null = hidden. */
+    measureNumberLabel: Int? = null
 ) {
+    val isPortraitRow = endBeat < Float.MAX_VALUE / 2f
+
     Canvas(modifier = modifier) {
         val lineSpacing = size.height / 18f
         val trebleTopY = lineSpacing * 2.5f
@@ -277,21 +316,46 @@ fun GrandStaffCanvas(
         val accidentalSpacing = layout.accidentalSpacing
         val keySigWidth = layout.keySignatureWidth
 
-        val startX = staffStartX + clefAreaWidth + postClefGap + keySigWidth
+        val noteStartX = staffStartX + clefAreaWidth + postClefGap + keySigWidth
+
+        // ── Filter content to this row's beat range ──────────────────────────
+        val rowNotes = if (isPortraitRow)
+            gameState.notes.filter { it.startBeat >= startBeat && it.startBeat < endBeat }
+        else gameState.notes
+
+        val rowChords = if (isPortraitRow)
+            gameState.chords.filter { it.startBeat >= startBeat && it.startBeat < endBeat }
+        else gameState.chords
+
+        val rowPedals = if (isPortraitRow)
+            gameState.pedalMarks.filter { it.startBeat >= startBeat && it.startBeat < endBeat }
+        else gameState.pedalMarks
+
+        // ── Beat width: fixed range for portrait rows, chord-count for landscape ──
+        val beatRange = if (isPortraitRow) {
+            endBeat - startBeat
+        } else {
+            rowChords.size.coerceAtLeast(1) * 2f
+        }
         val beatWidth = max(
             20f,
-            (size.width - startX - lineSpacing) / (gameState.chords.size.coerceAtLeast(1) * 2f + 1f)
+            (size.width - noteStartX - lineSpacing) / (beatRange + 1f)
         )
+
+        // Local beat = note.startBeat - startBeat (so local 0 = left edge of this row)
+        fun localBeat(beat: Float): Float = beat - startBeat
+        fun beatX(localBeat: Float): Float = beatToX(localBeat, noteStartX, beatWidth)
 
         val black = Color(0xFF111111)
         val staffStroke = 2f
-        val staffEndX = size.width - lineSpacing
+        val staffEndX = size.width - lineSpacing * 0.5f
         val noteAccidentalPaint = Paint().asFrameworkPaint().apply {
             color = android.graphics.Color.BLACK
             textSize = lineSpacing * NOTE_ACCIDENTAL_TEXT_SIZE_RATIO
             isAntiAlias = true
         }
 
+        // ── Staff lines ───────────────────────────────────────────────────────
         for (i in 0..4) {
             drawLine(
                 color = black,
@@ -309,6 +373,7 @@ fun GrandStaffCanvas(
             )
         }
 
+        // ── Left bar line (brace line spanning both staves) ───────────────────
         drawLine(
             color = black,
             start = Offset(staffStartX, trebleTopY),
@@ -316,6 +381,7 @@ fun GrandStaffCanvas(
             strokeWidth = 3f
         )
 
+        // ── Clefs ─────────────────────────────────────────────────────────────
         val trebleClefPaint = Paint().asFrameworkPaint().apply {
             color = android.graphics.Color.BLACK
             textSize = layout.trebleClefTextSize
@@ -329,16 +395,16 @@ fun GrandStaffCanvas(
             isAntiAlias = true
         }
         val trebleAnchorY = staffLineYForStep(
-            TREBLE_G_LINE_STEP,
-            StaffType.TREBLE,
-            trebleTopY,
-            bassTopY,
-            lineSpacing
+            TREBLE_G_LINE_STEP, StaffType.TREBLE, trebleTopY, bassTopY, lineSpacing
         )
-        drawContext.canvas.nativeCanvas.drawText("\uD834\uDD1E", clefX, trebleClefBaselineY(trebleAnchorY, lineSpacing), trebleClefPaint)
-        // The 𝄢 Unicode glyph already includes both dots; no extra circles needed.
-        drawContext.canvas.nativeCanvas.drawText("\uD834\uDD22", bassClefGeometry.glyphX, bassClefGeometry.baselineY, bassClefPaint)
+        drawContext.canvas.nativeCanvas.drawText(
+            "\uD834\uDD1E", clefX, trebleClefBaselineY(trebleAnchorY, lineSpacing), trebleClefPaint
+        )
+        drawContext.canvas.nativeCanvas.drawText(
+            "\uD834\uDD22", bassClefGeometry.glyphX, bassClefGeometry.baselineY, bassClefPaint
+        )
 
+        // ── Key signature ─────────────────────────────────────────────────────
         if (numAccidentals > 0) {
             val accidentalPaint = Paint().asFrameworkPaint().apply {
                 color = android.graphics.Color.BLACK
@@ -359,38 +425,69 @@ fun GrandStaffCanvas(
             }
         }
 
-        // Label text size scales with beat width so labels never overlap.
+        // ── Bar lines (measure boundaries) ───────────────────────────────────
+        val staffTop = trebleTopY
+        val staffBottom = bassTopY + 4f * lineSpacing
+        var barLocal = beatsPerMeasure
+        while (barLocal <= beatRange + 0.01f) {
+            val barX = beatX(barLocal)
+            val isEndBar = barLocal >= beatRange - 0.01f
+            drawLine(
+                color = black,
+                start = Offset(barX, staffTop),
+                end = Offset(barX, staffBottom),
+                strokeWidth = if (isEndBar) 3f else 1.5f
+            )
+            barLocal += beatsPerMeasure
+        }
+
+        // ── Measure number label (portrait rows only) ─────────────────────────
+        measureNumberLabel?.let { mn ->
+            val mnPaint = Paint().asFrameworkPaint().apply {
+                color = android.graphics.Color.GRAY
+                textSize = lineSpacing * 0.65f
+                isAntiAlias = true
+            }
+            drawContext.canvas.nativeCanvas.drawText(
+                "$mn",
+                staffStartX + lineSpacing * 0.1f,
+                trebleTopY - lineSpacing * 0.15f,
+                mnPaint
+            )
+        }
+
+        // ── Chord ghost lines + labels ────────────────────────────────────────
         val labelTextSize = (beatWidth * 0.5f).coerceIn(10f, lineSpacing * 0.42f)
         val labelPaint = Paint().asFrameworkPaint().apply {
             color = android.graphics.Color.DKGRAY
             textSize = labelTextSize
             isAntiAlias = true
         }
-        val trebleLabelY = trebleTopY - lineSpacing * 0.55f   // above treble staff
-        val bassLabelY   = bassTopY   + lineSpacing * 5.3f    // below bass staff
+        val trebleLabelY = trebleTopY - lineSpacing * 0.55f
+        val bassLabelY   = bassTopY   + lineSpacing * 5.3f
 
-        gameState.chords.forEach { chord ->
-            val x = beatToX(chord.startBeat, startX, beatWidth)
+        rowChords.forEach { chord ->
+            val x = beatX(localBeat(chord.startBeat))
             drawLine(
                 color = Color(0x447E8798),
                 start = Offset(x, trebleTopY - lineSpacing * 0.6f),
                 end = Offset(x, bassTopY + lineSpacing * 4f),
                 strokeWidth = 1f
             )
-            // Use the compact label (no Roman numeral) to keep text within beat width.
             val label = formatChordLabelShort(chord.notes)
             val labelY = if (chord.staff == StaffType.BASS) bassLabelY else trebleLabelY
             drawContext.canvas.nativeCanvas.drawText(label, x + 2f, labelY, labelPaint)
         }
 
+        // ── Note heads, ledger lines, stems, flags ────────────────────────────
         val noteHeadWidth = lineSpacing * 1.1f
         val noteHeadHeight = lineSpacing * 0.76f
-        gameState.notes
+        rowNotes
             .groupBy { it.startBeat to it.staff }
             .toSortedMap(compareBy<Pair<Float, StaffType>> { it.first }.thenBy { it.second.ordinal })
             .values
             .forEach { chordNotes ->
-                val baseX = beatToX(chordNotes.first().startBeat, startX, beatWidth)
+                val baseX = beatX(localBeat(chordNotes.first().startBeat))
                 val staff = chordNotes.first().staff
                 val glyph = durationToGlyphType(chordNotes.first().duration)
                 val sortedNotes = chordNotes.sortedBy { displayDiatonicStep(it.midi, it.accidental) }
@@ -443,21 +540,14 @@ fun GrandStaffCanvas(
                     noteAccidentalSymbol(note.accidental)?.let { symbol ->
                         val accidentalX = noteX - lineSpacing * (1.15f + accidentalColumns[index] * 0.58f)
                         drawContext.canvas.nativeCanvas.drawText(
-                            symbol,
-                            accidentalX,
-                            noteY + lineSpacing * 0.34f,
-                            noteAccidentalPaint
+                            symbol, accidentalX, noteY + lineSpacing * 0.34f, noteAccidentalPaint
                         )
                     }
                 }
 
                 if (glyph != NoteGlyphType.WHOLE) {
                     val middleY = staffLineYForStep(
-                        middleLineStepForStaff(staff),
-                        staff,
-                        trebleTopY,
-                        bassTopY,
-                        lineSpacing
+                        middleLineStepForStaff(staff), staff, trebleTopY, bassTopY, lineSpacing
                     )
                     val stem = stemGeometryForChord(
                         noteXs = noteCenters.map { it.second },
@@ -500,13 +590,14 @@ fun GrandStaffCanvas(
                 }
             }
 
+        // ── Pedal marks ───────────────────────────────────────────────────────
         val pedalPaint = Paint().asFrameworkPaint().apply {
             isAntiAlias = true
             textSize = lineSpacing * 0.85f
             textAlign = android.graphics.Paint.Align.CENTER
         }
         val pedalY = bassTopY + lineSpacing * 7.2f
-        gameState.pedalMarks.forEach { pedalMark ->
+        rowPedals.forEach { pedalMark ->
             val color = when (pedalMark.state) {
                 NoteState.NONE -> android.graphics.Color.BLACK
                 NoteState.CORRECT -> android.graphics.Color.parseColor("#2E7D32")
@@ -517,20 +608,29 @@ fun GrandStaffCanvas(
             pedalMarkText(pedalMark.action)?.let { label ->
                 drawContext.canvas.nativeCanvas.drawText(
                     label,
-                    beatToX(pedalMark.startBeat, startX, beatWidth) + beatWidth * 0.3f,
+                    beatX(localBeat(pedalMark.startBeat)) + beatWidth * 0.3f,
                     pedalY,
                     pedalPaint
                 )
             }
         }
 
-        val cursorX = beatToX(gameState.currentBeat, startX, beatWidth)
-        drawLine(
-            color = Color.Red,
-            start = Offset(cursorX, trebleTopY - lineSpacing),
-            end = Offset(cursorX, bassTopY + lineSpacing * 4.5f),
-            strokeWidth = 3f
-        )
+        // ── Red cursor line ───────────────────────────────────────────────────
+        val showCursor = if (isPortraitRow) {
+            gameState.currentBeat >= startBeat && gameState.currentBeat < endBeat
+        } else {
+            true
+        }
+        if (showCursor) {
+            val cursorLocal = localBeat(gameState.currentBeat)
+            val cursorX = beatX(cursorLocal)
+            drawLine(
+                color = Color.Red,
+                start = Offset(cursorX, trebleTopY - lineSpacing),
+                end = Offset(cursorX, bassTopY + lineSpacing * 4.5f),
+                strokeWidth = 3f
+            )
+        }
     }
 }
 
