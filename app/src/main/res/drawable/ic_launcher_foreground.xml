@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Piano keyboard icon — 108×108dp viewport (Android adaptive icon safe zone: 72×72dp centred).
+  Layout:
+    Piano housing  : #111111, x=8..100, y=20..92, rounded corners r=6
+    Top rail       : #222222, x=10..98, y=20..36
+    White key area : #FAFAFA, x=10..98, y=36..92
+    7 white keys (C D E F G A B), each ~12.57dp wide
+    Key dividers   : #C8C8C8, 1dp wide at x=23,36,49,62,75,88, y=36..92
+    5 black keys   : #1A1A1A, 8dp wide, y=36..70, rounded bottom (Q Bezier), centres at x=23,36,62,75,88
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Piano housing (rounded rectangle) -->
+    <path
+        android:fillColor="#111111"
+        android:pathData="
+            M 14,20
+            L 94,20
+            Q 100,20 100,26
+            L 100,86
+            Q 100,92 94,92
+            L 14,92
+            Q 8,92 8,86
+            L 8,26
+            Q 8,20 14,20
+            Z"/>
+
+    <!-- Top rail / key guard -->
+    <path
+        android:fillColor="#222222"
+        android:pathData="M 10,20 L 98,20 L 98,37 L 10,37 Z"/>
+
+    <!-- White key area (background fill) -->
+    <path
+        android:fillColor="#FAFAFA"
+        android:pathData="M 10,37 L 98,37 L 98,90 L 10,90 Z"/>
+
+    <!-- Key dividers (6 lines between 7 white keys) -->
+    <!-- Between C and D at x=23 -->
+    <path
+        android:fillColor="#C8C8C8"
+        android:pathData="M 23,37 L 24,37 L 24,90 L 23,90 Z"/>
+    <!-- Between D and E at x=36 -->
+    <path
+        android:fillColor="#C8C8C8"
+        android:pathData="M 36,37 L 37,37 L 37,90 L 36,90 Z"/>
+    <!-- Between E and F at x=49 -->
+    <path
+        android:fillColor="#C8C8C8"
+        android:pathData="M 49,37 L 50,37 L 50,90 L 49,90 Z"/>
+    <!-- Between F and G at x=62 -->
+    <path
+        android:fillColor="#C8C8C8"
+        android:pathData="M 62,37 L 63,37 L 63,90 L 62,90 Z"/>
+    <!-- Between G and A at x=75 -->
+    <path
+        android:fillColor="#C8C8C8"
+        android:pathData="M 75,37 L 76,37 L 76,90 L 75,90 Z"/>
+    <!-- Between A and B at x=88 -->
+    <path
+        android:fillColor="#C8C8C8"
+        android:pathData="M 88,37 L 89,37 L 89,90 L 88,90 Z"/>
+
+    <!-- Black keys (C# D# F# G# A#) with rounded bottom corners -->
+    <!-- C# centred at x=23: x=19..27, y=37..70 -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M 19,37 L 27,37 L 27,67 Q 27,70 24,70 L 22,70 Q 19,70 19,67 Z"/>
+
+    <!-- D# centred at x=36: x=32..40, y=37..70 -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M 32,37 L 40,37 L 40,67 Q 40,70 37,70 L 35,70 Q 32,70 32,67 Z"/>
+
+    <!-- F# centred at x=62: x=58..66, y=37..70 -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M 58,37 L 66,37 L 66,67 Q 66,70 63,70 L 61,70 Q 58,70 58,67 Z"/>
+
+    <!-- G# centred at x=75: x=71..79, y=37..70 -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M 71,37 L 79,37 L 79,67 Q 79,70 76,70 L 74,70 Q 71,70 71,67 Z"/>
+
+    <!-- A# centred at x=88: x=84..92, y=37..70 -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M 84,37 L 92,37 L 92,67 Q 92,70 89,70 L 87,70 Q 84,70 84,67 Z"/>
+
+</vector>
