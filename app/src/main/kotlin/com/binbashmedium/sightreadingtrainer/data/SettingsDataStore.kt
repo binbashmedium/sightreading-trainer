@@ -22,6 +22,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
+import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -56,6 +57,7 @@ class SettingsDataStore @Inject constructor(
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val SELECTED_KEYS = stringPreferencesKey("selected_keys")
         val MUSICAL_KEY = intPreferencesKey("musical_key")
+        val SELECTED_PROGRESSIONS = stringPreferencesKey("selected_progressions")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -86,7 +88,8 @@ class SettingsDataStore @Inject constructor(
             selectedKeys = parseSelectedKeys(
                 prefs[Keys.SELECTED_KEYS],
                 prefs[Keys.MUSICAL_KEY] ?: 0
-            )
+            ),
+            selectedProgressions = parseProgressions(prefs[Keys.SELECTED_PROGRESSIONS])
         )
     }
 
@@ -111,6 +114,9 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.SOUND_ENABLED] = settings.soundEnabled
             prefs[Keys.SELECTED_KEYS] = settings.selectedKeys.sorted().joinToString(",")
             prefs[Keys.MUSICAL_KEY] = settings.selectedKeys.minOrNull() ?: 0
+            prefs[Keys.SELECTED_PROGRESSIONS] = settings.selectedProgressions
+                .sortedBy { it.ordinal }
+                .joinToString(",") { it.name }
         }
     }
 
@@ -168,4 +174,13 @@ class SettingsDataStore @Inject constructor(
             .filter { it.key.isNotBlank() && it.value > 0 }
             .sortedBy { it.key }
             .joinToString(";") { "${it.key}=${it.value}" }
+
+    private fun parseProgressions(raw: String?): Set<ChordProgression> {
+        val parsed = raw
+            ?.split(",")
+            ?.mapNotNull { name -> ChordProgression.entries.find { it.name == name.trim() } }
+            ?.toSet()
+            .orEmpty()
+        return if (parsed.isNotEmpty()) parsed else setOf(ChordProgression.I_IV_V_I)
+    }
 }

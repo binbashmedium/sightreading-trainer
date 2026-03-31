@@ -168,6 +168,22 @@ fun HelpScreen(navController: NavController) {
                     "note displacement in the notation. More challenging to read and play."
                 )
             }
+            HelpSubSection("Progressions") {
+                HelpBody(
+                    "Plays named diatonic chord progressions built on the selected key. Each " +
+                    "chord in the progression is a separate step you must play in order — the " +
+                    "sequence is never shuffled. Enable this type to practise common harmonic " +
+                    "patterns and improve chord recognition."
+                )
+                HelpBody("Available progressions (select one or more in Settings):")
+                HelpBody("• I-IV-V-I — classical perfect cadence")
+                HelpBody("• I-V-vi-IV — pop progression")
+                HelpBody("• ii-V-I — jazz turnaround")
+                HelpBody("• I-vi-IV-V — 50s progression")
+                HelpBody("• I-IV-I-V — blues turnaround")
+                HelpBody("• vi-IV-I-V — minor-feel pop")
+                HelpBody("• I-iii-IV-V — ascending walk")
+            }
             HelpSubSection("Pedal Exercises") {
                 HelpBody(
                     "Notes are combined with sustain-pedal press and release markings. " +
@@ -212,6 +228,14 @@ fun HelpScreen(navController: NavController) {
                 HelpBody("• RIGHT — treble staff only (notes ≥ middle C).")
                 HelpBody("• LEFT — bass staff only (notes < middle C).")
                 HelpBody("• BOTH — notes may appear on either staff.")
+            }
+            HelpSubSection("Chord Progressions") {
+                HelpBody(
+                    "Visible only when the Progressions exercise type is enabled. " +
+                    "Select one or more named progressions (e.g. I-IV-V-I, ii-V-I). " +
+                    "At least one must remain selected. Each selected progression " +
+                    "contributes its full chord sequence to the exercise in order."
+                )
             }
             HelpSubSection("Generated Note Accidentals") {
                 HelpBody(

@@ -15,6 +15,7 @@
 package com.binbashmedium.sightreadingtrainer
 
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
+import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
@@ -314,5 +315,141 @@ class GenerateExerciseUseCaseTest {
 
         assertTrue(exercise.steps.isNotEmpty())
         assertTrue(exercise.steps.all { it.contentType == ExerciseContentType.TRIADS })
+    }
+
+    // ── Progressions ──────────────────────────────────────────────────────────
+
+    @Test
+    fun `progressions type generates triads with three notes per chord`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 16,
+                selectedKeys = setOf(0),
+                selectedProgressions = setOf(ChordProgression.I_IV_V_I)
+            )
+        )
+
+        assertTrue(exercise.steps.isNotEmpty())
+        exercise.steps.forEach { step ->
+            assertEquals(3, step.notes.size)
+        }
+    }
+
+    @Test
+    fun `progressions type tags all steps with PROGRESSIONS content type`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 16,
+                selectedKeys = setOf(0),
+                selectedProgressions = setOf(ChordProgression.I_V_VI_IV)
+            )
+        )
+
+        assertTrue(exercise.steps.all { it.contentType == ExerciseContentType.PROGRESSIONS })
+    }
+
+    @Test
+    fun `I_IV_V_I progression produces four chords starting and ending on the root triad`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 16,
+                selectedKeys = setOf(0),           // C major
+                selectedProgressions = setOf(ChordProgression.I_IV_V_I)
+            ),
+            forcedKey = 0
+        )
+
+        // I_IV_V_I has 4 chords; exercise length 16 notes fits all 4 (4×3 = 12 notes)
+        assertEquals(4, exercise.steps.size)
+        // First chord is I (C major = 60, 64, 67 in right hand at C5 root)
+        assertEquals(listOf(60, 64, 67), exercise.steps.first().notes)
+        // Last chord is also I
+        assertEquals(listOf(60, 64, 67), exercise.steps.last().notes)
+    }
+
+    @Test
+    fun `progressions steps are ordered not shuffled`() {
+        // Run several times — the order must always match the defined progression sequence.
+        repeat(10) {
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                    handMode = HandMode.RIGHT,
+                    exerciseLength = 16,
+                    selectedKeys = setOf(0),
+                    selectedProgressions = setOf(ChordProgression.II_V_I)
+                ),
+                forcedKey = 0
+            )
+
+            // ii-V-I has 3 chords; verify notes match ii (62,65,69), V (67,71,74), I (60,64,67)
+            assertEquals(3, exercise.steps.size)
+            assertEquals(listOf(62, 65, 69), exercise.steps[0].notes) // ii
+            assertEquals(listOf(67, 71, 74), exercise.steps[1].notes) // V
+            assertEquals(listOf(60, 64, 67), exercise.steps[2].notes) // I
+        }
+    }
+
+    @Test
+    fun `multiple selected progressions produce chords from all of them in ordinal order`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 40,
+                selectedKeys = setOf(0),
+                selectedProgressions = setOf(ChordProgression.I_IV_V_I, ChordProgression.II_V_I)
+            ),
+            forcedKey = 0
+        )
+
+        // I_IV_V_I = 4 chords, II_V_I = 3 chords → total 7 steps (21 notes ≤ 40 budget)
+        assertEquals(7, exercise.steps.size)
+    }
+
+    @Test
+    fun `progressions left hand places chords in bass register`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                handMode = HandMode.LEFT,
+                exerciseLength = 16,
+                selectedKeys = setOf(0),
+                selectedProgressions = setOf(ChordProgression.I_IV_V_I)
+            ),
+            forcedKey = 0
+        )
+
+        // Left root is 48 (C4); all notes should be below middle C (60)
+        assertTrue(exercise.steps.all { step -> step.notes.all { it < 60 } })
+    }
+
+    @Test
+    fun `progressions mixed with other types puts progressions first`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.RIGHT,
+                exerciseLength = 40,
+                selectedKeys = setOf(0),
+                selectedProgressions = setOf(ChordProgression.I_IV_V_I)
+            ),
+            forcedKey = 0
+        )
+
+        // First 4 steps must be from the progression (3-note chords each)
+        exercise.steps.take(4).forEach { step ->
+            assertEquals(ExerciseContentType.PROGRESSIONS, step.contentType)
+            assertEquals(3, step.notes.size)
+        }
+        // Remaining steps include single notes
+        val remaining = exercise.steps.drop(4)
+        assertTrue(remaining.any { it.notes.size == 1 })
     }
 }

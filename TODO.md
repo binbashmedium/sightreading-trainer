@@ -4,6 +4,10 @@
 
 *(none)*
 
+## Done (recent)
+
+- [x] **Progressions exercise mode added** — `ChordProgression` enum (7 named progressions: I-IV-V-I, I-V-vi-IV, ii-V-I, I-vi-IV-V, I-IV-I-V, vi-IV-I-V, I-iii-IV-V) added to domain model; `PROGRESSIONS` added to `ExerciseContentType`; `GenerateExerciseUseCase` generates progression steps in order (not shuffled) via `buildProgressionSteps()`; `AppSettings.selectedProgressions` persisted in `SettingsDataStore`; progression chip selector shown in `SettingsScreen` when PROGRESSIONS type is active; `HelpScreen` updated with Progressions section and settings entry; 7 new progression tests added to `GenerateExerciseUseCaseTest`.
+
 
 ## Features
 

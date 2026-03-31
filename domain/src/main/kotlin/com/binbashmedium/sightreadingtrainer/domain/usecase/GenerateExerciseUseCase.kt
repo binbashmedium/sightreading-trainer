@@ -15,6 +15,7 @@
 package com.binbashmedium.sightreadingtrainer.domain.usecase
 
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
+import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.Exercise
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
@@ -69,22 +70,79 @@ class GenerateExerciseUseCase {
         val maxDisplayedNotes = settings.exerciseLength.coerceAtLeast(1)
         val selectedTypes = settings.exerciseTypes.ifEmpty { setOf(ExerciseContentType.SINGLE_NOTES) }
 
-        val materialByType = selectedTypes.associateWith { type ->
+        // Progression steps are ordered (not shuffled) and built separately.
+        val progressionSteps = buildProgressionSteps(settings, generatedKey, rightRoot, leftRoot)
+
+        // All other types are shuffled as before.
+        val nonProgressionTypes = selectedTypes - ExerciseContentType.PROGRESSIONS
+        val shuffledMaterial = buildShuffledMaterial(nonProgressionTypes, settings, generatedKey, rightRoot, leftRoot)
+
+        // Progressions come first in their defined order; shuffled material fills the rest.
+        val combined = progressionSteps + shuffledMaterial
+
+        val orderedMaterial = if (combined.isEmpty()) {
+            // Fallback: shouldn't normally happen, but be safe.
+            patternsForType(ExerciseContentType.SINGLE_NOTES, settings.handMode, rightRoot, leftRoot)
+        } else combined
+
+        val mixedExercise = stepsByMaxNotes(orderedMaterial, maxDisplayedNotes)
+        val accidentalsApplied = applyGeneratedAccidentals(mixedExercise, settings.noteAccidentalsEnabled)
+        val pedalApplied = applyPedalMarks(accidentalsApplied, settings.pedalEventsEnabled)
+
+        return Exercise(steps = pedalApplied, musicalKey = generatedKey, handMode = settings.handMode)
+    }
+
+    /** Builds ordered steps for all selected [ChordProgression]s (no shuffle). */
+    private fun buildProgressionSteps(
+        settings: AppSettings,
+        generatedKey: Int,
+        rightRoot: Int,
+        leftRoot: Int
+    ): List<ExerciseStep> {
+        if (ExerciseContentType.PROGRESSIONS !in settings.exerciseTypes) return emptyList()
+
+        val root = if (settings.handMode == HandMode.LEFT) leftRoot else rightRoot
+        val selectedProgs = settings.selectedProgressions.ifEmpty { setOf(ChordProgression.I_IV_V_I) }
+
+        val steps = selectedProgs.sortedBy { it.ordinal }.flatMap { prog ->
+            prog.chords.map { offsets ->
+                ExerciseStep(
+                    notes = offsets.map { root + it },
+                    noteAccidentals = List(offsets.size) { NoteAccidental.NONE },
+                    contentType = ExerciseContentType.PROGRESSIONS
+                )
+            }
+        }
+
+        return if (!settings.noteAccidentalsEnabled) {
+            steps.map { step ->
+                val cn = step.notes.map { constrainNoteToScale(it, generatedKey) }
+                step.copy(notes = cn, noteAccidentals = List(cn.size) { NoteAccidental.NONE })
+            }
+        } else steps
+    }
+
+    /** Builds shuffled material for all non-progression types (existing logic). */
+    private fun buildShuffledMaterial(
+        types: Set<ExerciseContentType>,
+        settings: AppSettings,
+        generatedKey: Int,
+        rightRoot: Int,
+        leftRoot: Int
+    ): List<ExerciseStep> {
+        if (types.isEmpty()) return emptyList()
+
+        val materialByType = types.associateWith { type ->
             patternsForType(type, settings.handMode, rightRoot, leftRoot)
         }.filterValues { it.isNotEmpty() }
 
         val effectiveMaterialByType = if (materialByType.isEmpty()) {
             mapOf(
                 ExerciseContentType.SINGLE_NOTES to patternsForType(
-                    ExerciseContentType.SINGLE_NOTES,
-                    settings.handMode,
-                    rightRoot,
-                    leftRoot
+                    ExerciseContentType.SINGLE_NOTES, settings.handMode, rightRoot, leftRoot
                 )
             )
-        } else {
-            materialByType
-        }
+        } else materialByType
 
         val seededMix = effectiveMaterialByType.entries
             .shuffled()
@@ -92,24 +150,12 @@ class GenerateExerciseUseCase {
 
         val material = seededMix + effectiveMaterialByType.values.flatten().shuffled()
 
-        val accidentalPolicyMaterial = if (settings.noteAccidentalsEnabled) {
-            material
-        } else {
+        return if (!settings.noteAccidentalsEnabled) {
             material.map { step ->
-                val constrainedNotes = step.notes.map { constrainNoteToScale(it, generatedKey) }
-                step.copy(
-                    notes = constrainedNotes,
-                    noteAccidentals = List(constrainedNotes.size) { NoteAccidental.NONE }
-                )
+                val cn = step.notes.map { constrainNoteToScale(it, generatedKey) }
+                step.copy(notes = cn, noteAccidentals = List(cn.size) { NoteAccidental.NONE })
             }
-        }
-
-        val mixedExercise = stepsByMaxNotes(accidentalPolicyMaterial.shuffled(), maxDisplayedNotes)
-
-        val accidentalsApplied = applyGeneratedAccidentals(mixedExercise, settings.noteAccidentalsEnabled)
-        val pedalApplied = applyPedalMarks(accidentalsApplied, settings.pedalEventsEnabled)
-
-        return Exercise(steps = pedalApplied, musicalKey = generatedKey, handMode = settings.handMode)
+        } else material
     }
 
     private fun patternsForType(
@@ -168,6 +214,8 @@ class GenerateExerciseUseCase {
             CLUSTERED_CHORDS.map { chord -> ExerciseStep(notes = chord.map { leftRoot + it }) },
             CLUSTERED_CHORDS.map { chord -> ExerciseStep(notes = chord.map { rightRoot + it }) }
         )
+        // PROGRESSIONS are handled separately in buildProgressionSteps(); never reaches here.
+        ExerciseContentType.PROGRESSIONS -> emptyList()
     }.map { it.copy(contentType = type) }
 
     private fun sequenceForHandMode(

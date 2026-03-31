@@ -29,6 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.binbashmedium.sightreadingtrainer.R
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
+import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 
@@ -92,6 +93,30 @@ fun SettingsScreen(
             valueRange = 4f..16f,
             steps = 11
         )
+
+        // Progression selector — shown only when PROGRESSIONS type is active
+        if (ExerciseContentType.PROGRESSIONS in settings.exerciseTypes) {
+            Spacer(Modifier.height(16.dp))
+            Text("Chord Progressions")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChordProgression.entries.forEach { prog ->
+                    FilterChip(
+                        selected = prog in settings.selectedProgressions,
+                        onClick = {
+                            val updated = settings.selectedProgressions.toMutableSet().apply {
+                                if (contains(prog)) {
+                                    if (size > 1) remove(prog)
+                                } else {
+                                    add(prog)
+                                }
+                            }
+                            viewModel.updateSettings(settings.copy(selectedProgressions = updated))
+                        },
+                        label = { Text(prog.displayName) }
+                    )
+                }
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
 
