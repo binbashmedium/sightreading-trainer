@@ -19,7 +19,6 @@ data class AppSettings(
     val timingToleranceMs: Int = 200,
     val chordWindowMs: Int = 50,
     val exerciseTimeSec: Int = 60,
-    val exerciseLength: Int = 8,
     val exerciseTypes: Set<ExerciseContentType> = setOf(ExerciseContentType.SINGLE_NOTES),
     val handMode: HandMode = HandMode.RIGHT,
     val noteAccidentalsEnabled: Boolean = false,

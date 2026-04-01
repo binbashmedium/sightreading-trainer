@@ -84,16 +84,6 @@ fun SettingsScreen(
             steps = 26
         )
 
-        Spacer(Modifier.height(16.dp))
-
-        Text("${stringResource(R.string.exercise_length)}: ${settings.exerciseLength}")
-        Slider(
-            value = settings.exerciseLength.toFloat(),
-            onValueChange = { viewModel.updateSettings(settings.copy(exerciseLength = it.toInt())) },
-            valueRange = 4f..16f,
-            steps = 11
-        )
-
         // Progression selector — shown only when PROGRESSIONS type is active
         if (ExerciseContentType.PROGRESSIONS in settings.exerciseTypes) {
             Spacer(Modifier.height(16.dp))

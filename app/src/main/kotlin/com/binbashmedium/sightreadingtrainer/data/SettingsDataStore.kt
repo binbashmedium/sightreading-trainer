@@ -42,7 +42,6 @@ class SettingsDataStore @Inject constructor(
         val TIMING_TOLERANCE = intPreferencesKey("timing_tolerance_ms")
         val CHORD_WINDOW = intPreferencesKey("chord_window_ms")
         val EXERCISE_TIME_SEC = intPreferencesKey("exercise_time_sec")
-        val EXERCISE_LENGTH = intPreferencesKey("exercise_length")
         val EXERCISE_TYPES = stringPreferencesKey("exercise_types")
         val HAND_MODE = stringPreferencesKey("hand_mode")
         val NOTE_ACCIDENTALS_ENABLED = booleanPreferencesKey("note_accidentals_enabled")
@@ -66,12 +65,8 @@ class SettingsDataStore @Inject constructor(
             timingToleranceMs = prefs[Keys.TIMING_TOLERANCE] ?: 200,
             chordWindowMs = prefs[Keys.CHORD_WINDOW] ?: 50,
             exerciseTimeSec = (prefs[Keys.EXERCISE_TIME_SEC] ?: 60).coerceAtLeast(10),
-            exerciseLength = prefs[Keys.EXERCISE_LENGTH] ?: 64,
             exerciseTypes = parseExerciseTypes(
                 prefs[Keys.EXERCISE_TYPES],
-                prefs[Keys.MUSICAL_KEY],
-                prefs[Keys.SELECTED_KEYS],
-                prefs[Keys.EXERCISE_LENGTH],
                 prefs[intPreferencesKey("difficulty")] ?: 1
             ),
             handMode = HandMode.valueOf(prefs[Keys.HAND_MODE] ?: HandMode.RIGHT.name),
@@ -99,7 +94,6 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.TIMING_TOLERANCE] = settings.timingToleranceMs
             prefs[Keys.CHORD_WINDOW] = settings.chordWindowMs
             prefs[Keys.EXERCISE_TIME_SEC] = settings.exerciseTimeSec
-            prefs[Keys.EXERCISE_LENGTH] = settings.exerciseLength
             prefs[Keys.EXERCISE_TYPES] = settings.exerciseTypes.sortedBy { it.ordinal }.joinToString(",") { it.name }
             prefs[Keys.HAND_MODE] = settings.handMode.name
             prefs[Keys.NOTE_ACCIDENTALS_ENABLED] = settings.noteAccidentalsEnabled
@@ -131,9 +125,6 @@ class SettingsDataStore @Inject constructor(
 
     private fun parseExerciseTypes(
         raw: String?,
-        @Suppress("UNUSED_PARAMETER") legacyMusicalKey: Int?,
-        @Suppress("UNUSED_PARAMETER") legacySelectedKeys: String?,
-        @Suppress("UNUSED_PARAMETER") legacyExerciseLength: Int?,
         legacyDifficulty: Int
     ): Set<ExerciseContentType> {
         val parsed = raw

@@ -36,6 +36,8 @@ class GenerateExerciseUseCase {
 
     companion object {
         val KEY_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+        /** Fixed exercise length: 4 notes × 4 measures × 4 rows = one portrait page. */
+        const val DEFAULT_EXERCISE_LENGTH = 64
 
         private val SCALE_7 = listOf(0, 2, 4, 5, 7, 9, 11)
         private val SINGLE_NOTE_MOTION = listOf(0, 2, 4, 7, 5, 9, 11, 12, 7, 4, 9, 5, 11, 14)
@@ -80,7 +82,7 @@ class GenerateExerciseUseCase {
         val generatedKey = (forcedKey ?: settings.selectedKeys.ifEmpty { setOf(0) }.toList().random(random)).coerceIn(0, 11)
         val rightRoot = 60 + generatedKey
         val leftRoot = 48 + generatedKey
-        val maxDisplayedNotes = settings.exerciseLength.coerceAtLeast(1)
+        val maxDisplayedNotes = DEFAULT_EXERCISE_LENGTH
         val selectedTypes = settings.exerciseTypes.ifEmpty { setOf(ExerciseContentType.SINGLE_NOTES) }
         val progressionModifierTypes = setOf(
             ExerciseContentType.ARPEGGIOS,

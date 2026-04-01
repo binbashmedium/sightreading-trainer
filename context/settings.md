@@ -8,7 +8,6 @@ data class AppSettings(
     val timingToleranceMs: Int = 200,
     val chordWindowMs: Int = 50,
     val exerciseTimeSec: Int = 60,
-    val exerciseLength: Int = 64,  // default raised to fill one portrait page (4 rows × 4 measures × 4 notes)
     val exerciseTypes: Set<ExerciseContentType> = setOf(ExerciseContentType.SINGLE_NOTES),
     val handMode: HandMode = HandMode.RIGHT,
     val noteAccidentalsEnabled: Boolean = false,
@@ -43,7 +42,7 @@ enum class ExerciseContentType {
 
 Settings are persisted using Jetpack DataStore (`Preferences`).
 
-- `SettingsDataStore` maps preference keys to fields, including the selected key pool and `exercise_length`.
+- `SettingsDataStore` maps preference keys to fields, including the selected key pool.
 - Highscore and cumulative note counters are persisted in DataStore as part of `AppSettings`.
 - Group/note performance statistics are persisted in DataStore as serialized maps:
   - `correctGroupStats`, `wrongGroupStats`
@@ -62,7 +61,6 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 ### Exercise generation
 `GenerateExerciseUseCase` uses:
 - a multi-select pool of exercise content types
-- `exerciseLength`
 - `exerciseTimeSec`
 - `handMode`
 - `noteAccidentalsEnabled`
@@ -73,7 +71,6 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 
 The screen includes:
 - exercise-type multi-select chips
-- exercise-length slider
 - exercise-time slider
 - multi-select key chips
 - hand-mode chips
@@ -100,4 +97,4 @@ The chosen generated key and `handMode` are embedded into `Exercise` at generati
 
 Single-note generation is allowed to include larger melodic skips such as fifth-based motion; the exercise-type chips are not restricted to scalar-only movement. Clustered chord voicings and arpeggios are also selectable as their own exercise content types.
 
-`exerciseLength` now represents a max visible note budget per generated chunk (sum of noteheads), not a fixed step count.
+Exercise length is fixed at `GenerateExerciseUseCase.DEFAULT_EXERCISE_LENGTH = 64` (one portrait page: 4 notes × 4 measures × 4 rows) and is no longer user-configurable.

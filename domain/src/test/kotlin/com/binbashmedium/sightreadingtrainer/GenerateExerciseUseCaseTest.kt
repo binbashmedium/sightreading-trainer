@@ -58,18 +58,17 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `configured exercise length is applied`() {
+    fun `exercise length uses default of 64`() {
         val exercise = useCase.execute(
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.TRIADS, ExerciseContentType.SEVENTHS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 12,
                 selectedKeys = setOf(0)
             )
         )
 
         val displayedNotes = exercise.expectedNotes.sumOf { it.size }
-        assertTrue(displayedNotes <= 12)
+        assertTrue(displayedNotes <= GenerateExerciseUseCase.DEFAULT_EXERCISE_LENGTH)
         assertTrue(displayedNotes > 0)
     }
 
@@ -102,7 +101,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.THIRDS),
                 handMode = HandMode.BOTH,
-                exerciseLength = 10
             )
         )
 
@@ -117,7 +115,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES, ExerciseContentType.TRIADS, ExerciseContentType.FIFTHS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 20,
                 selectedKeys = setOf(0)
             )
         )
@@ -133,7 +130,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SEVENTHS, ExerciseContentType.NINTHS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 18,
                 selectedKeys = setOf(0)
             )
         )
@@ -148,7 +144,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 40,
                 selectedKeys = setOf(0)
             )
         )
@@ -163,7 +158,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.CLUSTERED_CHORDS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 16,
                 selectedKeys = setOf(0)
             )
         )
@@ -178,7 +172,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.ARPEGGIOS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 24,
                 selectedKeys = setOf(0)
             )
         )
@@ -243,7 +236,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES, ExerciseContentType.CLUSTERED_CHORDS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 24,
                 noteAccidentalsEnabled = false,
                 selectedKeys = setOf(0)
             )
@@ -260,7 +252,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 48,
                 noteAccidentalsEnabled = true,
                 selectedKeys = setOf(0)
             )
@@ -286,7 +277,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES, ExerciseContentType.TRIADS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 24,
                 pedalEventsEnabled = true,
                 selectedKeys = setOf(0)
             )
@@ -310,7 +300,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.TRIADS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 12,
                 selectedKeys = setOf(0)
             )
         )
@@ -326,7 +315,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 16,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_IV_V_I)
             ),
@@ -345,7 +333,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 16,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_V_VI_IV)
             ),
@@ -364,7 +351,6 @@ class GenerateExerciseUseCaseTest {
                 AppSettings(
                     exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
                     handMode = HandMode.RIGHT,
-                    exerciseLength = 40,
                     selectedKeys = setOf(0),
                     selectedProgressions = setOf(ChordProgression.I_IV_V_I, ChordProgression.II_V_I)
                 ),
@@ -385,7 +371,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.SINGLE_NOTES),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 24,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_IV_V_I)
             ),
@@ -403,7 +388,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
                 handMode = HandMode.BOTH,
-                exerciseLength = 16,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_IV_V_I)
             ),
@@ -424,7 +408,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.SEVENTHS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 24,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_IV_V_I)
             ),
@@ -442,7 +425,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.NINTHS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 30,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_IV_V_I)
             ),
@@ -460,7 +442,6 @@ class GenerateExerciseUseCaseTest {
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.CLUSTERED_CHORDS),
                 handMode = HandMode.RIGHT,
-                exerciseLength = 16,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_IV_V_I)
             ),
@@ -485,7 +466,6 @@ class GenerateExerciseUseCaseTest {
         val settings = AppSettings(
             exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.ARPEGGIOS, ExerciseContentType.TRIADS),
             handMode = HandMode.RIGHT,
-            exerciseLength = 24,
             selectedKeys = setOf(0),
             selectedProgressions = setOf(ChordProgression.I_IV_V_I)
         )
