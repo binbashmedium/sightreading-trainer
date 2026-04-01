@@ -72,6 +72,8 @@ const val BASS_CLEF_GLYPH_X_OFFSET_RATIO = 0.22f
 const val KEY_SIGNATURE_LEAD_IN_RATIO = 0.72f
 const val KEY_SIGNATURE_X_OFFSET_RATIO = 0.38f
 const val NOTE_ACCIDENTAL_TEXT_SIZE_RATIO = 1.08f
+/** Bar lines are shifted left by this fraction of lineSpacing so noteheads never overlap them. */
+const val BAR_LINE_SHIFT_RATIO = 0.65f
 
 // ── Beat / layout constants ──────────────────────────────────────────────────
 /** UI beat-units per quarter note. WHOLE=8, HALF=4, QUARTER=2, EIGHTH=1. */

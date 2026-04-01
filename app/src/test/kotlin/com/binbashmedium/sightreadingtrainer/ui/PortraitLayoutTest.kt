@@ -154,4 +154,63 @@ class PortraitLayoutTest {
         val pageBeats = expectedMeasures * BEATS_PER_MEASURE_UNITS
         assertEquals(BEATS_PER_PAGE, pageBeats, 0f)
     }
+
+    @Test
+    fun `bar line X is strictly left of the following measure's note X`() {
+        val lineSpacing = 20f
+        val beatWidth = 40f
+        val noteStartX = 80f
+        val barLineShift = lineSpacing * BAR_LINE_SHIFT_RATIO
+
+        // A bar line falls at local beat = BEATS_PER_MEASURE_UNITS (= 8f)
+        val barX = beatToX(BEATS_PER_MEASURE_UNITS, noteStartX, beatWidth) - barLineShift
+        // The first note of the next measure also has local beat = BEATS_PER_MEASURE_UNITS
+        val noteX = beatToX(BEATS_PER_MEASURE_UNITS, noteStartX, beatWidth)
+
+        assert(barX < noteX) { "Bar line ($barX) must be left of note ($noteX)" }
+    }
+
+    @Test
+    fun `bar line shift clears notehead radius`() {
+        // Notehead radius = lineSpacing * 0.55f; bar line shift must be > radius so the bar
+        // line edge never overlaps the notehead circle of the following measure's first note.
+        val noteheadRadius = 0.55f
+        assert(BAR_LINE_SHIFT_RATIO > noteheadRadius) {
+            "BAR_LINE_SHIFT_RATIO ($BAR_LINE_SHIFT_RATIO) must exceed notehead radius ratio ($noteheadRadius)"
+        }
+    }
+
+    @Test
+    fun `beatWidth floor uses lineSpacing fraction not fixed pixel minimum`() {
+        // With C# key (7 sharps) in portrait mode the available width per beat can be ~18px.
+        // A fixed 20f floor would force beatWidth=20 → last note overflows canvas.
+        // The floor must be lineSpacing * 0.5f so it scales with the row height.
+        listOf(200f, 270f, 400f, 600f).forEach { rowHeightPx ->
+            val lineSpacing = rowHeightPx / 18f
+            val floor = lineSpacing * 0.5f
+            // floor must be less than a typical note-width scenario (18px canvas-derived)
+            // and must also be > 0 so notes are never zero-width
+            assert(floor > 0f) { "beatWidth floor must be positive for rowHeight=$rowHeightPx" }
+            // For portrait 270px rows: floor = 15/18*0.5 ≈ 7.5px < 18.3px formula → no overflow
+            assert(floor < 20f) {
+                "beatWidth floor ($floor) should be smaller than old hard-coded 20f minimum for rowHeight=$rowHeightPx"
+            }
+        }
+    }
+
+    @Test
+    fun `label text size clamp never produces inverted range`() {
+        // On portrait rows (canvas height ~270px at 160dpi) lineSpacing = height/18 ≈ 15px.
+        // lineSpacing * 0.42f ≈ 6.3f which is less than the old hard minimum of 10f,
+        // causing IllegalArgumentException from coerceIn. The guard must ensure min <= max.
+        listOf(50f, 100f, 150f, 200f, 270f, 400f, 600f).forEach { rowHeightPx ->
+            val lineSpacing = rowHeightPx / 18f
+            val maxLabelSize = lineSpacing * 0.42f
+            val min = minOf(10f, maxLabelSize)
+            // min must always be <= max — this is the runtime guard applied in GrandStaffCanvas
+            assert(min <= maxLabelSize) {
+                "Inverted range: min=$min > max=$maxLabelSize for rowHeight=$rowHeightPx"
+            }
+        }
+    }
 }

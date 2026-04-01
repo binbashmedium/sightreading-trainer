@@ -345,7 +345,7 @@ fun GrandStaffCanvas(
             rowChords.size.coerceAtLeast(1) * 2f
         }
         val beatWidth = max(
-            20f,
+            lineSpacing * 0.5f,
             (size.width - noteStartX - lineSpacing) / (beatRange + 1f)
         )
 
@@ -433,11 +433,14 @@ fun GrandStaffCanvas(
         }
 
         // ── Bar lines (measure boundaries) ───────────────────────────────────
+        // Bar lines are drawn slightly left of the next measure's note X so that
+        // noteheads starting at a measure boundary never overlap the bar line.
+        val barLineShift = lineSpacing * BAR_LINE_SHIFT_RATIO
         val staffTop = trebleTopY
         val staffBottom = bassTopY + 4f * lineSpacing
         var barLocal = beatsPerMeasure
         while (barLocal <= beatRange + 0.01f) {
-            val barX = beatX(barLocal)
+            val barX = beatX(barLocal) - barLineShift
             val isEndBar = barLocal >= beatRange - 0.01f
             drawLine(
                 color = black,
@@ -464,7 +467,8 @@ fun GrandStaffCanvas(
         }
 
         // ── Chord ghost lines + labels ────────────────────────────────────────
-        val labelTextSize = (beatWidth * 0.5f).coerceIn(10f, lineSpacing * 0.42f)
+        val maxLabelSize = lineSpacing * 0.42f
+        val labelTextSize = (beatWidth * 0.5f).coerceIn(minOf(10f, maxLabelSize), maxLabelSize)
         val labelPaint = Paint().asFrameworkPaint().apply {
             color = android.graphics.Color.DKGRAY
             textSize = labelTextSize
