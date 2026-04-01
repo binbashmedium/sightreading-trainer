@@ -486,20 +486,64 @@ fun GrandStaffCanvas(
             drawContext.canvas.nativeCanvas.drawText(label, x + 2f, labelY, labelPaint)
         }
 
-        // ── Note heads, ledger lines, stems, flags ────────────────────────────
+        // ── Note heads, ledger lines, stems, flags / beams ───────────────────
         val noteHeadWidth = lineSpacing * 1.1f
         val noteHeadHeight = lineSpacing * 0.76f
-        rowNotes
+
+        val sortedChordMap = rowNotes
             .groupBy { it.startBeat to it.staff }
             .toSortedMap(compareBy<Pair<Float, StaffType>> { it.first }.thenBy { it.second.ordinal })
-            .values
-            .forEach { chordNotes ->
+
+        // ── Beam pre-computation ──────────────────────────────────────────────
+        val beamGroups = computeBeamGroups(rowNotes)
+        val beamGroupByBeatStaff: Map<Pair<Float, StaffType>, BeamGroup> = buildMap {
+            beamGroups.forEach { group ->
+                group.beatPositions.forEach { beat -> put(beat to group.staff, group) }
+            }
+        }
+        // Pass 1: collect natural stem end-Y for each beamed chord position → stemX to naturalEndY
+        val beamedNaturalStem = mutableMapOf<Pair<Float, StaffType>, Pair<Float, Float>>()
+        sortedChordMap.forEach { (key, chordNotes) ->
+            val beamGroup = beamGroupByBeatStaff[key] ?: return@forEach
+            if (durationToGlyphType(chordNotes.first().duration) != NoteGlyphType.EIGHTH) return@forEach
+            val (beat, staff) = key
+            val baseX = beatX(localBeat(beat))
+            val sortedNotes = chordNotes.sortedBy { displayDiatonicStep(it.midi, it.accidental) }
+            val steps = sortedNotes.map { displayDiatonicStep(it.midi, it.accidental) }
+            val xOffsets = chordNoteheadOffsets(steps, beamGroup.direction, lineSpacing)
+            val middleY = staffLineYForStep(middleLineStepForStaff(staff), staff, trebleTopY, bassTopY, lineSpacing)
+            val noteCentersXY = sortedNotes.mapIndexed { i, note ->
+                (baseX + xOffsets[i]) to midiToGrandStaffY(note.midi, note.staff, trebleTopY, bassTopY, lineSpacing, note.accidental)
+            }
+            val stem = stemGeometryForChord(
+                noteXs = noteCentersXY.map { it.first },
+                noteYs = noteCentersXY.map { it.second },
+                direction = beamGroup.direction,
+                middleLineY = middleY,
+                lineSpacing = lineSpacing,
+                noteHeadWidth = noteHeadWidth
+            )
+            beamedNaturalStem[key] = stem.x to stem.endY
+        }
+        // Compute beam Y per group: the Y all stems in the group extend to
+        val beamYByGroup = beamGroups.associateWith { group ->
+            val endYs = group.beatPositions.mapNotNull { beat -> beamedNaturalStem[beat to group.staff]?.second }
+            when (group.direction) {
+                StemDirection.UP -> endYs.minOrNull() ?: 0f   // most upward = smallest Y
+                StemDirection.DOWN -> endYs.maxOrNull() ?: 0f // most downward = largest Y
+            }
+        }
+
+        // ── Main rendering loop ───────────────────────────────────────────────
+        sortedChordMap.values.forEach { chordNotes ->
+                val key = chordNotes.first().startBeat to chordNotes.first().staff
                 val baseX = beatX(localBeat(chordNotes.first().startBeat))
                 val staff = chordNotes.first().staff
                 val glyph = durationToGlyphType(chordNotes.first().duration)
+                val beamGroup = beamGroupByBeatStaff[key]
                 val sortedNotes = chordNotes.sortedBy { displayDiatonicStep(it.midi, it.accidental) }
                 val steps = sortedNotes.map { displayDiatonicStep(it.midi, it.accidental) }
-                val direction = stemDirectionForSteps(steps, staff)
+                val direction = beamGroup?.direction ?: stemDirectionForSteps(steps, staff)
                 val xOffsets = chordNoteheadOffsets(steps, direction, lineSpacing)
                 val accidentalColumns = accidentalColumnsForSteps(steps)
                 val noteCenters = sortedNotes.mapIndexed { index, note ->
@@ -564,38 +608,60 @@ fun GrandStaffCanvas(
                         lineSpacing = lineSpacing,
                         noteHeadWidth = noteHeadWidth
                     )
+                    // Extend stem to beam Y if this chord belongs to a beam group
+                    val finalStemEndY = if (beamGroup != null && glyph == NoteGlyphType.EIGHTH) {
+                        beamYByGroup[beamGroup] ?: stem.endY
+                    } else {
+                        stem.endY
+                    }
                     val stemColor = stemColorForStates(noteCenters.map { it.first.state })
                     drawLine(
                         color = stemColor,
                         start = Offset(stem.x, stem.startY),
-                        end = Offset(stem.x, stem.endY),
+                        end = Offset(stem.x, finalStemEndY),
                         strokeWidth = 2f
                     )
-                    val flagCount = when (glyph) {
-                        NoteGlyphType.EIGHTH -> 1
-                        NoteGlyphType.SIXTEENTH -> 2
-                        else -> 0
-                    }
-                    repeat(flagCount) { flagIndex ->
-                        val flagY = if (direction == StemDirection.UP) {
-                            stem.endY + lineSpacing * (0.1f + flagIndex * 0.7f)
-                        } else {
-                            stem.endY - lineSpacing * (0.1f + flagIndex * 0.7f)
+                    // Draw flags only for non-beamed notes
+                    if (beamGroup == null) {
+                        val flagCount = when (glyph) {
+                            NoteGlyphType.EIGHTH -> 1
+                            NoteGlyphType.SIXTEENTH -> 2
+                            else -> 0
                         }
-                        val flagEnd = if (direction == StemDirection.UP) {
-                            Offset(stem.x + lineSpacing * 0.85f, flagY + lineSpacing * 0.5f)
-                        } else {
-                            Offset(stem.x - lineSpacing * 0.85f, flagY - lineSpacing * 0.5f)
+                        repeat(flagCount) { flagIndex ->
+                            val flagY = if (direction == StemDirection.UP) {
+                                finalStemEndY + lineSpacing * (0.1f + flagIndex * 0.7f)
+                            } else {
+                                finalStemEndY - lineSpacing * (0.1f + flagIndex * 0.7f)
+                            }
+                            val flagEnd = if (direction == StemDirection.UP) {
+                                Offset(stem.x + lineSpacing * 0.85f, flagY + lineSpacing * 0.5f)
+                            } else {
+                                Offset(stem.x - lineSpacing * 0.85f, flagY - lineSpacing * 0.5f)
+                            }
+                            drawLine(
+                                color = stemColor,
+                                start = Offset(stem.x, flagY),
+                                end = flagEnd,
+                                strokeWidth = 2f
+                            )
                         }
-                        drawLine(
-                            color = stemColor,
-                            start = Offset(stem.x, flagY),
-                            end = flagEnd,
-                            strokeWidth = 2f
-                        )
                     }
                 }
             }
+
+        // ── Beam bars ─────────────────────────────────────────────────────────
+        beamGroups.forEach { group ->
+            val beamY = beamYByGroup[group] ?: return@forEach
+            val firstStemX = beamedNaturalStem[group.beatPositions.first() to group.staff]?.first ?: return@forEach
+            val lastStemX = beamedNaturalStem[group.beatPositions.last() to group.staff]?.first ?: return@forEach
+            drawLine(
+                color = black,
+                start = Offset(firstStemX, beamY),
+                end = Offset(lastStemX, beamY),
+                strokeWidth = lineSpacing * 0.5f
+            )
+        }
 
         // ── Pedal marks ───────────────────────────────────────────────────────
         val pedalPaint = Paint().asFrameworkPaint().apply {
@@ -751,62 +817,6 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
     )
 }
 
-fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameState {
-    val phase = ((nowMs / 1_000L) % 16L).toInt()
-    val seed = (nowMs / 1_500L).toInt()
-
-    val progression = listOf(
-        listOf(60, 64, 67),
-        listOf(57, 60, 64),
-        listOf(55, 59, 62, 67),
-        listOf(53, 57, 60)
-    )
-
-    val notes = progression.flatMapIndexed { index, chord ->
-        chord.map { midi ->
-            val state = when ((seed + midi + index) % 4) {
-                0 -> NoteState.NONE
-                1 -> NoteState.CORRECT
-                2 -> NoteState.WRONG
-                else -> NoteState.LATE
-            }
-            NoteEvent(
-                midi = midi,
-                startBeat = index * 2f,
-                duration = listOf(4f, 2f, 1f, 0.5f, 0.25f)[(index + midi) % 5],
-                expected = true,
-                state = state,
-                staff = staffForExercise(midi, HandMode.BOTH),
-                accidental = NoteAccidental.NONE
-            )
-        }
-    }
-
-    val chords = progression.mapIndexed { idx, chordNotes ->
-        val chordStaff = if (chordNotes.all { it < 60 }) StaffType.BASS else StaffType.TREBLE
-        Chord(
-            name = formatChordLabel(chordNotes, 0),
-            notes = chordNotes,
-            startBeat = idx * 2f,
-            staff = chordStaff
-        )
-    }
-
-    return GameState(
-        levelTitle = "C - Mixed Practice",
-        elapsedTime = (phase * 1_000L) + (nowMs % 1_000L),
-        score = 100 + (phase * 15),
-        bpm = if (phase > 1) 60f + phase * 2f else 0f,
-        notes = notes,
-        chords = chords,
-        pedalMarks = listOf(
-            PedalMark(startBeat = 0f, action = PedalAction.PRESS, state = NoteState.NONE),
-            PedalMark(startBeat = 4f, action = PedalAction.RELEASE, state = NoteState.NONE)
-        ),
-        currentBeat = phase / 2f,
-        musicalKey = 0
-    )
-}
 
 internal fun colorForNoteState(state: NoteState): Color = when (state) {
     NoteState.NONE -> Color.Black

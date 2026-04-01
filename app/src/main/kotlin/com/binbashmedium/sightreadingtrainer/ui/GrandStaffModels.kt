@@ -446,6 +446,44 @@ enum class NoteGlyphType {
     SIXTEENTH
 }
 
+/**
+ * A group of consecutive eighth notes on the same staff and quarter-beat that are
+ * connected by a single beam bar instead of individual flags.
+ *
+ * @param beatPositions All distinct beat positions in this group, sorted ascending.
+ * @param staff The staff this beam group belongs to.
+ * @param direction Unified stem direction for all notes in this group.
+ */
+data class BeamGroup(
+    val beatPositions: List<Float>,
+    val staff: StaffType,
+    val direction: StemDirection
+)
+
+/**
+ * Groups consecutive eighth notes in [notes] into beam groups per the 4/4 metric rule:
+ * beam per quarter beat (groups of 2 eighths per beat). Only groups of ≥2 distinct beat
+ * positions are returned.
+ *
+ * Stem direction is governed by the note farthest from the middle line across the whole group.
+ */
+fun computeBeamGroups(notes: List<NoteEvent>): List<BeamGroup> {
+    val eighths = notes.filter { it.duration == 0.5f }
+    if (eighths.isEmpty()) return emptyList()
+    // Quarter-beat index: two UI beat-units = one quarter beat (BEATS_PER_STEP = 2f)
+    val grouped = eighths.groupBy { note ->
+        note.staff to (note.startBeat / BEATS_PER_STEP).toInt()
+    }
+    return grouped.mapNotNull { (key, groupNotes) ->
+        val (staff, _) = key
+        val distinctBeats = groupNotes.map { it.startBeat }.distinct().sorted()
+        if (distinctBeats.size < 2) return@mapNotNull null
+        val allSteps = groupNotes.map { displayDiatonicStep(it.midi, it.accidental) }
+        val direction = stemDirectionForSteps(allSteps, staff)
+        BeamGroup(beatPositions = distinctBeats, staff = staff, direction = direction)
+    }
+}
+
 private val SCALE_DEGREES = listOf(0, 2, 4, 5, 7, 9, 11)
 private val ROMAN_NUMERALS = listOf("I", "ii", "iii", "IV", "V", "vi", "vii")
 private val CHORD_QUALITIES = mapOf(
@@ -548,4 +586,61 @@ fun noteName(midi: Int): String {
     val pitchClass = ((midi % 12) + 12) % 12
     val octave = (midi / 12) - 1
     return "${KEY_NAMES[pitchClass]}$octave"
+}
+
+fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameState {
+    val phase = ((nowMs / 1_000L) % 16L).toInt()
+    val seed = (nowMs / 1_500L).toInt()
+
+    val progression = listOf(
+        listOf(60, 64, 67),
+        listOf(57, 60, 64),
+        listOf(55, 59, 62, 67),
+        listOf(53, 57, 60)
+    )
+
+    val notes = progression.flatMapIndexed { index, chord ->
+        chord.map { midi ->
+            val state = when ((seed + midi + index) % 4) {
+                0 -> NoteState.NONE
+                1 -> NoteState.CORRECT
+                2 -> NoteState.WRONG
+                else -> NoteState.LATE
+            }
+            NoteEvent(
+                midi = midi,
+                startBeat = index * 2f,
+                duration = listOf(4f, 2f, 1f, 0.5f, 0.25f)[(index + midi) % 5],
+                expected = true,
+                state = state,
+                staff = staffForExercise(midi, HandMode.BOTH),
+                accidental = NoteAccidental.NONE
+            )
+        }
+    }
+
+    val chords = progression.mapIndexed { idx, chordNotes ->
+        val chordStaff = if (chordNotes.all { it < 60 }) StaffType.BASS else StaffType.TREBLE
+        Chord(
+            name = formatChordLabel(chordNotes, 0),
+            notes = chordNotes,
+            startBeat = idx * 2f,
+            staff = chordStaff
+        )
+    }
+
+    return GameState(
+        levelTitle = "C - Mixed Practice",
+        elapsedTime = (phase * 1_000L) + (nowMs % 1_000L),
+        score = 100 + (phase * 15),
+        bpm = if (phase > 1) 60f + phase * 2f else 0f,
+        notes = notes,
+        chords = chords,
+        pedalMarks = listOf(
+            PedalMark(startBeat = 0f, action = PedalAction.PRESS, state = NoteState.NONE),
+            PedalMark(startBeat = 4f, action = PedalAction.RELEASE, state = NoteState.NONE)
+        ),
+        currentBeat = phase / 2f,
+        musicalKey = 0
+    )
 }
