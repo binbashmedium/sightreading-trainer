@@ -31,7 +31,8 @@ data class ExerciseStep(
     val notes: List<Int> = emptyList(),
     val noteAccidentals: List<NoteAccidental> = List(notes.size) { NoteAccidental.NONE },
     val pedalAction: PedalAction = PedalAction.NONE,
-    val contentType: ExerciseContentType? = null
+    val contentType: ExerciseContentType? = null,
+    val noteValue: NoteValue = NoteValue.QUARTER
 ) {
     init {
         require(noteAccidentals.size == notes.size) {

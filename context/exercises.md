@@ -17,9 +17,9 @@ data class Exercise(
 
 ## GenerateExerciseUseCase (`domain/usecase/GenerateExerciseUseCase.kt`)
 
-Creates an `Exercise` from current `AppSettings` using selected exercise content types, `handMode`, a selected-key pool, and `exerciseLength`.
+Creates an `Exercise` from current `AppSettings` using selected exercise content types, `handMode`, a selected-key pool, and `DEFAULT_EXERCISE_MEASURES = 16`.
 
-The generator chooses one key from the selected key pool (or an externally forced key for in-session rollover), transposes the material by that key, then fills steps until the max displayed note budget (`exerciseLength`) is reached.
+The generator chooses one key from the selected key pool (or an externally forced key for in-session rollover), transposes the material by that key, then builds `DEFAULT_EXERCISE_MEASURES = 16` measures. Each measure is assigned a random uniform note-value pattern (WHOLE, 2×HALF, 4×QUARTER, 8×EIGHTH) via `applyMeasurePatterns()`. A raw material pool of up to `MATERIAL_POOL_SIZE = 128` steps is generated first (enough for worst-case 16 measures × 8 eighths).
 Each generated step is tagged with its source exercise type (`ExerciseStep.contentType`) so runtime statistics can be grouped the same way as settings.
 
 Exercises now use timed steps that can carry note groups, explicit note accidentals, and optional sustain-pedal actions per beat.
@@ -158,9 +158,23 @@ The app now applies these notation rules in pure helpers:
   - mixed-state chords render mixed notehead colors in the same beat (no blanket first-note color)
 - `currentBeat` = `exercise.currentIndex * 2f` (static, input-driven cursor; `BEATS_PER_STEP = 2f`)
 
+## Note Values
+
+Each `ExerciseStep` carries a `noteValue: NoteValue` (default `QUARTER`). `NoteValue` is `WHOLE`, `HALF`, `QUARTER`, or `EIGHTH` with:
+- `beats: Float` — musical beats (WHOLE=4, HALF=2, QUARTER=1, EIGHTH=0.5)
+- `uiBeatUnits: Float` — UI coordinate width = `beats * BEATS_PER_STEP`
+
+Beat positions are computed **cumulatively**: `stepBeat = sum of uiBeatUnits of all prior steps`. The current beat for the cursor is `sum of uiBeatUnits for steps 0..<currentIndex`.
+
+`NoteEvent.duration` in the UI model is set to `step.noteValue.beats` so `durationToGlyphType()` maps to the correct glyph (hollow oval for WHOLE/HALF, filled for QUARTER/EIGHTH, flag for EIGHTH).
+
 ## Portrait Page Layout
 
-In portrait mode, `GrandStaffCanvas` is called once per row with `startBeat`/`endBeat` to filter content. The page is determined by `beatToPage(currentBeat)` and `pageStartBeat(page)`. Each page contains `ROWS_PER_PAGE = 4` rows of `BEATS_PER_ROW = 32f` beat-units. Exercise length is fixed at `GenerateExerciseUseCase.DEFAULT_EXERCISE_LENGTH = 64` (= `MIN_EXERCISE_NOTES`) — exactly one portrait page.
+In portrait mode, `GrandStaffCanvas` is called once per row with `startBeat`/`endBeat` to filter content. The page is determined by `beatToPage(currentBeat)` and `pageStartBeat(page)`. Each page contains `ROWS_PER_PAGE = 4` rows of `BEATS_PER_ROW = 32f` beat-units (4 measures). Exercise length is `DEFAULT_EXERCISE_MEASURES = 16` measures — exactly one portrait page (4 rows × 4 measures).
+
+## Landscape Page Layout
+
+In landscape mode, a single `GrandStaffCanvas` shows a 4-measure window (`BEATS_PER_ROW = 32f` beat-units). The visible window is determined by `landscapePage = (currentBeat / BEATS_PER_ROW).toInt()`, advancing automatically as the cursor moves forward. This matches the portrait row width.
 
 ## Session Lifecycle
 

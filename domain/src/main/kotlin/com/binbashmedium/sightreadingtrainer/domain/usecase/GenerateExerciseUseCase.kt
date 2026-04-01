@@ -21,6 +21,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import kotlin.random.Random
 
@@ -36,8 +37,18 @@ class GenerateExerciseUseCase {
 
     companion object {
         val KEY_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
-        /** Fixed exercise length: 4 notes × 4 measures × 4 rows = one portrait page. */
-        const val DEFAULT_EXERCISE_LENGTH = 64
+        /** Fixed exercise length: 4 rows × 4 measures = one portrait page. */
+        const val DEFAULT_EXERCISE_MEASURES = 16
+        /** Internal material pool size: worst case 16 measures × 8 eighths. */
+        const val MATERIAL_POOL_SIZE = 128
+        /** All valid uniform measure fill patterns for 4/4 time. */
+        val MEASURE_PATTERNS: List<List<NoteValue>> = listOf(
+            listOf(NoteValue.WHOLE),
+            listOf(NoteValue.HALF, NoteValue.HALF),
+            listOf(NoteValue.QUARTER, NoteValue.QUARTER, NoteValue.QUARTER, NoteValue.QUARTER),
+            listOf(NoteValue.EIGHTH, NoteValue.EIGHTH, NoteValue.EIGHTH, NoteValue.EIGHTH,
+                   NoteValue.EIGHTH, NoteValue.EIGHTH, NoteValue.EIGHTH, NoteValue.EIGHTH)
+        )
 
         private val SCALE_7 = listOf(0, 2, 4, 5, 7, 9, 11)
         private val SINGLE_NOTE_MOTION = listOf(0, 2, 4, 7, 5, 9, 11, 12, 7, 4, 9, 5, 11, 14)
@@ -82,7 +93,6 @@ class GenerateExerciseUseCase {
         val generatedKey = (forcedKey ?: settings.selectedKeys.ifEmpty { setOf(0) }.toList().random(random)).coerceIn(0, 11)
         val rightRoot = 60 + generatedKey
         val leftRoot = 48 + generatedKey
-        val maxDisplayedNotes = DEFAULT_EXERCISE_LENGTH
         val selectedTypes = settings.exerciseTypes.ifEmpty { setOf(ExerciseContentType.SINGLE_NOTES) }
         val progressionModifierTypes = setOf(
             ExerciseContentType.ARPEGGIOS,
@@ -104,21 +114,63 @@ class GenerateExerciseUseCase {
         // Remaining non-progression types are shuffled as before.
         val shuffledMaterial = buildShuffledMaterial(nonProgressionTypes, settings, generatedKey, rightRoot, leftRoot, random)
 
-        val mixedExercise = if (progressionSteps.isNotEmpty()) {
-            combineProgressionsWithShuffledMaterial(progressionSteps, shuffledMaterial, maxDisplayedNotes)
+        val materialPool = if (progressionSteps.isNotEmpty()) {
+            buildMaterialPool(progressionSteps, shuffledMaterial, MATERIAL_POOL_SIZE)
         } else if (shuffledMaterial.isNotEmpty()) {
-            stepsByMaxNotes(shuffledMaterial, maxDisplayedNotes)
+            buildMaterialPool(emptyList(), shuffledMaterial, MATERIAL_POOL_SIZE)
         } else {
             // Fallback: shouldn't normally happen, but be safe.
-            stepsByMaxNotes(
+            buildMaterialPool(
+                emptyList(),
                 patternsForType(ExerciseContentType.SINGLE_NOTES, settings.handMode, rightRoot, leftRoot, random),
-                maxDisplayedNotes
+                MATERIAL_POOL_SIZE
             )
         }
+
+        val mixedExercise = applyMeasurePatterns(materialPool, DEFAULT_EXERCISE_MEASURES, random)
         val accidentalsApplied = applyGeneratedAccidentals(mixedExercise, settings.noteAccidentalsEnabled)
         val pedalApplied = applyPedalMarks(accidentalsApplied, settings.pedalEventsEnabled)
 
         return Exercise(steps = pedalApplied, musicalKey = generatedKey, handMode = settings.handMode)
+    }
+
+    /**
+     * Builds a circular material pool from progression steps (ordered first) and
+     * shuffled material, capped at [maxSize].
+     */
+    private fun buildMaterialPool(
+        progressionSteps: List<ExerciseStep>,
+        shuffledMaterial: List<ExerciseStep>,
+        maxSize: Int
+    ): List<ExerciseStep> {
+        val combined = progressionSteps + shuffledMaterial
+        if (combined.isEmpty()) return emptyList()
+        return (0 until maxSize).map { i -> combined[i % combined.size] }
+    }
+
+    /**
+     * Assigns note values to steps by applying random uniform measure patterns.
+     * Each of the [numMeasures] measures gets one randomly chosen pattern from
+     * [MEASURE_PATTERNS]: WHOLE (1 step), 2×HALF, 4×QUARTER, or 8×EIGHTH.
+     * Steps are drawn sequentially from [materialPool] (wrapping around).
+     */
+    private fun applyMeasurePatterns(
+        materialPool: List<ExerciseStep>,
+        numMeasures: Int,
+        random: Random
+    ): List<ExerciseStep> {
+        if (materialPool.isEmpty()) return emptyList()
+        val result = mutableListOf<ExerciseStep>()
+        var poolIndex = 0
+        repeat(numMeasures) {
+            val pattern = MEASURE_PATTERNS.random(random)
+            for (noteValue in pattern) {
+                val step = materialPool[poolIndex % materialPool.size]
+                result += step.copy(noteValue = noteValue)
+                poolIndex++
+            }
+        }
+        return result
     }
 
     /** Builds ordered steps for all selected [ChordProgression]s (no shuffle). */
@@ -269,36 +321,6 @@ class GenerateExerciseUseCase {
         val noteIndices = contour.filter { it < sortedNotes.size }
         val effectiveIndices = if (noteIndices.isNotEmpty()) noteIndices else sortedNotes.indices.toList()
         return effectiveIndices.map { noteIndex -> listOf(sortedNotes[noteIndex]) }
-    }
-
-    private fun combineProgressionsWithShuffledMaterial(
-        progressionSteps: List<ExerciseStep>,
-        shuffledMaterial: List<ExerciseStep>,
-        maxNotes: Int
-    ): List<ExerciseStep> {
-        val orderedProgressions = stepsWithinBudgetNoWrap(progressionSteps, maxNotes)
-        val usedNotes = orderedProgressions.sumOf { it.notes.size }
-        val remainingBudget = maxNotes - usedNotes
-
-        if (remainingBudget <= 0 || shuffledMaterial.isEmpty()) return orderedProgressions
-
-        return orderedProgressions + stepsByMaxNotes(shuffledMaterial, remainingBudget)
-    }
-
-    private fun stepsWithinBudgetNoWrap(base: List<ExerciseStep>, maxNotes: Int): List<ExerciseStep> {
-        if (base.isEmpty()) return emptyList()
-
-        val result = mutableListOf<ExerciseStep>()
-        var noteBudget = 0
-        for (step in base) {
-            val candidate = truncateStepToBudget(step, maxNotes)
-            val candidateCount = candidate.notes.size
-            if (candidateCount == 0) continue
-            if (result.isNotEmpty() && noteBudget + candidateCount > maxNotes) break
-            result += candidate
-            noteBudget += candidateCount
-        }
-        return if (result.isEmpty()) listOf(truncateStepToBudget(base.first(), maxNotes)) else result
     }
 
     /** Builds shuffled material for all non-progression types (existing logic). */
@@ -509,35 +531,6 @@ class GenerateExerciseUseCase {
         4, 11 -> (naturalMidi - 1) to NoteAccidental.FLAT
         else -> null
     }
-
-    private fun stepsByMaxNotes(base: List<ExerciseStep>, maxNotes: Int): List<ExerciseStep> {
-        if (base.isEmpty()) return emptyList()
-
-        val result = mutableListOf<ExerciseStep>()
-        var noteBudget = 0
-        var index = 0
-        while (noteBudget < maxNotes) {
-            val step = base[index % base.size]
-            val candidate = truncateStepToBudget(step, maxNotes)
-            val candidateCount = candidate.notes.size
-            if (result.isNotEmpty() && noteBudget + candidateCount > maxNotes) break
-            result += candidate
-            noteBudget += candidateCount
-            if (candidateCount == 0 && result.size > maxNotes) break
-            index++
-        }
-        return if (result.isEmpty()) listOf(base.first()) else result
-    }
-
-    private fun truncateStepToBudget(step: ExerciseStep, maxNotes: Int): ExerciseStep =
-        if (step.notes.size > maxNotes) {
-            step.copy(
-                notes = step.notes.take(maxNotes),
-                noteAccidentals = step.noteAccidentals.take(maxNotes)
-            )
-        } else {
-            step
-        }
 
     private fun constrainNoteToScale(note: Int, key: Int): Int {
         val scalePitchClasses = SCALE_7.map { (it + key) % 12 }.toSet()

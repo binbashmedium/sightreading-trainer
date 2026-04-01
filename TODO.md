@@ -1,5 +1,17 @@
 # TODO
 
+## In Progress
+
+- [ ] **Mixed note values (whole, half, quarter, eighth)** — 4/4 time stays; landscape shows 4 measures per view; portrait shows 16 measures (4 rows × 4 measures); per measure: exactly 1 whole OR 2 halves OR 4 quarters OR 8 eighths (uniform per measure); `ExerciseStep.noteValue: NoteValue` added; `DEFAULT_EXERCISE_MEASURES = 16` replaces `DEFAULT_EXERCISE_LENGTH`; cumulative beat positions in `toGameState()`; landscape 4-measure pagination; new tests added.
+  - [ ] Add `noteValue: NoteValue = NoteValue.QUARTER` to `ExerciseStep`
+  - [ ] Refactor `GenerateExerciseUseCase`: `DEFAULT_EXERCISE_MEASURES = 16`, `MATERIAL_POOL_SIZE = 128`, `MEASURE_PATTERNS`, `applyMeasurePatterns()`
+  - [ ] Update `GrandStaffModels.kt`: `NoteValue.uiBeatUnits` extension, remove `MIN_EXERCISE_NOTES`, update `BEATS_PER_MEASURE_UNITS` comment
+  - [ ] Fix `PracticeScreen.toGameState()`: cumulative beat positions, `duration = step.noteValue.beats`
+  - [ ] Add landscape 4-measure pagination in `PracticeScreen`
+  - [ ] Update `GenerateExerciseUseCaseTest`: rename `DEFAULT_EXERCISE_LENGTH` test, add measure/note-value tests
+  - [ ] Update `PortraitLayoutTest`: fix `MIN_EXERCISE_NOTES` test
+  - [ ] Create `NoteValueLayoutTest`: `uiBeatUnits`, cumulative beats, landscape pagination
+
 ## Done (recent)
 
 - [x] **exerciseLength setting removed** — `AppSettings.exerciseLength` field removed; exercise length is now fixed at `GenerateExerciseUseCase.DEFAULT_EXERCISE_LENGTH = 64`; `EXERCISE_LENGTH` DataStore key removed; slider removed from `SettingsScreen`; length display removed from `MainScreen`; `exercise_length` string resource removed; `parseExerciseTypes()` signature simplified; test updated to validate `DEFAULT_EXERCISE_LENGTH`.

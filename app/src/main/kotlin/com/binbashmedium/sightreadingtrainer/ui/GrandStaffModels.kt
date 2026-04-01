@@ -16,6 +16,7 @@ package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.model.StepInputSnapshot
 import kotlin.math.absoluteValue
@@ -73,22 +74,22 @@ const val KEY_SIGNATURE_X_OFFSET_RATIO = 0.38f
 const val NOTE_ACCIDENTAL_TEXT_SIZE_RATIO = 1.08f
 
 // ── Beat / layout constants ──────────────────────────────────────────────────
-/** Each exercise step occupies this many beat-units in the rendering coordinate system. */
+/** UI beat-units per quarter note. WHOLE=8, HALF=4, QUARTER=2, EIGHTH=1. */
 const val BEATS_PER_STEP = 2f
-/** Notes per measure (4/4 time, quarter notes only). */
-const val NOTES_PER_MEASURE = 4
-/** Measures shown per grand-staff row in portrait mode. */
+/** Measures shown per grand-staff row (portrait and landscape). */
 const val MEASURES_PER_ROW = 4
 /** Grand-staff rows shown per page in portrait mode. */
 const val ROWS_PER_PAGE = 4
-/** Beat-units per measure = NOTES_PER_MEASURE × BEATS_PER_STEP. */
-const val BEATS_PER_MEASURE_UNITS = NOTES_PER_MEASURE * BEATS_PER_STEP   // 8f
-/** Beat-units per portrait row = MEASURES_PER_ROW × BEATS_PER_MEASURE_UNITS. */
+/** Beat-units per measure = 4 quarter notes × BEATS_PER_STEP = 8f. */
+const val BEATS_PER_MEASURE_UNITS = 4 * BEATS_PER_STEP                   // 8f
+/** Beat-units per row = MEASURES_PER_ROW × BEATS_PER_MEASURE_UNITS = 32f. */
 const val BEATS_PER_ROW = MEASURES_PER_ROW * BEATS_PER_MEASURE_UNITS     // 32f
-/** Beat-units per page = ROWS_PER_PAGE × BEATS_PER_ROW. */
+/** Beat-units per page = ROWS_PER_PAGE × BEATS_PER_ROW = 128f. */
 const val BEATS_PER_PAGE = ROWS_PER_PAGE * BEATS_PER_ROW                 // 128f
-/** Minimum exercise note count to fill one portrait page (4 rows × 4 measures × 4 notes). */
-const val MIN_EXERCISE_NOTES = NOTES_PER_MEASURE * MEASURES_PER_ROW * ROWS_PER_PAGE // 64
+
+/** Extension: converts a [NoteValue] to UI beat-units for positioning. */
+val NoteValue.uiBeatUnits: Float get() = beats * BEATS_PER_STEP
+// WHOLE=8f, HALF=4f, QUARTER=2f, EIGHTH=1f
 
 enum class NoteState {
     NONE,

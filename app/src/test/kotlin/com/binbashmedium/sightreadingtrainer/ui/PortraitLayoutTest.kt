@@ -25,12 +25,11 @@ class PortraitLayoutTest {
         assertEquals(8f, BEATS_PER_MEASURE_UNITS, 0f)
         assertEquals(32f, BEATS_PER_ROW, 0f)
         assertEquals(128f, BEATS_PER_PAGE, 0f)
-        assertEquals(64, MIN_EXERCISE_NOTES)
     }
 
     @Test
-    fun `BEATS_PER_MEASURE_UNITS equals NOTES_PER_MEASURE times BEATS_PER_STEP`() {
-        assertEquals(NOTES_PER_MEASURE * BEATS_PER_STEP, BEATS_PER_MEASURE_UNITS, 0f)
+    fun `BEATS_PER_MEASURE_UNITS equals four quarter beats times BEATS_PER_STEP`() {
+        assertEquals(4 * BEATS_PER_STEP, BEATS_PER_MEASURE_UNITS, 0f)
     }
 
     @Test
@@ -149,9 +148,10 @@ class PortraitLayoutTest {
     }
 
     @Test
-    fun `MIN_EXERCISE_NOTES covers exactly one portrait page`() {
-        // 64 notes × 2 beat-units/note = 128 beat-units = 1 page
-        val pageBeats = MIN_EXERCISE_NOTES * BEATS_PER_STEP
+    fun `DEFAULT_EXERCISE_MEASURES covers exactly one portrait page in beats`() {
+        // 16 measures × 8 beat-units/measure = 128 beat-units = 1 page
+        val expectedMeasures = com.binbashmedium.sightreadingtrainer.domain.usecase.GenerateExerciseUseCase.DEFAULT_EXERCISE_MEASURES
+        val pageBeats = expectedMeasures * BEATS_PER_MEASURE_UNITS
         assertEquals(BEATS_PER_PAGE, pageBeats, 0f)
     }
 }

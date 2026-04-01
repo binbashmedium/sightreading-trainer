@@ -103,4 +103,4 @@ The chosen generated key and `handMode` are embedded into `Exercise` at generati
 
 Single-note generation is allowed to include larger melodic skips such as fifth-based motion; the exercise-type chips are not restricted to scalar-only movement. Clustered chord voicings and arpeggios are also selectable as their own exercise content types.
 
-Exercise length is fixed at `GenerateExerciseUseCase.DEFAULT_EXERCISE_LENGTH = 64` (one portrait page: 4 notes × 4 measures × 4 rows) and is no longer user-configurable.
+Exercise length is fixed at `GenerateExerciseUseCase.DEFAULT_EXERCISE_MEASURES = 16` measures (one portrait page: 4 rows × 4 measures) and is no longer user-configurable. Each measure is filled with one of four uniform note-value patterns (WHOLE, 2×HALF, 4×QUARTER, 8×EIGHTH) chosen randomly per measure.

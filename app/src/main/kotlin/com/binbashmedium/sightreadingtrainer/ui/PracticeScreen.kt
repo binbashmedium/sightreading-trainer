@@ -57,6 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import kotlinx.coroutines.delay
 import kotlin.math.max
@@ -130,13 +131,19 @@ fun PracticeScreen(
                         }
                     }
                 } else {
-                    // Landscape: single row showing all notes with bar lines.
+                    // Landscape: 4-measure window matching one portrait row.
+                    val landscapePage = (gameState.currentBeat / BEATS_PER_ROW).toInt()
+                    val landscapeStart = landscapePage * BEATS_PER_ROW
+                    val landscapeEnd = landscapeStart + BEATS_PER_ROW
                     GrandStaffCanvas(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
                         gameState = gameState,
-                        beatsPerMeasure = BEATS_PER_MEASURE_UNITS
+                        startBeat = landscapeStart,
+                        endBeat = landscapeEnd,
+                        beatsPerMeasure = BEATS_PER_MEASURE_UNITS,
+                        measureNumberLabel = rowMeasureLabel(landscapeStart)
                     )
                 }
             }
@@ -649,8 +656,23 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
     }
     val levelTitle = "$keyName - $levelDesc"
 
+    // Compute cumulative beat positions: each step width depends on its noteValue.
+    val stepBeats = run {
+        var cursor = 0f
+        exercise.steps.map { step ->
+            val beat = cursor
+            cursor += step.noteValue.uiBeatUnits
+            beat
+        }
+    }
+    val currentBeatCumulative = if (exercise.currentIndex < stepBeats.size) {
+        stepBeats[exercise.currentIndex]
+    } else {
+        stepBeats.lastOrNull()?.let { it + exercise.steps.last().noteValue.uiBeatUnits } ?: 0f
+    }
+
     val expectedNotes = exercise.steps.flatMapIndexed { beatIndex, step ->
-        val stepBeat = beatIndex.toFloat() * 2f
+        val stepBeat = stepBeats[beatIndex]
         val snapshot = inputByBeat[beatIndex]
         val noteOutcome = if (snapshot != null) {
             classifyStepNotes(step.notes, snapshot.playedNotes)
@@ -664,7 +686,7 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
             NoteEvent(
                 midi = midi,
                 startBeat = stepBeat,
-                duration = 1f,
+                duration = step.noteValue.beats,
                 expected = true,
                 state = noteOutcome.expectedStates.getOrElse(noteIndex) { NoteState.NONE },
                 staff = staffForExercise(midi, exercise.handMode),
@@ -675,7 +697,7 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
             NoteEvent(
                 midi = midi,
                 startBeat = stepBeat,
-                duration = 1f,
+                duration = step.noteValue.beats,
                 expected = false,
                 state = NoteState.LATE,
                 staff = staffForExercise(midi, exercise.handMode),
@@ -693,13 +715,13 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
         Chord(
             name = formatChordLabel(notes, exercise.musicalKey),
             notes = notes,
-            startBeat = idx.toFloat() * 2f,
+            startBeat = stepBeats[idx],
             staff = chordStaff
         )
     }
 
     val pedalMarks = exercise.steps.flatMapIndexed { idx, step ->
-        val beat = idx.toFloat() * 2f
+        val beat = stepBeats[idx]
         val snapshot = inputByBeat[idx]
         val marks = mutableListOf<PedalMark>()
         if (step.pedalAction != PedalAction.NONE) {
@@ -724,7 +746,7 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
         notes = expectedNotes,
         chords = chords,
         pedalMarks = pedalMarks,
-        currentBeat = exercise.currentIndex.toFloat() * 2f,
+        currentBeat = currentBeatCumulative,
         musicalKey = exercise.musicalKey
     )
 }

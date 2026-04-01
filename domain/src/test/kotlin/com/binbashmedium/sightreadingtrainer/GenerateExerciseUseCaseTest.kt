@@ -19,6 +19,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.usecase.GenerateExerciseUseCase
 import org.junit.Assert.assertEquals
@@ -58,7 +59,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `exercise length uses default of 64`() {
+    fun `exercise has exactly DEFAULT_EXERCISE_MEASURES measures worth of beat units`() {
         val exercise = useCase.execute(
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.TRIADS, ExerciseContentType.SEVENTHS),
@@ -67,9 +68,60 @@ class GenerateExerciseUseCaseTest {
             )
         )
 
-        val displayedNotes = exercise.expectedNotes.sumOf { it.size }
-        assertTrue(displayedNotes <= GenerateExerciseUseCase.DEFAULT_EXERCISE_LENGTH)
-        assertTrue(displayedNotes > 0)
+        // Total beat units = sum of each step's note value in beat units (beats × 2)
+        val beatsPerMeasure = 4f // 4/4 time
+        val totalBeats = exercise.steps.sumOf { it.noteValue.beats.toDouble() }.toFloat()
+        val measuresGenerated = totalBeats / beatsPerMeasure
+        assertEquals(GenerateExerciseUseCase.DEFAULT_EXERCISE_MEASURES.toFloat(), measuresGenerated, 0.01f)
+    }
+
+    @Test
+    fun `each step has a valid NoteValue`() {
+        val exercise = useCase.execute(
+            AppSettings(exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES), handMode = HandMode.RIGHT)
+        )
+
+        assertTrue(exercise.steps.isNotEmpty())
+        exercise.steps.forEach { step ->
+            assertTrue(step.noteValue in NoteValue.entries)
+        }
+    }
+
+    @Test
+    fun `all four note value types can appear in a generated exercise`() {
+        val allValues = mutableSetOf<NoteValue>()
+        repeat(100) { seed ->
+            val exercise = useCase.execute(
+                AppSettings(exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES), handMode = HandMode.RIGHT),
+                random = kotlin.random.Random(seed)
+            )
+            exercise.steps.forEach { allValues += it.noteValue }
+        }
+        assertEquals(NoteValue.entries.toSet(), allValues)
+    }
+
+    @Test
+    fun `each measure contains only one uniform note value pattern`() {
+        val exercise = useCase.execute(
+            AppSettings(exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES), handMode = HandMode.RIGHT),
+            random = kotlin.random.Random(42)
+        )
+
+        // Reconstruct measures by consuming beat-budget of 4 beats per measure
+        val validPatternSizes = setOf(1, 2, 4, 8) // WHOLE, HALF×2, QUARTER×4, EIGHTH×8
+        var measureBudget = 0f
+        var measureSteps = mutableListOf<NoteValue>()
+        for (step in exercise.steps) {
+            measureSteps += step.noteValue
+            measureBudget += step.noteValue.beats
+            if (measureBudget >= 4f - 0.001f) {
+                // Measure complete: all steps must have same noteValue
+                assertTrue(measureSteps.toSet().size == 1)
+                assertTrue(measureSteps.size in validPatternSizes)
+                measureBudget = 0f
+                measureSteps = mutableListOf()
+            }
+        }
     }
 
     @Test
@@ -344,7 +396,7 @@ class GenerateExerciseUseCaseTest {
 
     @Test
     fun `multiple selected progressions choose one random progression per exercise`() {
-        val signatures = mutableSetOf<List<List<Int>>>()
+        val firstChords = mutableSetOf<List<Int>>()
 
         (1..40).forEach { seed ->
             val exercise = useCase.execute(
@@ -357,12 +409,15 @@ class GenerateExerciseUseCaseTest {
                 forcedKey = 0,
                 random = Random(seed)
             )
-            assertTrue(exercise.steps.size in setOf(3, 4))
-            signatures += exercise.steps.map { it.notes }
+            // Exercise is now always 16 measures; first step reflects which progression was chosen.
+            assertTrue(exercise.steps.isNotEmpty())
+            firstChords += exercise.steps.first().notes
         }
 
-        assertTrue(signatures.any { it.size == 4 && it.first() == listOf(60, 64, 67) })
-        assertTrue(signatures.any { it.size == 3 && it.first() == listOf(62, 65, 69) })
+        // I-IV-V-I: first chord = I = C major triad = [60, 64, 67]
+        assertTrue(firstChords.any { it == listOf(60, 64, 67) })
+        // II-V-I: first chord = ii = D minor triad = [62, 65, 69]
+        assertTrue(firstChords.any { it == listOf(62, 65, 69) })
     }
 
     @Test
@@ -395,7 +450,8 @@ class GenerateExerciseUseCaseTest {
             random = Random(3)
         )
 
-        assertEquals(4, exercise.steps.size)
+        // Exercise is now always 16 measures; verify all steps span both staves.
+        assertTrue(exercise.steps.isNotEmpty())
         exercise.steps.forEach { step ->
             assertTrue(step.notes.any { it < 60 })
             assertTrue(step.notes.any { it >= 60 })
