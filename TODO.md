@@ -1,20 +1,12 @@
 # TODO
 
-## In Progress
-
-- [ ] **Mixed note values (whole, half, quarter, eighth)** — 4/4 time stays; landscape shows 4 measures per view; portrait shows 16 measures (4 rows × 4 measures); per measure: exactly 1 whole OR 2 halves OR 4 quarters OR 8 eighths (uniform per measure); `ExerciseStep.noteValue: NoteValue` added; `DEFAULT_EXERCISE_MEASURES = 16` replaces `DEFAULT_EXERCISE_LENGTH`; cumulative beat positions in `toGameState()`; landscape 4-measure pagination; new tests added.
-  - [ ] Add `noteValue: NoteValue = NoteValue.QUARTER` to `ExerciseStep`
-  - [ ] Refactor `GenerateExerciseUseCase`: `DEFAULT_EXERCISE_MEASURES = 16`, `MATERIAL_POOL_SIZE = 128`, `MEASURE_PATTERNS`, `applyMeasurePatterns()`
-  - [ ] Update `GrandStaffModels.kt`: `NoteValue.uiBeatUnits` extension, remove `MIN_EXERCISE_NOTES`, update `BEATS_PER_MEASURE_UNITS` comment
-  - [ ] Fix `PracticeScreen.toGameState()`: cumulative beat positions, `duration = step.noteValue.beats`
-  - [ ] Add landscape 4-measure pagination in `PracticeScreen`
-  - [ ] Update `GenerateExerciseUseCaseTest`: rename `DEFAULT_EXERCISE_LENGTH` test, add measure/note-value tests
-  - [ ] Update `PortraitLayoutTest`: fix `MIN_EXERCISE_NOTES` test
-  - [ ] Create `NoteValueLayoutTest`: `uiBeatUnits`, cumulative beats, landscape pagination
-
 ## Done (recent)
 
-- [x] **exerciseLength setting removed** — `AppSettings.exerciseLength` field removed; exercise length is now fixed at `GenerateExerciseUseCase.DEFAULT_EXERCISE_LENGTH = 64`; `EXERCISE_LENGTH` DataStore key removed; slider removed from `SettingsScreen`; length display removed from `MainScreen`; `exercise_length` string resource removed; `parseExerciseTypes()` signature simplified; test updated to validate `DEFAULT_EXERCISE_LENGTH`.
+- [x] **Eighth note beaming (Ligatures)** — Consecutive eighth notes grouped per quarter beat (2 per beat) are connected by a horizontal beam bar instead of individual flags; `BeamGroup` data class and `computeBeamGroups()` added to `GrandStaffModels.kt`; two-pass rendering in `GrandStaffCanvas`: pass 1 collects natural stem end-Y for beamed positions, computes shared beam Y (most extreme), pass 2 uses unified stem direction and extends all stems in group to beam Y, skips flags for beamed notes, draws beam bar after loop (`strokeWidth = lineSpacing * 0.5f`); 12 `BeamGroupTest` unit tests added; all 83 tests pass (44 domain + 39 app).
+
+- [x] **Mixed note values (whole, half, quarter, eighth)** — 4/4 time stays; landscape shows 4 measures per view; portrait shows 16 measures (4 rows × 4 measures); per measure exactly 1 whole OR 2 halves OR 4 quarters OR 8 eighths (uniform per measure, randomly selected); `ExerciseStep.noteValue: NoteValue` added; `DEFAULT_EXERCISE_MEASURES = 16` and `MATERIAL_POOL_SIZE = 128` replace `DEFAULT_EXERCISE_LENGTH`; `NoteValue.uiBeatUnits` extension in `GrandStaffModels`; cumulative beat positions in `toGameState()`; `duration = step.noteValue.beats`; landscape 4-measure pagination; 44 domain tests pass, 27 app unit tests pass (13 `PortraitLayoutTest` + 14 `NoteValueLayoutTest`).
+
+- [x] **exerciseLength setting removed** — `AppSettings.exerciseLength` field removed; exercise length is now fixed at `GenerateExerciseUseCase.DEFAULT_EXERCISE_MEASURES = 16`; `EXERCISE_LENGTH` DataStore key removed; slider removed from `SettingsScreen`; length display removed from `MainScreen`; `exercise_length` string resource removed; `parseExerciseTypes()` signature simplified.
 
 - [x] **Portrait mode with 4 grand staff rows** — All items completed and tested:
   - Removed `sensorLandscape` orientation lock from `AndroidManifest.xml` → `sensor`
