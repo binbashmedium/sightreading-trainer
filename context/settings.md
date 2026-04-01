@@ -8,7 +8,6 @@ data class AppSettings(
     val timingToleranceMs: Int = 200,
     val chordWindowMs: Int = 50,
     val exerciseTimeSec: Int = 60,
-    val exerciseLength: Int = 8,
     val exerciseTypes: Set<ExerciseContentType> = setOf(ExerciseContentType.SINGLE_NOTES),
     val handMode: HandMode = HandMode.RIGHT,
     val noteAccidentalsEnabled: Boolean = false,
@@ -21,7 +20,10 @@ data class AppSettings(
     val correctNoteStats: Map<String, Int> = emptyMap(),
     val wrongNoteStats: Map<String, Int> = emptyMap(),
     val soundEnabled: Boolean = true,
-    val selectedKeys: Set<Int> = setOf(0)
+    /** Selectable pool of keys (0 = C … 11 = B). */
+    val selectedKeys: Set<Int> = setOf(0),
+    /** Active chord progressions used when PROGRESSIONS type is selected. */
+    val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I)
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }
@@ -35,7 +37,8 @@ enum class ExerciseContentType {
     TRIADS,
     SEVENTHS,
     NINTHS,
-    CLUSTERED_CHORDS
+    CLUSTERED_CHORDS,
+    PROGRESSIONS
 }
 ```
 
@@ -43,7 +46,7 @@ enum class ExerciseContentType {
 
 Settings are persisted using Jetpack DataStore (`Preferences`).
 
-- `SettingsDataStore` maps preference keys to fields, including the selected key pool and `exercise_length`.
+- `SettingsDataStore` maps preference keys to fields, including the selected key pool.
 - Highscore and cumulative note counters are persisted in DataStore as part of `AppSettings`.
 - Group/note performance statistics are persisted in DataStore as serialized maps:
   - `correctGroupStats`, `wrongGroupStats`
@@ -61,20 +64,20 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 
 ### Exercise generation
 `GenerateExerciseUseCase` uses:
-- a multi-select pool of exercise content types
-- `exerciseLength`
+- a multi-select pool of exercise content types (`exerciseTypes`)
 - `exerciseTimeSec`
 - `handMode`
 - `noteAccidentalsEnabled`
 - `pedalEventsEnabled`
 - `selectedKeys` (0-11 pool; one key is chosen per exercise)
+- `selectedProgressions` (used when `PROGRESSIONS` type is active)
 
 ## SettingsScreen UI
 
 The screen includes:
 - exercise-type multi-select chips
-- exercise-length slider
 - exercise-time slider
+- chord-progression multi-select chips (shown only when PROGRESSIONS type is active)
 - multi-select key chips
 - hand-mode chips
 - generated note-accidental toggle
@@ -100,4 +103,4 @@ The chosen generated key and `handMode` are embedded into `Exercise` at generati
 
 Single-note generation is allowed to include larger melodic skips such as fifth-based motion; the exercise-type chips are not restricted to scalar-only movement. Clustered chord voicings and arpeggios are also selectable as their own exercise content types.
 
-`exerciseLength` now represents a max visible note budget per generated chunk (sum of noteheads), not a fixed step count.
+Exercise length is fixed at `GenerateExerciseUseCase.DEFAULT_EXERCISE_MEASURES = 16` measures (one portrait page: 4 rows × 4 measures) and is no longer user-configurable. Each measure is filled with one of four uniform note-value patterns (WHOLE, 2×HALF, 4×QUARTER, 8×EIGHTH) chosen randomly per measure.

@@ -92,6 +92,53 @@ GrandStaffCanvas             draws the grand staff, clefs, notes, cursor, and la
    Chord groups now preserve per-notehead color (mixed-state chords are not flattened to one color).
 5. The single "New Exercise" button regenerates notes via `PracticeViewModel.reloadSession()`.
 
+## Orientation-Aware Layout
+
+`PracticeScreen` detects orientation via `LocalConfiguration.current`:
+
+- **Portrait**: 4 grand-staff rows stacked vertically in a `Column`. Each row is a `GrandStaffCanvas` with a `[startBeat, endBeat)` window of 32 beat-units (4 measures × `BEATS_PER_MEASURE_UNITS`). The red cursor is only visible in the row that contains `currentBeat`. When the cursor reaches the last row of a page, the page flips to show the next 4 rows.
+- **Landscape**: Single `GrandStaffCanvas` showing a 4-measure window (32 beat-units). The visible window advances when the cursor leaves the current page (`landscapePage = (currentBeat / BEATS_PER_ROW).toInt()`).
+
+### Beat / Layout Constants (`GrandStaffModels.kt`)
+
+```kotlin
+const val BEATS_PER_STEP          = 2f    // UI beat-units per quarter note
+const val MEASURES_PER_ROW        = 4     // portrait: 4 measures per row
+const val ROWS_PER_PAGE           = 4     // portrait: 4 rows per page
+const val BEATS_PER_MEASURE_UNITS = 8f    // 4 quarter-note beats × BEATS_PER_STEP
+const val BEATS_PER_ROW           = 32f   // MEASURES_PER_ROW × BEATS_PER_MEASURE_UNITS
+const val BEATS_PER_PAGE          = 128f  // ROWS_PER_PAGE × BEATS_PER_ROW
+
+// Extension: converts NoteValue to UI beat-units
+val NoteValue.uiBeatUnits: Float get() = beats * BEATS_PER_STEP
+// WHOLE=8f, HALF=4f, QUARTER=2f, EIGHTH=1f
+```
+
+`NoteValue.beats` (domain): WHOLE=4f, HALF=2f, QUARTER=1f, EIGHTH=0.5f.
+`uiBeatUnits` maps musical beats to the UI coordinate system.
+
+### Note Values and Measure Patterns
+
+Each measure in 4/4 time must contain exactly one of these uniform patterns:
+- `[WHOLE]` — 1 whole note per measure
+- `[HALF, HALF]` — 2 half notes per measure
+- `[QUARTER, QUARTER, QUARTER, QUARTER]` — 4 quarter notes per measure
+- `[EIGHTH ×8]` — 8 eighth notes per measure
+
+`GenerateExerciseUseCase.MEASURE_PATTERNS` holds all 4 patterns. `applyMeasurePatterns()` randomly selects one pattern per measure and assigns `noteValue` to each `ExerciseStep`.
+
+### Helper Functions
+
+```kotlin
+fun beatToPage(beat: Float): Int          // which page number a beat falls on
+fun pageStartBeat(page: Int): Float       // first beat-unit of a given page
+fun rowMeasureLabel(rowStartBeat: Float): Int  // 1-based measure number for a row
+```
+
+### Bar Lines
+
+`GrandStaffCanvas` draws vertical bar lines at every `beatsPerMeasure` interval within the visible beat range. The final bar line is drawn thicker (3f stroke) at `endBeat`; intermediate bar lines use 1.5f stroke.
+
 ## Dependency Injection
 
 Hilt is used with `SingletonComponent` for app-scoped dependencies.

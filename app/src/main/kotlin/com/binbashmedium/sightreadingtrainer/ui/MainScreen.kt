@@ -54,7 +54,6 @@ fun MainScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Text("Length: ${settings.exerciseLength}")
         Text("Time: ${settings.exerciseTimeSec}s")
         Text(
             text = "Types: $typeSummary",

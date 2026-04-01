@@ -16,6 +16,7 @@ package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.model.StepInputSnapshot
 import kotlin.math.absoluteValue
@@ -71,6 +72,24 @@ const val BASS_CLEF_GLYPH_X_OFFSET_RATIO = 0.22f
 const val KEY_SIGNATURE_LEAD_IN_RATIO = 0.72f
 const val KEY_SIGNATURE_X_OFFSET_RATIO = 0.38f
 const val NOTE_ACCIDENTAL_TEXT_SIZE_RATIO = 1.08f
+
+// ── Beat / layout constants ──────────────────────────────────────────────────
+/** UI beat-units per quarter note. WHOLE=8, HALF=4, QUARTER=2, EIGHTH=1. */
+const val BEATS_PER_STEP = 2f
+/** Measures shown per grand-staff row (portrait and landscape). */
+const val MEASURES_PER_ROW = 4
+/** Grand-staff rows shown per page in portrait mode. */
+const val ROWS_PER_PAGE = 4
+/** Beat-units per measure = 4 quarter notes × BEATS_PER_STEP = 8f. */
+const val BEATS_PER_MEASURE_UNITS = 4 * BEATS_PER_STEP                   // 8f
+/** Beat-units per row = MEASURES_PER_ROW × BEATS_PER_MEASURE_UNITS = 32f. */
+const val BEATS_PER_ROW = MEASURES_PER_ROW * BEATS_PER_MEASURE_UNITS     // 32f
+/** Beat-units per page = ROWS_PER_PAGE × BEATS_PER_ROW = 128f. */
+const val BEATS_PER_PAGE = ROWS_PER_PAGE * BEATS_PER_ROW                 // 128f
+
+/** Extension: converts a [NoteValue] to UI beat-units for positioning. */
+val NoteValue.uiBeatUnits: Float get() = beats * BEATS_PER_STEP
+// WHOLE=8f, HALF=4f, QUARTER=2f, EIGHTH=1f
 
 enum class NoteState {
     NONE,
@@ -515,6 +534,15 @@ private fun detectChord(notes: List<Int>): DetectedChord? {
 
     return null
 }
+
+/** Returns the 0-based page index for the given beat (portrait pagination). */
+fun beatToPage(beat: Float): Int = (beat / BEATS_PER_PAGE).toInt()
+
+/** Returns the start beat of the given 0-based page. */
+fun pageStartBeat(page: Int): Float = page * BEATS_PER_PAGE
+
+/** Returns the 1-based measure number for the first measure in the given portrait row. */
+fun rowMeasureLabel(rowStartBeat: Float): Int = (rowStartBeat / BEATS_PER_MEASURE_UNITS).toInt() + 1
 
 fun noteName(midi: Int): String {
     val pitchClass = ((midi % 12) + 12) % 12
