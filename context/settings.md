@@ -20,7 +20,10 @@ data class AppSettings(
     val correctNoteStats: Map<String, Int> = emptyMap(),
     val wrongNoteStats: Map<String, Int> = emptyMap(),
     val soundEnabled: Boolean = true,
-    val selectedKeys: Set<Int> = setOf(0)
+    /** Selectable pool of keys (0 = C … 11 = B). */
+    val selectedKeys: Set<Int> = setOf(0),
+    /** Active chord progressions used when PROGRESSIONS type is selected. */
+    val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I)
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }
@@ -34,7 +37,8 @@ enum class ExerciseContentType {
     TRIADS,
     SEVENTHS,
     NINTHS,
-    CLUSTERED_CHORDS
+    CLUSTERED_CHORDS,
+    PROGRESSIONS
 }
 ```
 
@@ -60,18 +64,20 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 
 ### Exercise generation
 `GenerateExerciseUseCase` uses:
-- a multi-select pool of exercise content types
+- a multi-select pool of exercise content types (`exerciseTypes`)
 - `exerciseTimeSec`
 - `handMode`
 - `noteAccidentalsEnabled`
 - `pedalEventsEnabled`
 - `selectedKeys` (0-11 pool; one key is chosen per exercise)
+- `selectedProgressions` (used when `PROGRESSIONS` type is active)
 
 ## SettingsScreen UI
 
 The screen includes:
 - exercise-type multi-select chips
 - exercise-time slider
+- chord-progression multi-select chips (shown only when PROGRESSIONS type is active)
 - multi-select key chips
 - hand-mode chips
 - generated note-accidental toggle

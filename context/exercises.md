@@ -160,7 +160,7 @@ The app now applies these notation rules in pure helpers:
 
 ## Portrait Page Layout
 
-In portrait mode, `GrandStaffCanvas` is called once per row with `startBeat`/`endBeat` to filter content. The page is determined by `beatToPage(currentBeat)` and `pageStartBeat(page)`. Each page contains `ROWS_PER_PAGE = 4` rows of `BEATS_PER_ROW = 32f` beat-units. Minimum exercise length is `MIN_EXERCISE_NOTES = 64` to fill one full portrait page.
+In portrait mode, `GrandStaffCanvas` is called once per row with `startBeat`/`endBeat` to filter content. The page is determined by `beatToPage(currentBeat)` and `pageStartBeat(page)`. Each page contains `ROWS_PER_PAGE = 4` rows of `BEATS_PER_ROW = 32f` beat-units. Exercise length is fixed at `GenerateExerciseUseCase.DEFAULT_EXERCISE_LENGTH = 64` (= `MIN_EXERCISE_NOTES`) — exactly one portrait page.
 
 ## Session Lifecycle
 
