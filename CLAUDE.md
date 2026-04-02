@@ -94,15 +94,11 @@ USB MIDI → AndroidMidiManager (SharedFlow<NoteEvent>)
 
 ### Settings & DI
 
-`AppSettings` (DataStore-backed) flows from `SettingsRepository` into all ViewModels. `PracticeViewModel` reads it to configure `AndroidMidiManager`, `ChordDetector` (chordWindowMs), and `MatchNotesUseCase` (toleranceMs). `GenerateExerciseUseCase` uses `difficulty` (1–5) and `handMode` (LEFT/RIGHT/BOTH).
+`AppSettings` (DataStore-backed) flows from `SettingsRepository` into all ViewModels. `PracticeViewModel` reads it to configure `AndroidMidiManager`, `ChordDetector` (chordWindowMs), and `MatchNotesUseCase` (toleranceMs). `GenerateExerciseUseCase` uses `selectedExerciseTypes` (multi-select `ExerciseContentType`), `selectedKeys`, and `handMode` (LEFT/RIGHT/BOTH).
 
 ## Known Gaps (see TODO.md)
 
-- `NoteValue.kt` is untracked — commit it.
-- `toGameState` hardcodes `duration = 1f` for all notes; `NoteValue` is not yet wired in.
-- `toGameState` applies `lastResult` color to all past beats, not per-beat results.
-- Hint button is a stub. Pause doesn't stop the domain-level cursor.
-- No session-complete screen. MIDI reconnect not handled.
+No open gaps — all previously listed items have been resolved.
 
 
 ## Keep all Context files upda to date
