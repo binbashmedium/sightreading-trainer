@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; background: white; overflow: hidden; }
+    #output svg { width: 100% !important; height: auto !important; display: block; }
+  </style>
+</head>
+<body>
+  <div id="output"></div>
+  <script src="verovio-toolkit-wasm.js"></script>
+  <script>
+    var vrvToolkit = null;
+    var pendingCall = null;
+
+    verovio.module.onRuntimeInitialized = function () {
+      vrvToolkit = new verovio.toolkit();
+      if (pendingCall) {
+        pendingCall();
+        pendingCall = null;
+      }
+    };
+
+    function doRender(meiData, showCursor) {
+      vrvToolkit.setOptions({
+        pageWidth: 2100,
+        adjustPageHeight: true,
+        breaks: "encoded",
+        header: "none",
+        footer: "none",
+        scale: 35,
+        spacingSystem: 4,
+        spacingStaff: 8
+      });
+      vrvToolkit.loadData(meiData);
+      document.getElementById('output').innerHTML = vrvToolkit.renderToSVG(1);
+      if (showCursor) {
+        drawCursor();
+      }
+    }
+
+    function renderMei(meiData, showCursor) {
+      if (vrvToolkit) {
+        doRender(meiData, showCursor);
+      } else {
+        pendingCall = function () { doRender(meiData, showCursor); };
+      }
+    }
+
+    function drawCursor() {
+      var existing = document.getElementById('beat-cursor');
+      if (existing) existing.remove();
+
+      var svgEl = document.querySelector('#output svg');
+      if (!svgEl) return;
+
+      var els = [];
+      svgEl.querySelectorAll('[id^="ncurr"]').forEach(function (el) { els.push(el); });
+      if (els.length === 0) return;
+
+      var svgRect = svgEl.getBoundingClientRect();
+      if (svgRect.width === 0) return;
+      var viewBox = svgEl.viewBox.baseVal;
+      var scaleX = viewBox.width / svgRect.width;
+
+      var minX = Infinity;
+      els.forEach(function (el) {
+        var bbox = el.getBoundingClientRect();
+        var x = (bbox.left - svgRect.left) * scaleX + viewBox.x;
+        if (x < minX) minX = x;
+      });
+
+      if (!isFinite(minX)) return;
+
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('id', 'beat-cursor');
+      line.setAttribute('x1', minX);
+      line.setAttribute('y1', viewBox.y);
+      line.setAttribute('x2', minX);
+      line.setAttribute('y2', viewBox.y + viewBox.height);
+      line.setAttribute('stroke', 'rgba(220,0,0,0.8)');
+      line.setAttribute('stroke-width', '30');
+      svgEl.appendChild(line);
+    }
+  </script>
+</body>
+</html>
