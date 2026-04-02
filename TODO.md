@@ -1,6 +1,12 @@
 # TODO
 
+## In Progress
+
+(none)
+
 ## Done (recent)
+
+- [x] **Note type selection + bar-line gap** — Added `selectedNoteValues: Set<NoteValue>` to `AppSettings`; settings UI shows Whole/Half/Quarter/Eighth FilterChips (at least one required); `GenerateExerciseUseCase.applyMeasurePatterns` filters `MEASURE_PATTERNS` to selected note values with a bar-line gap constraint (`BARLINE_GAP_BEATS = 1f`): last notehead per measure must start ≤ 3 beats from the bar line (excludes 8×EIGHTH pattern; fallback to gap-valid patterns); `BAR_LINE_SHIFT_RATIO` increased from 0.65 to 1.5; `SettingsDataStore` persists the new field; 86 domain tests pass.
 
 - [x] **Bar-line/notehead overlap fix (final)** — `BAR_LINE_SHIFT_RATIO` increased from 0.35 to 0.65 (must exceed notehead radius ratio of 0.55) so the bar line edge clears the notehead circle of the following measure's first note. `beatWidth` minimum changed from hard-coded `20f` to `lineSpacing * 0.5f` to prevent C# key (7 sharps) notes from overflowing the canvas in portrait mode. Two regression tests added: `bar line shift clears notehead radius` and `beatWidth floor uses lineSpacing fraction not fixed pixel minimum`; all 88 app tests pass; verified on VASOUN L10 with C, C#, G, Bb, B keys across 5+ exercise regenerations.
 

@@ -329,6 +329,27 @@ class GrandStaffModelsTest {
     }
 
     @Test
+    fun `BAR_LINE_SHIFT_RATIO provides at least notehead-width gap after bar line`() {
+        // Gap from bar line to first notehead of next measure (center at 0 shift):
+        //   gap = BAR_LINE_SHIFT_RATIO * lineSpacing − noteheadRadius * lineSpacing
+        //   noteheadRadius ratio ≈ 0.55f (half the notehead width of ~1.1 × lineSpacing).
+        // The shift must exceed the notehead radius so the first note does not visually
+        // touch the bar line.
+        val noteheadRadiusRatio = 0.55f
+        assertTrue(
+            "BAR_LINE_SHIFT_RATIO ($BAR_LINE_SHIFT_RATIO) must exceed notehead radius ratio ($noteheadRadiusRatio)",
+            BAR_LINE_SHIFT_RATIO > noteheadRadiusRatio
+        )
+        // The shift should be at least 1× notehead-width (= ~1.1 × lineSpacing) so there is a
+        // visible gap between bar line and the following notehead edge.
+        val noteheadWidthRatio = 1.1f
+        assertTrue(
+            "BAR_LINE_SHIFT_RATIO ($BAR_LINE_SHIFT_RATIO) should be >= noteheadWidthRatio ($noteheadWidthRatio) for visible after-bar gap",
+            BAR_LINE_SHIFT_RATIO >= noteheadWidthRatio
+        )
+    }
+
+    @Test
     fun `generateExampleGameState produces dynamic content`() {
         val now = 1_700_000_000_000L
         val state = generateExampleGameState(now)

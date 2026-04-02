@@ -32,6 +32,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 
 @Composable
 fun SettingsScreen(
@@ -130,6 +131,29 @@ fun SettingsScreen(
                         viewModel.updateSettings(settings.copy(selectedKeys = updatedKeys))
                     },
                     label = { Text(keyName) }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Note value pool (whole / half / quarter / eighth)
+        Text("Note Values")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NoteValue.entries.forEach { nv ->
+                FilterChip(
+                    selected = nv in settings.selectedNoteValues,
+                    onClick = {
+                        val updated = settings.selectedNoteValues.toMutableSet().apply {
+                            if (contains(nv)) {
+                                if (size > 1) remove(nv)
+                            } else {
+                                add(nv)
+                            }
+                        }
+                        viewModel.updateSettings(settings.copy(selectedNoteValues = updated))
+                    },
+                    label = { Text(nv.name.lowercase().replaceFirstChar { it.uppercase() }) }
                 )
             }
         }
