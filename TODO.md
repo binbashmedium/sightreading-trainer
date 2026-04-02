@@ -2,6 +2,8 @@
 
 ## Done (recent)
 
+- [x] **Thin cursor line + pedal mark rendering** — `staff.html`: cursor `stroke-width` changed from fixed 30 to proportional (0.5% of viewBox width, min 2) for a slim line at any screen size. `MeiConverter`: pedal marks now converted to MEI `<pedal tstamp="..." staff="2" dir="down/up" [color="..."]/>` control events; `Locale.US` used for tstamp formatting to avoid locale-dependent decimal separators. 7 new `MeiConverterTest` pedal tests added (141 total pass).
+
 - [x] **Rotation stability + full-width staff** — `LaunchedEffect` now only calls `startSession()` when `practiceState == null` (rotation no longer regenerates notes); `staff.html` uses correct Verovio options (`svgViewBox: true`, `adjustPageWidth: true`, `breaks: "none"`) so SVG is emitted with a viewBox and CSS `width: 100%; height: auto` gives fully responsive scaling; `constrainSvgHeight()` reduces width if viewBox aspect ratio would overflow portrait row height; WebView cache cleared on creation (`LOAD_NO_CACHE` + `clearCache(true)`).
 
 - [x] **Verovio integration** — Replaced custom Canvas staff rendering with Verovio (music notation library). `GrandStaffCanvas` replaced by `VerovioStaffView` (WebView + Verovio.js v6.1.0 bundled in assets); `MeiConverter` converts `GameState` → MEI XML; note state coloring (CORRECT/WRONG/LATE) via MEI `@color`; cursor via JavaScript SVG injection (`drawCursor()` finds `ncurr*` xml:ids); portrait 4-row and landscape 1-row layout preserved; `MeiConverterTest` (30+ unit tests) covers pitch mapping, duration, key signature, note coloring, chord grouping, beat range filtering, natural accidentals.
