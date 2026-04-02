@@ -108,8 +108,10 @@
       line.setAttribute('y1', viewBox.y);
       line.setAttribute('x2', minX);
       line.setAttribute('y2', viewBox.y + viewBox.height);
-      line.setAttribute('stroke', 'rgba(220,0,0,0.8)');
-      line.setAttribute('stroke-width', '30');
+      line.setAttribute('stroke', 'rgba(220,0,0,0.85)');
+      // stroke-width is in viewBox units; use ~0.5% of viewBox width for a thin line
+      var strokeW = Math.max(2, viewBox.width * 0.005);
+      line.setAttribute('stroke-width', strokeW);
       svgEl.appendChild(line);
     }
   </script>

@@ -15,6 +15,7 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -358,5 +359,64 @@ class MeiConverterTest {
             accidental = NoteAccidental.NATURAL)
         val result = MeiConverter.renderLayer(listOf(note), 0f, -1f)
         assertTrue("Natural accidental should produce accid=n", result.contains("accid=\"n\""))
+    }
+
+    // ── Pedal marks ───────────────────────────────────────────────────────────
+
+    private fun gameStateWithPedals(pedals: List<PedalMark>) = GameState(
+        levelTitle = "Test", elapsedTime = 0L, score = 0, bpm = 0f,
+        notes = emptyList(), chords = emptyList(),
+        pedalMarks = pedals, currentBeat = 0f
+    )
+
+    @Test
+    fun `pedal press emits dir=down element`() {
+        val pedal = PedalMark(startBeat = 0f, action = PedalAction.PRESS, state = NoteState.NONE)
+        val mei = MeiConverter.convert(gameStateWithPedals(listOf(pedal)), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Press should produce dir=\"down\"", mei.contains("dir=\"down\""))
+        assertTrue("Pedal element should target staff 2", mei.contains("staff=\"2\""))
+    }
+
+    @Test
+    fun `pedal release emits dir=up element`() {
+        val pedal = PedalMark(startBeat = 4f, action = PedalAction.RELEASE, state = NoteState.NONE)
+        val mei = MeiConverter.convert(gameStateWithPedals(listOf(pedal)), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Release should produce dir=\"up\"", mei.contains("dir=\"up\""))
+    }
+
+    @Test
+    fun `pedal tstamp maps beat 0 to tstamp 1`() {
+        val pedal = PedalMark(startBeat = 0f, action = PedalAction.PRESS, state = NoteState.NONE)
+        val mei = MeiConverter.convert(gameStateWithPedals(listOf(pedal)), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Beat 0 should map to tstamp=\"1.0000\"", mei.contains("tstamp=\"1.0000\""))
+    }
+
+    @Test
+    fun `pedal tstamp maps beat 4 (half note) to tstamp 3`() {
+        // startBeat=4 UI units = 2 quarter-note beats from measure start, 1-indexed → tstamp 3
+        val pedal = PedalMark(startBeat = 4f, action = PedalAction.RELEASE, state = NoteState.NONE)
+        val mei = MeiConverter.convert(gameStateWithPedals(listOf(pedal)), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Beat 4 should map to tstamp=\"3.0000\"", mei.contains("tstamp=\"3.0000\""))
+    }
+
+    @Test
+    fun `pedal NONE action not emitted`() {
+        val pedal = PedalMark(startBeat = 0f, action = PedalAction.NONE, state = NoteState.NONE)
+        val mei = MeiConverter.convert(gameStateWithPedals(listOf(pedal)), 0f, BEATS_PER_MEASURE_UNITS)
+        assertFalse("NONE pedal should not produce pedal element", mei.contains("<pedal"))
+    }
+
+    @Test
+    fun `pedal correct state emits green color`() {
+        val pedal = PedalMark(startBeat = 0f, action = PedalAction.PRESS, state = NoteState.CORRECT)
+        val mei = MeiConverter.convert(gameStateWithPedals(listOf(pedal)), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Correct pedal should be green", mei.contains("color=\"#2E7D32\""))
+    }
+
+    @Test
+    fun `pedal outside beat range not emitted`() {
+        val pedal = PedalMark(startBeat = 40f, action = PedalAction.PRESS, state = NoteState.NONE)
+        val mei = MeiConverter.convert(gameStateWithPedals(listOf(pedal)), 0f, BEATS_PER_ROW)
+        assertFalse("Pedal outside range should not appear", mei.contains("<pedal"))
     }
 }

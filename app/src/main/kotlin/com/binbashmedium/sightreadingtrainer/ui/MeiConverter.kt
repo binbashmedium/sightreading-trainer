@@ -15,6 +15,8 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -47,6 +49,9 @@ object MeiConverter {
         val notes = gameState.notes.filter {
             it.startBeat >= startBeat && it.startBeat < actualEnd
         }
+        val pedals = gameState.pedalMarks.filter {
+            it.startBeat >= startBeat && it.startBeat < actualEnd && it.action != PedalAction.NONE
+        }
 
         val firstMeasure = (startBeat / BEATS_PER_MEASURE_UNITS).toInt()
         val lastMeasure  = ((actualEnd - 0.01f) / BEATS_PER_MEASURE_UNITS).toInt()
@@ -60,8 +65,9 @@ object MeiConverter {
                 val mStartBeat    = mIdx * BEATS_PER_MEASURE_UNITS
                 val mEndBeat      = mStartBeat + BEATS_PER_MEASURE_UNITS
                 val measureNotes  = notes.filter { it.startBeat >= mStartBeat && it.startBeat < mEndBeat }
+                val measurePedals = pedals.filter { it.startBeat >= mStartBeat && it.startBeat < mEndBeat }
                 val isLast        = i == numMeasures - 1
-                append(renderMeasure(i + 1, measureNotes, mStartBeat, isLast, gameState.currentBeat))
+                append(renderMeasure(i + 1, measureNotes, measurePedals, mStartBeat, isLast, gameState.currentBeat))
             }
         }
 
@@ -88,6 +94,7 @@ $measuresXml    </section>
     private fun renderMeasure(
         n: Int,
         notes: List<NoteEvent>,
+        pedalMarks: List<PedalMark>,
         measureStartBeat: Float,
         isLast: Boolean,
         currentBeat: Float
@@ -95,6 +102,18 @@ $measuresXml    </section>
         val treble = notes.filter { it.staff == StaffType.TREBLE }
         val bass   = notes.filter { it.staff == StaffType.BASS }
         val right  = if (isLast) """ right="end"""" else ""
+
+        // MEI <pedal> elements placed after <staff> blocks as control events.
+        // tstamp is 1-indexed quarter-note beat within the measure.
+        val pedalXml = pedalMarks.joinToString("") { pm ->
+            val qBeat  = (pm.startBeat - measureStartBeat) / BEATS_PER_STEP
+            val tstamp = String.format(Locale.US, "%.4f", qBeat + 1f)
+            val dir    = if (pm.action == PedalAction.PRESS) "down" else "up"
+            val color  = noteStateMeiColor(pm.state)
+            val colorAttr = if (color != null) " color=\"$color\"" else ""
+            "        <pedal tstamp=\"$tstamp\" staff=\"2\" dir=\"$dir\"$colorAttr/>\n"
+        }
+
         return "      <measure n=\"$n\"$right>\n" +
                "        <staff n=\"1\"><layer n=\"1\">\n" +
                renderLayer(treble, measureStartBeat, currentBeat).prependIndent("          ") + "\n" +
@@ -102,6 +121,7 @@ $measuresXml    </section>
                "        <staff n=\"2\"><layer n=\"1\">\n" +
                renderLayer(bass, measureStartBeat, currentBeat).prependIndent("          ") + "\n" +
                "        </layer></staff>\n" +
+               pedalXml +
                "      </measure>\n"
     }
 
