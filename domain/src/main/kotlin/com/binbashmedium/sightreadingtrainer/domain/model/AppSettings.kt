@@ -34,7 +34,10 @@ data class AppSettings(
     /** Selectable pool of keys (0 = C, 1 = C#/Db, 2 = D, …, 11 = B). */
     val selectedKeys: Set<Int> = setOf(0),
     /** Active chord progressions used when [ExerciseContentType.PROGRESSIONS] is selected. */
-    val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I)
+    val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I),
+    /** Which note values (whole/half/quarter/eighth) may appear in generated measures.
+     *  At least one must remain active; defaults to all four enabled. */
+    val selectedNoteValues: Set<NoteValue> = NoteValue.entries.toSet()
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }

@@ -49,6 +49,17 @@ class GenerateExerciseUseCase {
             listOf(NoteValue.EIGHTH, NoteValue.EIGHTH, NoteValue.EIGHTH, NoteValue.EIGHTH,
                    NoteValue.EIGHTH, NoteValue.EIGHTH, NoteValue.EIGHTH, NoteValue.EIGHTH)
         )
+        /** Total beats in one 4/4 measure. */
+        const val BEATS_PER_MEASURE = 4f
+        /**
+         * Minimum gap (in beats) that must remain between the last notehead of a measure
+         * and the following bar line.  One quarter note (1f beat) ensures the bar line is
+         * never visually adjacent to the last notehead of the measure.
+         * The 8×EIGHTH pattern places its last note at beat 3.5 which exceeds the allowed
+         * maximum of BEATS_PER_MEASURE - BARLINE_GAP_BEATS = 3f, so that pattern is
+         * excluded whenever the gap constraint is active.
+         */
+        const val BARLINE_GAP_BEATS = 1f
 
         private val SCALE_7 = listOf(0, 2, 4, 5, 7, 9, 11)
         private val SINGLE_NOTE_MOTION = listOf(0, 2, 4, 7, 5, 9, 11, 12, 7, 4, 9, 5, 11, 14)
@@ -127,7 +138,7 @@ class GenerateExerciseUseCase {
             )
         }
 
-        val mixedExercise = applyMeasurePatterns(materialPool, DEFAULT_EXERCISE_MEASURES, random)
+        val mixedExercise = applyMeasurePatterns(materialPool, DEFAULT_EXERCISE_MEASURES, settings.selectedNoteValues.ifEmpty { NoteValue.entries.toSet() }, random)
         val accidentalsApplied = applyGeneratedAccidentals(mixedExercise, settings.noteAccidentalsEnabled)
         val pedalApplied = applyPedalMarks(accidentalsApplied, settings.pedalEventsEnabled)
 
@@ -151,19 +162,42 @@ class GenerateExerciseUseCase {
     /**
      * Assigns note values to steps by applying random uniform measure patterns.
      * Each of the [numMeasures] measures gets one randomly chosen pattern from
-     * [MEASURE_PATTERNS]: WHOLE (1 step), 2×HALF, 4×QUARTER, or 8×EIGHTH.
+     * [MEASURE_PATTERNS], filtered to:
+     *   1. Only patterns whose note values are all in [selectedNoteValues].
+     *   2. Only patterns where the last notehead starts at beat ≤
+     *      [BEATS_PER_MEASURE] - [BARLINE_GAP_BEATS] (= 3f), ensuring at least
+     *      one quarter-note gap before every bar line.
+     * If no pattern satisfies both constraints the gap-only filter is used as
+     * fallback (preserving the gap guarantee regardless of note-value selection).
      * Steps are drawn sequentially from [materialPool] (wrapping around).
      */
     private fun applyMeasurePatterns(
         materialPool: List<ExerciseStep>,
         numMeasures: Int,
+        selectedNoteValues: Set<NoteValue>,
         random: Random
     ): List<ExerciseStep> {
         if (materialPool.isEmpty()) return emptyList()
+
+        val maxLastBeat = BEATS_PER_MEASURE - BARLINE_GAP_BEATS // 3f
+
+        // Patterns satisfying the bar-line gap constraint (always valid regardless of selection).
+        val gapValidPatterns = MEASURE_PATTERNS.filter { pattern ->
+            pattern.dropLast(1).sumOf { it.beats.toDouble() }.toFloat() <= maxLastBeat
+        }
+
+        // Patterns satisfying both: user selection AND the gap constraint.
+        val preferredPatterns = gapValidPatterns.filter { pattern ->
+            pattern.all { nv -> nv in selectedNoteValues }
+        }
+
+        // Use preferred when available; fall back to all gap-valid patterns otherwise.
+        val effectivePatterns = if (preferredPatterns.isNotEmpty()) preferredPatterns else gapValidPatterns
+
         val result = mutableListOf<ExerciseStep>()
         var poolIndex = 0
         repeat(numMeasures) {
-            val pattern = MEASURE_PATTERNS.random(random)
+            val pattern = effectivePatterns.random(random)
             for (noteValue in pattern) {
                 val step = materialPool[poolIndex % materialPool.size]
                 result += step.copy(noteValue = noteValue)

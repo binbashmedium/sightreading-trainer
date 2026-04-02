@@ -25,6 +25,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -57,6 +58,7 @@ class SettingsDataStore @Inject constructor(
         val SELECTED_KEYS = stringPreferencesKey("selected_keys")
         val MUSICAL_KEY = intPreferencesKey("musical_key")
         val SELECTED_PROGRESSIONS = stringPreferencesKey("selected_progressions")
+        val SELECTED_NOTE_VALUES = stringPreferencesKey("selected_note_values")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -84,7 +86,8 @@ class SettingsDataStore @Inject constructor(
                 prefs[Keys.SELECTED_KEYS],
                 prefs[Keys.MUSICAL_KEY] ?: 0
             ),
-            selectedProgressions = parseProgressions(prefs[Keys.SELECTED_PROGRESSIONS])
+            selectedProgressions = parseProgressions(prefs[Keys.SELECTED_PROGRESSIONS]),
+            selectedNoteValues = parseNoteValues(prefs[Keys.SELECTED_NOTE_VALUES])
         )
     }
 
@@ -109,6 +112,9 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.SELECTED_KEYS] = settings.selectedKeys.sorted().joinToString(",")
             prefs[Keys.MUSICAL_KEY] = settings.selectedKeys.minOrNull() ?: 0
             prefs[Keys.SELECTED_PROGRESSIONS] = serializeProgressions(settings.selectedProgressions)
+            prefs[Keys.SELECTED_NOTE_VALUES] = settings.selectedNoteValues
+                .sortedBy { it.ordinal }
+                .joinToString(",") { it.name }
         }
     }
 
@@ -165,6 +171,15 @@ class SettingsDataStore @Inject constructor(
             .joinToString(";") { "${it.key}=${it.value}" }
 
     private fun parseProgressions(raw: String?): Set<ChordProgression> = parseSelectedProgressions(raw)
+
+    private fun parseNoteValues(raw: String?): Set<NoteValue> {
+        val parsed = raw
+            ?.split(",")
+            ?.mapNotNull { name -> NoteValue.entries.find { it.name == name.trim() } }
+            ?.toSet()
+            .orEmpty()
+        return if (parsed.isNotEmpty()) parsed else NoteValue.entries.toSet()
+    }
 }
 
 internal fun serializeProgressions(progressions: Set<ChordProgression>): String =

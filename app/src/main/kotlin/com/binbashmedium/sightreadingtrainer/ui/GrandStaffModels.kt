@@ -72,8 +72,15 @@ const val BASS_CLEF_GLYPH_X_OFFSET_RATIO = 0.22f
 const val KEY_SIGNATURE_LEAD_IN_RATIO = 0.72f
 const val KEY_SIGNATURE_X_OFFSET_RATIO = 0.38f
 const val NOTE_ACCIDENTAL_TEXT_SIZE_RATIO = 1.08f
-/** Bar lines are shifted left by this fraction of lineSpacing so noteheads never overlap them. */
-const val BAR_LINE_SHIFT_RATIO = 0.65f
+/**
+ * Bar lines are shifted left by this fraction of lineSpacing.
+ * 1.5 provides ≥ one notehead-width of clear space on both sides of every bar line:
+ *   • After bar line → first note of next measure: gap ≈ 1.5 × lineSpacing − 0.55 × lineSpacing ≈ noteheadWidth.
+ *   • Before bar line → last note of current measure (quarter at beat 6): gap ≈ 2 × beatWidth − 1.5 × lineSpacing.
+ * The generation constraint (BARLINE_GAP_BEATS) ensures the last notehead is always ≥ 2 UI-beat-units
+ * (= 1 quarter note) before the bar, making the before-bar gap visually clear at typical screen sizes.
+ */
+const val BAR_LINE_SHIFT_RATIO = 1.5f
 
 // ── Beat / layout constants ──────────────────────────────────────────────────
 /** UI beat-units per quarter note. WHOLE=8, HALF=4, QUARTER=2, EIGHTH=1. */

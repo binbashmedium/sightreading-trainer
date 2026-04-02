@@ -88,7 +88,9 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `all four note value types can appear in a generated exercise`() {
+    fun `whole half and quarter note values can appear in generated exercises`() {
+        // EIGHTH notes are excluded by the bar-line gap constraint (8×EIGHTH last note at beat 3.5
+        // exceeds maxLastBeat = BEATS_PER_MEASURE - BARLINE_GAP_BEATS = 4.0 - 1.0 = 3.0).
         val allValues = mutableSetOf<NoteValue>()
         repeat(100) { seed ->
             val exercise = useCase.execute(
@@ -97,7 +99,7 @@ class GenerateExerciseUseCaseTest {
             )
             exercise.steps.forEach { allValues += it.noteValue }
         }
-        assertEquals(NoteValue.entries.toSet(), allValues)
+        assertEquals(setOf(NoteValue.WHOLE, NoteValue.HALF, NoteValue.QUARTER), allValues)
     }
 
     @Test
@@ -533,6 +535,160 @@ class GenerateExerciseUseCaseTest {
             }
 
         assertNotNull(mixed)
+    }
+
+    // ── Note value selection ──────────────────────────────────────────────────
+
+    @Test
+    fun `selecting only WHOLE produces an exercise with only whole notes`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.RIGHT,
+                selectedNoteValues = setOf(NoteValue.WHOLE)
+            ),
+            random = Random(10)
+        )
+
+        assertTrue(exercise.steps.isNotEmpty())
+        assertTrue(exercise.steps.all { it.noteValue == NoteValue.WHOLE })
+    }
+
+    @Test
+    fun `selecting only HALF produces an exercise with only half notes`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.RIGHT,
+                selectedNoteValues = setOf(NoteValue.HALF)
+            ),
+            random = Random(20)
+        )
+
+        assertTrue(exercise.steps.isNotEmpty())
+        assertTrue(exercise.steps.all { it.noteValue == NoteValue.HALF })
+    }
+
+    @Test
+    fun `selecting only QUARTER produces an exercise with only quarter notes`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.RIGHT,
+                selectedNoteValues = setOf(NoteValue.QUARTER)
+            ),
+            random = Random(30)
+        )
+
+        assertTrue(exercise.steps.isNotEmpty())
+        assertTrue(exercise.steps.all { it.noteValue == NoteValue.QUARTER })
+    }
+
+    @Test
+    fun `selecting only EIGHTH falls back to gap-valid patterns excluding the eighth pattern`() {
+        // The 8×EIGHTH pattern violates the bar-line gap constraint (last note at beat 3.5 > 3.0),
+        // so when only EIGHTH is selected the generator falls back to gap-valid patterns
+        // (WHOLE, HALF×2, QUARTER×4).  No EIGHTH note values should appear.
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.RIGHT,
+                selectedNoteValues = setOf(NoteValue.EIGHTH)
+            ),
+            random = Random(40)
+        )
+
+        assertTrue(exercise.steps.isNotEmpty())
+        assertTrue(exercise.steps.none { it.noteValue == NoteValue.EIGHTH })
+    }
+
+    @Test
+    fun `EIGHTH note value never appears in generated exercises due to gap constraint`() {
+        // Regardless of selection, the 8×EIGHTH pattern always fails the gap constraint.
+        repeat(30) { seed ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                    handMode = HandMode.RIGHT
+                ),
+                random = Random(seed)
+            )
+            assertTrue(
+                "Seed $seed: eighth notes must never appear (gap constraint)",
+                exercise.steps.none { it.noteValue == NoteValue.EIGHTH }
+            )
+        }
+    }
+
+    @Test
+    fun `last note in every measure satisfies bar-line gap constraint`() {
+        // In every generated measure the last notehead must start at beat ≤
+        // BEATS_PER_MEASURE - BARLINE_GAP_BEATS = 3f.
+        val exercise = useCase.execute(
+            AppSettings(exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES), handMode = HandMode.RIGHT),
+            random = Random(99)
+        )
+
+        val beatsPerMeasure = GenerateExerciseUseCase.BEATS_PER_MEASURE
+        val maxLastBeat = beatsPerMeasure - GenerateExerciseUseCase.BARLINE_GAP_BEATS
+
+        var beat = 0f
+        var measureStart = 0f
+        var lastBeatInMeasure = 0f
+        exercise.steps.forEach { step ->
+            val localBeat = beat - measureStart
+            lastBeatInMeasure = localBeat
+            beat += step.noteValue.beats
+            if (beat - measureStart >= beatsPerMeasure - 0.001f) {
+                assertTrue(
+                    "Last notehead at local beat $lastBeatInMeasure > max allowed $maxLastBeat",
+                    lastBeatInMeasure <= maxLastBeat + 0.001f
+                )
+                measureStart = beat
+            }
+        }
+    }
+
+    @Test
+    fun `WHOLE and QUARTER selection produces only those two note values`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.RIGHT,
+                selectedNoteValues = setOf(NoteValue.WHOLE, NoteValue.QUARTER)
+            ),
+            random = Random(55)
+        )
+
+        assertTrue(exercise.steps.isNotEmpty())
+        exercise.steps.forEach { step ->
+            assertTrue(
+                "Expected WHOLE or QUARTER but got ${step.noteValue}",
+                step.noteValue == NoteValue.WHOLE || step.noteValue == NoteValue.QUARTER
+            )
+        }
+    }
+
+    @Test
+    fun `total beats per exercise equals DEFAULT_EXERCISE_MEASURES times beats per measure regardless of note value selection`() {
+        listOf(
+            setOf(NoteValue.WHOLE),
+            setOf(NoteValue.HALF),
+            setOf(NoteValue.QUARTER),
+            setOf(NoteValue.WHOLE, NoteValue.HALF),
+            setOf(NoteValue.WHOLE, NoteValue.HALF, NoteValue.QUARTER)
+        ).forEach { noteValues ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                    selectedNoteValues = noteValues
+                ),
+                random = Random(7)
+            )
+            val totalBeats = exercise.steps.sumOf { it.noteValue.beats.toDouble() }.toFloat()
+            val expectedBeats = GenerateExerciseUseCase.DEFAULT_EXERCISE_MEASURES * GenerateExerciseUseCase.BEATS_PER_MEASURE
+            assertEquals("noteValues=$noteValues", expectedBeats, totalBeats, 0.01f)
+        }
     }
 }
 
