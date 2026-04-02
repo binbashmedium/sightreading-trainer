@@ -38,8 +38,6 @@ jobs:
           java-version: 21
 
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_CACHE_KEY }}
 
       - name: Override Java home for Gradle
         run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
@@ -74,8 +72,6 @@ jobs:
           java-version: 21
 
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_CACHE_KEY }}
 
       - name: Override Java home for Gradle
         run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
@@ -105,25 +101,39 @@ jobs:
           java-version: 21
 
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_CACHE_KEY }}
 
       - name: Override Java home for Gradle
         run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
 
-      - name: Decode keystore
+      # BUILD secret contains a JSON object with all signing info:
+      # {
+      #   "keystoreBase64": "<base64-encoded .jks file>",
+      #   "keystorePassword": "...",
+      #   "keyAlias": "...",
+      #   "keyPassword": "..."
+      # }
+      - name: Decode keystore from BUILD secret
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          BUILD: ${{ secrets.BUILD }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > ${{ runner.temp }}/release.jks
+          echo "$BUILD" | python3 -c "
+          import sys, json, base64, pathlib
+          d = json.load(sys.stdin)
+          pathlib.Path('${{ runner.temp }}/release.jks').write_bytes(base64.b64decode(d['keystoreBase64']))
+          print('::add-mask::' + d['keystorePassword'])
+          print('::add-mask::' + d['keyAlias'])
+          print('::add-mask::' + d['keyPassword'])
+          with open('${{ runner.temp }}/signing.env', 'w') as f:
+              f.write('KEYSTORE_PASSWORD=' + d['keystorePassword'] + '\n')
+              f.write('KEY_ALIAS=' + d['keyAlias'] + '\n')
+              f.write('KEY_PASSWORD=' + d['keyPassword'] + '\n')
+          "
 
       - name: Build release APK
-        env:
-          KEYSTORE_PATH: ${{ runner.temp }}/release.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: |
+          set -a; source ${{ runner.temp }}/signing.env; set +a
+          KEYSTORE_PATH="${{ runner.temp }}/release.jks" \
+            ./gradlew :app:assembleRelease --no-daemon
 
       - name: Rename APK with version tag
         run: |
