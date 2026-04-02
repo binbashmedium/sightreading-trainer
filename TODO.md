@@ -2,6 +2,8 @@
 
 ## Done (recent)
 
+- [x] **Rotation stability + full-width staff** — `LaunchedEffect` now only calls `startSession()` when `practiceState == null` (rotation no longer regenerates notes); `staff.html` injects `viewBox` + sets explicit CSS `width/height` after rendering so SVG scales proportionally to fill the viewport (`pageWidth: 1500`, `scale: 35` gives 525×139 natural → 667×178 in portrait rows, 1138×301 in landscape); removed unsupported `justifyIncludeLastPage` option; WebView cache cleared on creation; `cacheMode = LOAD_NO_CACHE`.
+
 - [x] **Verovio integration** — Replaced custom Canvas staff rendering with Verovio (music notation library). `GrandStaffCanvas` replaced by `VerovioStaffView` (WebView + Verovio.js v6.1.0 bundled in assets); `MeiConverter` converts `GameState` → MEI XML; note state coloring (CORRECT/WRONG/LATE) via MEI `@color`; cursor via JavaScript SVG injection (`drawCursor()` finds `ncurr*` xml:ids); portrait 4-row and landscape 1-row layout preserved; `MeiConverterTest` (30+ unit tests) covers pitch mapping, duration, key signature, note coloring, chord grouping, beat range filtering, natural accidentals.
 
 - [x] **Note type selection + bar-line gap** — Added `selectedNoteValues: Set<NoteValue>` to `AppSettings`; settings UI shows Whole/Half/Quarter/Eighth FilterChips (at least one required); `GenerateExerciseUseCase.applyMeasurePatterns` filters `MEASURE_PATTERNS` to selected note values with a bar-line gap constraint (`BARLINE_GAP_BEATS = 1f`): last notehead per measure must start ≤ 3 beats from the bar line (excludes 8×EIGHTH pattern; fallback to gap-valid patterns); `BAR_LINE_SHIFT_RATIO` increased from 0.65 to 1.5; `SettingsDataStore` persists the new field; 86 domain tests pass.

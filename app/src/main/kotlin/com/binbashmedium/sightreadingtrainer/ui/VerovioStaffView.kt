@@ -63,6 +63,7 @@ fun VerovioStaffView(
             // Allow loading local scripts (verovio-toolkit-wasm.js) from file:// page
             @Suppress("DEPRECATION")
             settings.allowFileAccessFromFileURLs = true
+            settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView,
@@ -73,6 +74,7 @@ fun VerovioStaffView(
                     pageLoaded = true
                 }
             }
+            clearCache(true)
             loadUrl("file:///android_asset/staff.html")
         }
     }

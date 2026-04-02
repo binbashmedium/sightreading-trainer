@@ -68,7 +68,9 @@ fun PracticeScreen(
     viewModel: PracticeViewModel = hiltViewModel()
 ) {
     LaunchedEffect(Unit) {
-        viewModel.startSession()
+        if (viewModel.practiceState.value == null) {
+            viewModel.startSession()
+        }
     }
 
     val state by viewModel.practiceState.collectAsState()

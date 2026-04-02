@@ -6,7 +6,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; background: white; overflow: hidden; }
-    #output svg { width: 100% !important; height: auto !important; display: block; }
+    #output svg { display: block; }
   </style>
 </head>
 <body>
@@ -26,7 +26,7 @@
 
     function doRender(meiData, showCursor) {
       vrvToolkit.setOptions({
-        pageWidth: 2100,
+        pageWidth: 1500,
         adjustPageHeight: true,
         breaks: "encoded",
         header: "none",
@@ -37,9 +37,50 @@
       });
       vrvToolkit.loadData(meiData);
       document.getElementById('output').innerHTML = vrvToolkit.renderToSVG(1);
+      fitSvgToViewport();
       if (showCursor) {
         drawCursor();
       }
+    }
+
+    /**
+     * Scale the SVG so it fills the full viewport width unless that would make it
+     * taller than the viewport, in which case constrain by height instead.
+     * Uses the SVG's natural rendered dimensions (offsetWidth/offsetHeight).
+     */
+    function fitSvgToViewport() {
+      var svgEl = document.querySelector('#output svg');
+      if (!svgEl) return;
+
+      // Parse natural dimensions from SVG attributes (e.g. "525px" → 525)
+      var naturalW = parseFloat(svgEl.getAttribute('width') || '0');
+      var naturalH = parseFloat(svgEl.getAttribute('height') || '0');
+      if (!(naturalW > 0) || !(naturalH > 0)) return;
+
+      // Inject viewBox so CSS width/height changes scale the content proportionally.
+      // Verovio does not emit a viewBox by default; without it, CSS size changes
+      // only resize the SVG element box, not the content drawn inside it.
+      svgEl.setAttribute('viewBox', '0 0 ' + naturalW + ' ' + naturalH);
+      svgEl.setAttribute('preserveAspectRatio', 'xMinYMid meet');
+
+      var aspect = naturalW / naturalH;
+      var cw = window.innerWidth;
+      var ch = window.innerHeight;
+      var heightAtFullWidth = cw / aspect;
+
+      var displayW, displayH;
+      if (heightAtFullWidth <= ch) {
+        // Fill full viewport width; height is proportional
+        displayW = cw;
+        displayH = heightAtFullWidth;
+      } else {
+        // Height-limited: constrain to viewport height
+        displayH = ch;
+        displayW = ch * aspect;
+      }
+
+      svgEl.style.width = displayW + 'px';
+      svgEl.style.height = displayH + 'px';
     }
 
     function renderMei(meiData, showCursor) {
@@ -64,12 +105,12 @@
       var svgRect = svgEl.getBoundingClientRect();
       if (svgRect.width === 0) return;
       var viewBox = svgEl.viewBox.baseVal;
-      var scaleX = viewBox.width / svgRect.width;
+      var scaleX = viewBox.width > 0 ? viewBox.width / svgRect.width : 1;
 
       var minX = Infinity;
       els.forEach(function (el) {
         var bbox = el.getBoundingClientRect();
-        var x = (bbox.left - svgRect.left) * scaleX + viewBox.x;
+        var x = (bbox.left - svgRect.left) * scaleX + (viewBox.x || 0);
         if (x < minX) minX = x;
       });
 
@@ -78,9 +119,9 @@
       var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('id', 'beat-cursor');
       line.setAttribute('x1', minX);
-      line.setAttribute('y1', viewBox.y);
+      line.setAttribute('y1', viewBox.y || 0);
       line.setAttribute('x2', minX);
-      line.setAttribute('y2', viewBox.y + viewBox.height);
+      line.setAttribute('y2', (viewBox.y || 0) + (viewBox.height || svgRect.height));
       line.setAttribute('stroke', 'rgba(220,0,0,0.8)');
       line.setAttribute('stroke-width', '30');
       svgEl.appendChild(line);
