@@ -59,6 +59,7 @@ class SettingsDataStore @Inject constructor(
         val MUSICAL_KEY = intPreferencesKey("musical_key")
         val SELECTED_PROGRESSIONS = stringPreferencesKey("selected_progressions")
         val SELECTED_NOTE_VALUES = stringPreferencesKey("selected_note_values")
+        val CHORD_NAMES_ENABLED = booleanPreferencesKey("chord_names_enabled")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -87,7 +88,8 @@ class SettingsDataStore @Inject constructor(
                 prefs[Keys.MUSICAL_KEY] ?: 0
             ),
             selectedProgressions = parseProgressions(prefs[Keys.SELECTED_PROGRESSIONS]),
-            selectedNoteValues = parseNoteValues(prefs[Keys.SELECTED_NOTE_VALUES])
+            selectedNoteValues = parseNoteValues(prefs[Keys.SELECTED_NOTE_VALUES]),
+            chordNamesEnabled = prefs[Keys.CHORD_NAMES_ENABLED] ?: false
         )
     }
 
@@ -115,6 +117,7 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.SELECTED_NOTE_VALUES] = settings.selectedNoteValues
                 .sortedBy { it.ordinal }
                 .joinToString(",") { it.name }
+            prefs[Keys.CHORD_NAMES_ENABLED] = settings.chordNamesEnabled
         }
     }
 

@@ -75,6 +75,7 @@ fun PracticeScreen(
 
     val state by viewModel.practiceState.collectAsState()
     val sessionResult by viewModel.sessionResult.collectAsState()
+    val settings by viewModel.settings.collectAsState()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
@@ -127,7 +128,8 @@ fun PracticeScreen(
                                 gameState = gameState,
                                 startBeat = rowStart,
                                 endBeat = rowEnd,
-                                measureNumberLabel = rowMeasureLabel(rowStart)
+                                measureNumberLabel = rowMeasureLabel(rowStart),
+                                showChordNames = settings.chordNamesEnabled
                             )
                         }
                     }
@@ -143,7 +145,8 @@ fun PracticeScreen(
                         gameState = gameState,
                         startBeat = landscapeStart,
                         endBeat = landscapeEnd,
-                        measureNumberLabel = rowMeasureLabel(landscapeStart)
+                        measureNumberLabel = rowMeasureLabel(landscapeStart),
+                        showChordNames = settings.chordNamesEnabled
                     )
                 }
             }

@@ -179,6 +179,22 @@ fun SettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
+            Text("Show Chord Names")
+            Switch(
+                checked = settings.chordNamesEnabled,
+                onCheckedChange = {
+                    viewModel.updateSettings(settings.copy(chordNamesEnabled = it))
+                }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Generated Note Accidentals")
             Switch(
                 checked = settings.noteAccidentalsEnabled,

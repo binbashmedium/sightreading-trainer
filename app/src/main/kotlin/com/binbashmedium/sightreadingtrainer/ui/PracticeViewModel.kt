@@ -27,8 +27,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -52,6 +54,8 @@ class PracticeViewModel @Inject constructor(
 ) : ViewModel() {
 
     val practiceState: StateFlow<PracticeState?> = practiceSessionUseCase.state
+    val settings: StateFlow<AppSettings> = settingsRepository.settings
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
     private val _sessionResult = MutableStateFlow<SessionResultUi?>(null)
     val sessionResult: StateFlow<SessionResultUi?> = _sessionResult.asStateFlow()
 
