@@ -2,7 +2,7 @@
 
 ## Done (recent)
 
-- [x] **Rotation stability + full-width staff** — `LaunchedEffect` now only calls `startSession()` when `practiceState == null` (rotation no longer regenerates notes); `staff.html` injects `viewBox` + sets explicit CSS `width/height` after rendering so SVG scales proportionally to fill the viewport (`pageWidth: 1500`, `scale: 35` gives 525×139 natural → 667×178 in portrait rows, 1138×301 in landscape); removed unsupported `justifyIncludeLastPage` option; WebView cache cleared on creation; `cacheMode = LOAD_NO_CACHE`.
+- [x] **Rotation stability + full-width staff** — `LaunchedEffect` now only calls `startSession()` when `practiceState == null` (rotation no longer regenerates notes); `staff.html` uses correct Verovio options (`svgViewBox: true`, `adjustPageWidth: true`, `breaks: "none"`) so SVG is emitted with a viewBox and CSS `width: 100%; height: auto` gives fully responsive scaling; `constrainSvgHeight()` reduces width if viewBox aspect ratio would overflow portrait row height; WebView cache cleared on creation (`LOAD_NO_CACHE` + `clearCache(true)`).
 
 - [x] **Verovio integration** — Replaced custom Canvas staff rendering with Verovio (music notation library). `GrandStaffCanvas` replaced by `VerovioStaffView` (WebView + Verovio.js v6.1.0 bundled in assets); `MeiConverter` converts `GameState` → MEI XML; note state coloring (CORRECT/WRONG/LATE) via MEI `@color`; cursor via JavaScript SVG injection (`drawCursor()` finds `ncurr*` xml:ids); portrait 4-row and landscape 1-row layout preserved; `MeiConverterTest` (30+ unit tests) covers pitch mapping, duration, key signature, note coloring, chord grouping, beat range filtering, natural accidentals.
 

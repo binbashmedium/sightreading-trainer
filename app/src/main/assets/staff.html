@@ -6,7 +6,9 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; background: white; overflow: hidden; }
-    #output svg { display: block; }
+    #output { width: 100%; }
+    /* svgViewBox:true makes Verovio emit a viewBox, so width:100% scales content responsively */
+    #output svg { width: 100%; height: auto; display: block; }
   </style>
 </head>
 <body>
@@ -26,9 +28,9 @@
 
     function doRender(meiData, showCursor) {
       vrvToolkit.setOptions({
-        pageWidth: 1500,
-        adjustPageHeight: true,
-        breaks: "encoded",
+        svgViewBox: true,        // Verovio emits viewBox → width:100% scales content responsively
+        adjustPageWidth: true,   // SVG width matches content exactly (no trailing whitespace)
+        breaks: "none",          // All measures on one system, no line breaks
         header: "none",
         footer: "none",
         scale: 35,
@@ -37,50 +39,34 @@
       });
       vrvToolkit.loadData(meiData);
       document.getElementById('output').innerHTML = vrvToolkit.renderToSVG(1);
-      fitSvgToViewport();
+      constrainSvgHeight();
       if (showCursor) {
         drawCursor();
       }
     }
 
     /**
-     * Scale the SVG so it fills the full viewport width unless that would make it
-     * taller than the viewport, in which case constrain by height instead.
-     * Uses the SVG's natural rendered dimensions (offsetWidth/offsetHeight).
+     * If the SVG at 100% width would be taller than the viewport, scale it down
+     * proportionally so both staves remain visible (portrait-row constraint).
+     * With svgViewBox:true, viewBox.baseVal is reliable for aspect-ratio calculation.
      */
-    function fitSvgToViewport() {
+    function constrainSvgHeight() {
       var svgEl = document.querySelector('#output svg');
       if (!svgEl) return;
 
-      // Parse natural dimensions from SVG attributes (e.g. "525px" → 525)
-      var naturalW = parseFloat(svgEl.getAttribute('width') || '0');
-      var naturalH = parseFloat(svgEl.getAttribute('height') || '0');
-      if (!(naturalW > 0) || !(naturalH > 0)) return;
+      var vb = svgEl.viewBox.baseVal;
+      if (!vb || vb.width <= 0 || vb.height <= 0) return;
 
-      // Inject viewBox so CSS width/height changes scale the content proportionally.
-      // Verovio does not emit a viewBox by default; without it, CSS size changes
-      // only resize the SVG element box, not the content drawn inside it.
-      svgEl.setAttribute('viewBox', '0 0 ' + naturalW + ' ' + naturalH);
-      svgEl.setAttribute('preserveAspectRatio', 'xMinYMid meet');
-
-      var aspect = naturalW / naturalH;
+      var aspect = vb.width / vb.height;
       var cw = window.innerWidth;
       var ch = window.innerHeight;
       var heightAtFullWidth = cw / aspect;
 
-      var displayW, displayH;
-      if (heightAtFullWidth <= ch) {
-        // Fill full viewport width; height is proportional
-        displayW = cw;
-        displayH = heightAtFullWidth;
-      } else {
-        // Height-limited: constrain to viewport height
-        displayH = ch;
-        displayW = ch * aspect;
+      if (heightAtFullWidth > ch) {
+        // Too tall: reduce width so height == viewport height
+        svgEl.style.width = (ch * aspect) + 'px';
       }
-
-      svgEl.style.width = displayW + 'px';
-      svgEl.style.height = displayH + 'px';
+      // else: stays at width:100% from CSS
     }
 
     function renderMei(meiData, showCursor) {
@@ -110,7 +96,7 @@
       var minX = Infinity;
       els.forEach(function (el) {
         var bbox = el.getBoundingClientRect();
-        var x = (bbox.left - svgRect.left) * scaleX + (viewBox.x || 0);
+        var x = (bbox.left - svgRect.left) * scaleX + viewBox.x;
         if (x < minX) minX = x;
       });
 
@@ -119,9 +105,9 @@
       var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('id', 'beat-cursor');
       line.setAttribute('x1', minX);
-      line.setAttribute('y1', viewBox.y || 0);
+      line.setAttribute('y1', viewBox.y);
       line.setAttribute('x2', minX);
-      line.setAttribute('y2', (viewBox.y || 0) + (viewBox.height || svgRect.height));
+      line.setAttribute('y2', viewBox.y + viewBox.height);
       line.setAttribute('stroke', 'rgba(220,0,0,0.8)');
       line.setAttribute('stroke-width', '30');
       svgEl.appendChild(line);
