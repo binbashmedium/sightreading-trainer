@@ -1,0 +1,148 @@
+# Copyright 2026 BinBashMedium
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Tests ────────────────────────────────────────────────────────────────────
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Override Java home for Gradle
+        run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
+
+      - name: Run domain unit tests
+        run: ./gradlew :domain:test --no-daemon
+
+      - name: Run app unit tests
+        run: ./gradlew :app:test --no-daemon
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            domain/build/reports/tests/
+            app/build/reports/tests/
+          retention-days: 14
+
+  # ── Debug APK ────────────────────────────────────────────────────────────────
+  build-debug:
+    name: Build debug APK
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Override Java home for Gradle
+        run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  # ── Release APK ──────────────────────────────────────────────────────────────
+  build-release:
+    name: Build & deploy release APK
+    needs: test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Override Java home for Gradle
+        run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
+
+      # BUILD secret contains a JSON object with all signing info:
+      # {
+      #   "keystoreBase64": "<base64-encoded .jks file>",
+      #   "keystorePassword": "...",
+      #   "keyAlias": "...",
+      #   "keyPassword": "..."
+      # }
+      - name: Decode keystore from BUILD secret
+        env:
+          BUILD: ${{ secrets.BUILD }}
+        run: |
+          echo "$BUILD" | python3 -c "
+          import sys, json, base64, pathlib
+          d = json.load(sys.stdin)
+          pathlib.Path('${{ runner.temp }}/release.jks').write_bytes(base64.b64decode(d['keystoreBase64']))
+          print('::add-mask::' + d['keystorePassword'])
+          print('::add-mask::' + d['keyAlias'])
+          print('::add-mask::' + d['keyPassword'])
+          with open('${{ runner.temp }}/signing.env', 'w') as f:
+              f.write('KEYSTORE_PASSWORD=' + d['keystorePassword'] + '\n')
+              f.write('KEY_ALIAS=' + d['keyAlias'] + '\n')
+              f.write('KEY_PASSWORD=' + d['keyPassword'] + '\n')
+          "
+
+      - name: Build release APK
+        run: |
+          set -a; source ${{ runner.temp }}/signing.env; set +a
+          KEYSTORE_PATH="${{ runner.temp }}/release.jks" \
+            ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Rename APK with version tag
+        run: |
+          VERSION="${{ github.ref_name }}"
+          mv app/build/outputs/apk/release/app-release.apk \
+             app/build/outputs/apk/release/sightreading-trainer-${VERSION}.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/sightreading-trainer-${{ github.ref_name }}.apk
+          generate_release_notes: true
