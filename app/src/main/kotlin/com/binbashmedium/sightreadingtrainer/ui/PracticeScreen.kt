@@ -117,7 +117,7 @@ fun PracticeScreen(
                         repeat(ROWS_PER_PAGE) { rowIdx ->
                             val rowStart = pageStart + rowIdx * BEATS_PER_ROW
                             val rowEnd = rowStart + BEATS_PER_ROW
-                            GrandStaffCanvas(
+                            VerovioStaffView(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxWidth()
@@ -125,7 +125,6 @@ fun PracticeScreen(
                                 gameState = gameState,
                                 startBeat = rowStart,
                                 endBeat = rowEnd,
-                                beatsPerMeasure = BEATS_PER_MEASURE_UNITS,
                                 measureNumberLabel = rowMeasureLabel(rowStart)
                             )
                         }
@@ -135,14 +134,13 @@ fun PracticeScreen(
                     val landscapePage = (gameState.currentBeat / BEATS_PER_ROW).toInt()
                     val landscapeStart = landscapePage * BEATS_PER_ROW
                     val landscapeEnd = landscapeStart + BEATS_PER_ROW
-                    GrandStaffCanvas(
+                    VerovioStaffView(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
                         gameState = gameState,
                         startBeat = landscapeStart,
                         endBeat = landscapeEnd,
-                        beatsPerMeasure = BEATS_PER_MEASURE_UNITS,
                         measureNumberLabel = rowMeasureLabel(landscapeStart)
                     )
                 }
