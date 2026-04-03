@@ -2,11 +2,13 @@
 
 ## In Progress
 
-- [ ] **Chord/note names display option** — Add `chordNamesEnabled` setting to `AppSettings`; `SettingsDataStore` persists it; toggle in `SettingsScreen`; `MeiConverter.convert()` accepts `showChordNames` flag and emits `<harm>` control events above the treble staff for each chord group; `VerovioStaffView` and `PracticeScreen` wired to pass the setting; unit tests added to `MeiConverterTest`.
+- [x] **Chord/note names display option** — Add `chordNamesEnabled` setting to `AppSettings`; `SettingsDataStore` persists it; toggle in `SettingsScreen`; `MeiConverter.convert()` accepts `showChordNames` flag and emits `<harm>` control events above the treble staff for each chord group; `VerovioStaffView` and `PracticeScreen` wired to pass the setting; unit tests added to `MeiConverterTest`.
 
 ## Open (pending implementation)
 
 - [ ] **Pedal mark alignment** — Pedal press/release marks should preferably start at a chord change or at the start of a beat, not mid-beat. Generation logic should snap pedal events to beat boundaries or chord boundaries; avoid placing pedal marks between notes within a beat group.
+- [ ]  ** Loading Screen ** when the exercise is loaded the fist time it takes some seconds. The Timer should start after the nodes are loaded. During loading a loading screen should be displayed. Maybe a spin wheel ?
+- [ ]  Add Link to Settings from Exercise screen, maybe a Zahnrad?
 
 ## Done (recent)
 
