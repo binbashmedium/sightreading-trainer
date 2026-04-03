@@ -43,6 +43,7 @@ import org.json.JSONObject
  * @param startBeat          First UI beat-unit to include (inclusive).
  * @param endBeat            Last UI beat-unit to exclude; pass [Float.MAX_VALUE] to show all.
  * @param measureNumberLabel 1-based measure number shown in portrait mode; null = hidden.
+ * @param showChordNames     When true, chord/note names are shown above each chord group.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -51,7 +52,8 @@ fun VerovioStaffView(
     gameState: GameState,
     startBeat: Float = 0f,
     endBeat: Float = Float.MAX_VALUE,
-    @Suppress("UNUSED_PARAMETER") measureNumberLabel: Int? = null
+    @Suppress("UNUSED_PARAMETER") measureNumberLabel: Int? = null,
+    showChordNames: Boolean = false
 ) {
     val context = LocalContext.current
     var pageLoaded by remember { mutableStateOf(false) }
@@ -84,8 +86,8 @@ fun VerovioStaffView(
         onDispose { webView.destroy() }
     }
 
-    val mei = remember(gameState, startBeat, endBeat) {
-        MeiConverter.convert(gameState, startBeat, endBeat)
+    val mei = remember(gameState, startBeat, endBeat, showChordNames) {
+        MeiConverter.convert(gameState, startBeat, endBeat, showChordNames)
     }
 
     val isPortraitRow = endBeat < Float.MAX_VALUE / 2f

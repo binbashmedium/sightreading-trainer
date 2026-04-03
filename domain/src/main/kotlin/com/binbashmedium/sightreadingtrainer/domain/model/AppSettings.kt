@@ -37,7 +37,9 @@ data class AppSettings(
     val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I),
     /** Which note values (whole/half/quarter/eighth) may appear in generated measures.
      *  At least one must remain active; defaults to all four enabled. */
-    val selectedNoteValues: Set<NoteValue> = NoteValue.entries.toSet()
+    val selectedNoteValues: Set<NoteValue> = NoteValue.entries.toSet(),
+    /** When true, chord/note names are shown above each chord group on the staff. */
+    val chordNamesEnabled: Boolean = false
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }

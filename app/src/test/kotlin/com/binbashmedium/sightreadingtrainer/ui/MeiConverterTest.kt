@@ -419,4 +419,100 @@ class MeiConverterTest {
         val mei = MeiConverter.convert(gameStateWithPedals(listOf(pedal)), 0f, BEATS_PER_ROW)
         assertFalse("Pedal outside range should not appear", mei.contains("<pedal"))
     }
+
+    // ── Chord names (<harm>) ──────────────────────────────────────────────────
+
+    private fun gameStateWithChords(chords: List<Chord>) = GameState(
+        levelTitle = "Test", elapsedTime = 0L, score = 0, bpm = 0f,
+        notes = emptyList(), chords = chords,
+        pedalMarks = emptyList(), currentBeat = 0f
+    )
+
+    @Test
+    fun `showChordNames false produces no harm elements`() {
+        val chord = Chord(name = "CM", notes = listOf(60, 64, 67), startBeat = 0f)
+        val mei = MeiConverter.convert(
+            gameStateWithChords(listOf(chord)), 0f, BEATS_PER_MEASURE_UNITS,
+            showChordNames = false
+        )
+        assertFalse("No <harm> when showChordNames is false", mei.contains("<harm"))
+    }
+
+    @Test
+    fun `showChordNames true emits harm element with chord name`() {
+        val chord = Chord(name = "CM", notes = listOf(60, 64, 67), startBeat = 0f)
+        val mei = MeiConverter.convert(
+            gameStateWithChords(listOf(chord)), 0f, BEATS_PER_MEASURE_UNITS,
+            showChordNames = true
+        )
+        assertTrue("harm element should appear", mei.contains("<harm"))
+        assertTrue("harm should contain chord name", mei.contains(">CM<"))
+    }
+
+    @Test
+    fun `harm tstamp maps beat 0 to tstamp 1`() {
+        val chord = Chord(name = "CM", notes = listOf(60, 64, 67), startBeat = 0f)
+        val mei = MeiConverter.convert(
+            gameStateWithChords(listOf(chord)), 0f, BEATS_PER_MEASURE_UNITS,
+            showChordNames = true
+        )
+        assertTrue("Beat 0 should produce tstamp 1.0000", mei.contains("tstamp=\"1.0000\""))
+    }
+
+    @Test
+    fun `harm tstamp maps beat 4 to tstamp 3`() {
+        // UI beat 4 = 2 quarter-note beats from measure start → 1-indexed tstamp 3
+        val chord = Chord(name = "Fm", notes = listOf(65, 68, 72), startBeat = 4f)
+        val mei = MeiConverter.convert(
+            gameStateWithChords(listOf(chord)), 0f, BEATS_PER_MEASURE_UNITS,
+            showChordNames = true
+        )
+        assertTrue("Beat 4 should map to tstamp 3.0000", mei.contains("tstamp=\"3.0000\""))
+    }
+
+    @Test
+    fun `harm targets staff 1 (treble)`() {
+        val chord = Chord(name = "GM", notes = listOf(67, 71, 74), startBeat = 0f)
+        val mei = MeiConverter.convert(
+            gameStateWithChords(listOf(chord)), 0f, BEATS_PER_MEASURE_UNITS,
+            showChordNames = true
+        )
+        assertTrue("harm should target treble staff 1", mei.contains("staff=\"1\""))
+    }
+
+    @Test
+    fun `harm xml-escapes special characters in chord name`() {
+        val chord = Chord(name = "A<B>&C", notes = listOf(69), startBeat = 0f)
+        val mei = MeiConverter.convert(
+            gameStateWithChords(listOf(chord)), 0f, BEATS_PER_MEASURE_UNITS,
+            showChordNames = true
+        )
+        assertTrue("< must be escaped", mei.contains("&lt;"))
+        assertTrue("> must be escaped", mei.contains("&gt;"))
+        assertTrue("& must be escaped", mei.contains("&amp;"))
+    }
+
+    @Test
+    fun `chord outside beat range not emitted as harm`() {
+        val chord = Chord(name = "CM", notes = listOf(60, 64, 67), startBeat = 40f)
+        val mei = MeiConverter.convert(
+            gameStateWithChords(listOf(chord)), 0f, BEATS_PER_ROW,
+            showChordNames = true
+        )
+        assertFalse("Chord outside range should not produce harm", mei.contains("<harm"))
+    }
+
+    @Test
+    fun `multiple chords produce multiple harm elements`() {
+        val chords = listOf(
+            Chord(name = "CM", notes = listOf(60, 64, 67), startBeat = 0f),
+            Chord(name = "Fm", notes = listOf(65, 68, 72), startBeat = 4f)
+        )
+        val mei = MeiConverter.convert(
+            gameStateWithChords(chords), 0f, BEATS_PER_MEASURE_UNITS,
+            showChordNames = true
+        )
+        val harmCount = mei.split("<harm").size - 1
+        assertEquals("Two chords should produce two harm elements", 2, harmCount)
+    }
 }

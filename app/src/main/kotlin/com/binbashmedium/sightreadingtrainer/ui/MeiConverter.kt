@@ -37,11 +37,13 @@ object MeiConverter {
     /**
      * Build the full MEI XML document for the given beat range.
      *
-     * @param gameState  Source game state containing notes, key, etc.
-     * @param startBeat  First UI beat-unit to include (inclusive).
-     * @param endBeat    Last UI beat-unit to exclude (pass [Float.MAX_VALUE] to include all).
+     * @param gameState      Source game state containing notes, key, etc.
+     * @param startBeat      First UI beat-unit to include (inclusive).
+     * @param endBeat        Last UI beat-unit to exclude (pass [Float.MAX_VALUE] to include all).
+     * @param showChordNames When true, emits `<harm>` control events above the treble staff
+     *                       labelling each chord group with its name.
      */
-    fun convert(gameState: GameState, startBeat: Float, endBeat: Float): String {
+    fun convert(gameState: GameState, startBeat: Float, endBeat: Float, showChordNames: Boolean = false): String {
         val actualEnd = if (endBeat >= Float.MAX_VALUE / 2f) {
             (gameState.notes.maxOfOrNull { it.startBeat } ?: startBeat) + BEATS_PER_MEASURE_UNITS
         } else endBeat
@@ -52,6 +54,9 @@ object MeiConverter {
         val pedals = gameState.pedalMarks.filter {
             it.startBeat >= startBeat && it.startBeat < actualEnd && it.action != PedalAction.NONE
         }
+        val chords = if (showChordNames) {
+            gameState.chords.filter { it.startBeat >= startBeat && it.startBeat < actualEnd }
+        } else emptyList()
 
         val firstMeasure = (startBeat / BEATS_PER_MEASURE_UNITS).toInt()
         val lastMeasure  = ((actualEnd - 0.01f) / BEATS_PER_MEASURE_UNITS).toInt()
@@ -66,8 +71,9 @@ object MeiConverter {
                 val mEndBeat      = mStartBeat + BEATS_PER_MEASURE_UNITS
                 val measureNotes  = notes.filter { it.startBeat >= mStartBeat && it.startBeat < mEndBeat }
                 val measurePedals = pedals.filter { it.startBeat >= mStartBeat && it.startBeat < mEndBeat }
+                val measureChords = chords.filter { it.startBeat >= mStartBeat && it.startBeat < mEndBeat }
                 val isLast        = i == numMeasures - 1
-                append(renderMeasure(i + 1, measureNotes, measurePedals, mStartBeat, isLast, gameState.currentBeat))
+                append(renderMeasure(i + 1, measureNotes, measurePedals, measureChords, mStartBeat, isLast, gameState.currentBeat))
             }
         }
 
@@ -95,6 +101,7 @@ $measuresXml    </section>
         n: Int,
         notes: List<NoteEvent>,
         pedalMarks: List<PedalMark>,
+        chords: List<Chord>,
         measureStartBeat: Float,
         isLast: Boolean,
         currentBeat: Float
@@ -114,6 +121,18 @@ $measuresXml    </section>
             "        <pedal tstamp=\"$tstamp\" staff=\"2\" dir=\"$dir\"$colorAttr/>\n"
         }
 
+        // MEI <harm> elements for chord/note name labels above the treble staff.
+        // tstamp is 1-indexed quarter-note beat within the measure.
+        val harmXml = chords.joinToString("") { chord ->
+            val qBeat  = (chord.startBeat - measureStartBeat) / BEATS_PER_STEP
+            val tstamp = String.format(Locale.US, "%.4f", qBeat + 1f)
+            val escapedName = chord.name
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            "        <harm tstamp=\"$tstamp\" staff=\"1\">$escapedName</harm>\n"
+        }
+
         return "      <measure n=\"$n\"$right>\n" +
                "        <staff n=\"1\"><layer n=\"1\">\n" +
                renderLayer(treble, measureStartBeat, currentBeat).prependIndent("          ") + "\n" +
@@ -122,6 +141,7 @@ $measuresXml    </section>
                renderLayer(bass, measureStartBeat, currentBeat).prependIndent("          ") + "\n" +
                "        </layer></staff>\n" +
                pedalXml +
+               harmXml +
                "      </measure>\n"
     }
 
