@@ -10,7 +10,11 @@
 - [ ]  ** Loading Screen ** when the exercise is loaded the fist time it takes some seconds. The Timer should start after the nodes are loaded. During loading a loading screen should be displayed. Maybe a spin wheel ?
 - [ ]  Add Link to Settings from Exercise screen, maybe a Zahnrad?
 - [ ]  App stops responding, points,bpm are not reset
-- [ ]  Remove points
+- [ ]  Remove points, the highscore is based on bpm, time (practice time of exercise) and right/wrong notes
+- [ ]  When accidentels are places are only valid for the note in the same bar. So a netral accudental is only valid if the note had a accidental in the same bar or trough the key. Sometimes a netral accidental accour in C-Major in a bar without a b or # in the same bar
+- [ ]  make note range configurable, Bass E1- C5, treble C3- A6
+- [ ]  Add ornaments, the notes are still checked completly and make it configurable
+
       
 
 ## Done (recent)
