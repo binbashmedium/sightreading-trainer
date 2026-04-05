@@ -363,6 +363,7 @@ class MeiConverterTest {
     // ── Pedal marks ───────────────────────────────────────────────────────────
 
     private fun gameStateWithPedals(pedals: List<PedalMark>) = GameState(
+        levelTitle = "Test", elapsedTime = 0L, bpm = 0f,
         notes = emptyList(), chords = emptyList(),
         pedalMarks = pedals, currentBeat = 0f
     )
@@ -421,6 +422,7 @@ class MeiConverterTest {
     // ── Chord names (<harm>) ──────────────────────────────────────────────────
 
     private fun gameStateWithChords(chords: List<Chord>) = GameState(
+        levelTitle = "Test", elapsedTime = 0L, bpm = 0f,
         notes = emptyList(), chords = chords,
         pedalMarks = emptyList(), currentBeat = 0f
     )
