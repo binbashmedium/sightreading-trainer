@@ -4,7 +4,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
-    id("app.cash.paparazzi")
+    // Paparazzi is applied below conditionally so the plugin's task-level modifications
+    // (bytecode instrumentation, custom test reporter, preparePaparazziDebugResources dep)
+    // don't interfere with standard unit tests when running :app:test.
+    // Pass -PskipPaparazziPlugin=true to run unit tests without the plugin overhead.
+    // The screenshots job omits this flag and calls recordPaparazziDebug directly.
 }
 
 android {
@@ -75,6 +79,19 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+// Apply Paparazzi plugin (registers recordPaparazziDebug / verifyPaparazziDebug).
+// When -PskipPaparazziPlugin=true is passed (e.g. in the unit-test CI step) the plugin
+// is not applied so its per-task modifications don't affect :app:test. We still add
+// the Paparazzi library JAR so that ScreenshotTest.kt compiles (types are on classpath
+// but the class itself is excluded from running via testOptions.unitTests.all above).
+if (project.findProperty("skipPaparazziPlugin") != "true") {
+    apply(plugin = "app.cash.paparazzi")
+} else {
+    dependencies {
+        testImplementation("app.cash.paparazzi:paparazzi:2.0.0-alpha04")
     }
 }
 

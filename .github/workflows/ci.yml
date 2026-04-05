@@ -49,7 +49,13 @@ jobs:
         run: ./gradlew :domain:test --no-daemon
 
       - name: Run app unit tests
-        run: ./gradlew :app:test --no-daemon
+        # -PskipPaparazziPlugin=true prevents the Paparazzi plugin from registering
+        # its per-task machinery (bytecode instrumentation, custom reporter,
+        # preparePaparazziDebugResources dependency) which would otherwise interfere
+        # with non-screenshot tests. The Paparazzi library JAR is still added to the
+        # test classpath so that ScreenshotTest.kt compiles; the class itself is
+        # excluded from running via testOptions.unitTests.all in build.gradle.kts.
+        run: ./gradlew :app:test -PskipPaparazziPlugin=true --no-daemon
 
       - name: Upload test results
         if: always()
