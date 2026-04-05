@@ -121,6 +121,42 @@ class MeiConverterTest {
     }
 
     @Test
+    fun `C-sharp major spells F as E-sharp when accidental is NONE`() {
+        val (pname, oct, accid) = MeiConverter.midiToMeiPitchInKey(
+            midi = 65, // sounding F4
+            accidental = NoteAccidental.NONE,
+            musicalKey = 1 // C# major
+        )
+        assertEquals("e", pname)
+        assertEquals(4, oct)
+        assertEquals("s", accid)
+    }
+
+    @Test
+    fun `C-sharp major spells C as B-sharp when accidental is NONE`() {
+        val (pname, oct, accid) = MeiConverter.midiToMeiPitchInKey(
+            midi = 60, // sounding C4
+            accidental = NoteAccidental.NONE,
+            musicalKey = 1 // C# major
+        )
+        assertEquals("b", pname)
+        assertEquals(3, oct)
+        assertEquals("s", accid)
+    }
+
+    @Test
+    fun `D-flat major prefers flat spelling for C-sharp pitch class`() {
+        val (pname, oct, accid) = MeiConverter.midiToMeiPitchInKey(
+            midi = 61, // C#4 / Db4
+            accidental = NoteAccidental.NONE,
+            musicalKey = 3 // Db major
+        )
+        assertEquals("d", pname)
+        assertEquals(4, oct)
+        assertEquals("f", accid)
+    }
+
+    @Test
     fun `B3 maps to pname b oct 3`() {
         val (pname, oct, accid) = MeiConverter.midiToMeiPitch(59, NoteAccidental.NONE)
         assertEquals("b", pname)
@@ -349,6 +385,51 @@ class MeiConverterTest {
         )
         val mei = MeiConverter.convert(gameState, 0f, BEATS_PER_ROW)
         assertTrue("G major should have 1s key signature", mei.contains("key.sig=\"1s\""))
+    }
+
+    @Test
+    fun `C-sharp major triad is rendered as C-sharp E-sharp G-sharp`() {
+        val gameState = GameState(
+            levelTitle = "Test",
+            elapsedTime = 0L,
+            bpm = 0f,
+            notes = listOf(
+                NoteEvent(midi = 61, startBeat = 0f, duration = 1f, expected = true, staff = StaffType.TREBLE),
+                NoteEvent(midi = 65, startBeat = 0f, duration = 1f, expected = true, staff = StaffType.TREBLE),
+                NoteEvent(midi = 68, startBeat = 0f, duration = 1f, expected = true, staff = StaffType.TREBLE)
+            ),
+            chords = emptyList(),
+            pedalMarks = emptyList(),
+            currentBeat = 0f,
+            musicalKey = 1
+        )
+        val mei = MeiConverter.convert(gameState, 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Should contain C#", mei.contains("pname=\"c\"") && mei.contains("accid.ges=\"s\""))
+        assertTrue("Should contain E# spelling for sounding F", mei.contains("pname=\"e\"") && mei.contains("accid.ges=\"s\""))
+        assertTrue("Should contain G#", mei.contains("pname=\"g\"") && mei.contains("accid.ges=\"s\""))
+        assertFalse("Should not spell middle note as F natural", mei.contains("pname=\"f\" oct=\"4\" dur=\"4\""))
+    }
+
+    @Test
+    fun `D-flat major triad is rendered as D-flat F A-flat`() {
+        val gameState = GameState(
+            levelTitle = "Test",
+            elapsedTime = 0L,
+            bpm = 0f,
+            notes = listOf(
+                NoteEvent(midi = 61, startBeat = 0f, duration = 1f, expected = true, staff = StaffType.TREBLE),
+                NoteEvent(midi = 65, startBeat = 0f, duration = 1f, expected = true, staff = StaffType.TREBLE),
+                NoteEvent(midi = 68, startBeat = 0f, duration = 1f, expected = true, staff = StaffType.TREBLE)
+            ),
+            chords = emptyList(),
+            pedalMarks = emptyList(),
+            currentBeat = 0f,
+            musicalKey = 3
+        )
+        val mei = MeiConverter.convert(gameState, 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Should contain Db spelling", mei.contains("pname=\"d\"") && mei.contains("accid.ges=\"f\""))
+        assertTrue("Should contain F natural spelling", mei.contains("pname=\"f\" oct=\"4\""))
+        assertTrue("Should contain Ab spelling", mei.contains("pname=\"a\"") && mei.contains("accid.ges=\"f\""))
     }
 
     @Test
