@@ -888,5 +888,48 @@ class GenerateExerciseUseCaseTest {
             }
         }
     }
+
+    @Test
+    fun `non-arpeggiation ornaments only applied to single-note steps`() {
+        // Use chord-producing exercise types so we get multi-note steps
+        for (seed in 0..30) {
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.TRIADS),
+                    selectedOrnaments = setOf(OrnamentType.TRILL, OrnamentType.MORDENT, OrnamentType.TURN)
+                ),
+                random = Random(seed)
+            )
+            exercise.steps.forEach { step ->
+                if (step.ornament != OrnamentType.NONE) {
+                    assertEquals(
+                        "Non-arpeggiation ornament ${step.ornament} should only appear on single-note steps",
+                        1, step.notes.size
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `arpeggiation only applied to chord steps`() {
+        for (seed in 0..30) {
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.TRIADS, ExerciseContentType.SINGLE_NOTES),
+                    selectedOrnaments = setOf(OrnamentType.ARPEGGIATION)
+                ),
+                random = Random(seed)
+            )
+            exercise.steps.forEach { step ->
+                if (step.ornament == OrnamentType.ARPEGGIATION) {
+                    assertTrue(
+                        "Arpeggiation should only appear on chord steps (notes.size > 1)",
+                        step.notes.size > 1
+                    )
+                }
+            }
+        }
+    }
 }
 

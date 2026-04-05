@@ -641,9 +641,10 @@ class GenerateExerciseUseCase {
                 step.notes.isNotEmpty() &&
                 random.nextInt(6) == 0
             ) {
-                // Arpeggiation only makes musical sense on chords (multiple notes).
-                val eligible = selectedOrnaments.filter {
-                    it != OrnamentType.ARPEGGIATION || step.notes.size > 1
+                // Arpeggiation requires a chord; all other ornaments require a single note.
+                val eligible = selectedOrnaments.filter { type ->
+                    if (type == OrnamentType.ARPEGGIATION) step.notes.size > 1
+                    else step.notes.size == 1
                 }
                 if (eligible.isEmpty()) step else step.copy(ornament = eligible.random(random))
             } else step
