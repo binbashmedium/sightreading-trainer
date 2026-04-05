@@ -253,11 +253,30 @@ fun HelpScreen(navController: NavController) {
             }
             HelpSubSection("Ornaments") {
                 HelpBody(
-                    "Select which ornament types may appear above notes: Trill, Mordent, and/or " +
-                    "Turn. Any combination can be active at the same time; selecting none disables " +
-                    "ornaments entirely. When at least one type is enabled, approximately one in " +
-                    "six quarter-note-or-longer steps will receive an ornament. The ornament is " +
+                    "Ornamental symbols appear above (or before) notes as decorative performance " +
+                    "guides. Select any combination of types; selecting none disables ornaments " +
+                    "entirely. When at least one type is active, approximately one in six " +
+                    "quarter-note-or-longer steps will receive an ornament. All ornaments are " +
                     "decorative only — only the main note pitch is evaluated during practice."
+                )
+                HelpBody("Available ornament types:")
+                HelpBody(
+                    "• Trill — rapid alternation between the main note and the note a step above."
+                )
+                HelpBody(
+                    "• Upper Mordent (inverted mordent) — two quick notes upward: " +
+                    "main → upper neighbour → main."
+                )
+                HelpBody(
+                    "• Lower Mordent — two quick notes downward: main → lower neighbour → main."
+                )
+                HelpBody(
+                    "• Turn — four-note ornament circling the main note: " +
+                    "upper → main → lower → main."
+                )
+                HelpBody(
+                    "• Grace Note (acciaccatura) — a small crushed note one semitone below the " +
+                    "main note, played instantly before it. Shown as a tiny note with a slash."
                 )
             }
             HelpSubSection("Timing Tolerance") {

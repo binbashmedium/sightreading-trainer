@@ -138,20 +138,24 @@ $measuresXml    </section>
         }
 
         // MEI ornament control events referencing specific notes by xml:id.
-        val ornamentXml = notes.filter { it.ornament != OrnamentType.NONE }.joinToString("") { note ->
-            val beatKey  = (note.startBeat * 10).roundToLong()
-            val prefix   = if (abs(note.startBeat - currentBeat) < 0.01f) "ncurr" else "nb"
-            val noteId   = "${prefix}${beatKey}m${note.midi}"
-            val staffNum = if (note.staff == StaffType.TREBLE) "1" else "2"
-            val qBeat    = (note.startBeat - measureStartBeat) / BEATS_PER_STEP
-            val tstamp   = String.format(Locale.US, "%.4f", qBeat + 1f)
-            when (note.ornament) {
-                OrnamentType.TRILL   -> "        <trill staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
-                OrnamentType.MORDENT -> "        <mordent staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
-                OrnamentType.TURN    -> "        <turn staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
-                OrnamentType.NONE    -> ""
+        // GRACE_NOTE is rendered inline in the layer (not as a control event) — exclude it here.
+        val ornamentXml = notes
+            .filter { it.ornament != OrnamentType.NONE && it.ornament != OrnamentType.GRACE_NOTE }
+            .joinToString("") { note ->
+                val beatKey  = (note.startBeat * 10).roundToLong()
+                val prefix   = if (abs(note.startBeat - currentBeat) < 0.01f) "ncurr" else "nb"
+                val noteId   = "${prefix}${beatKey}m${note.midi}"
+                val staffNum = if (note.staff == StaffType.TREBLE) "1" else "2"
+                val qBeat    = (note.startBeat - measureStartBeat) / BEATS_PER_STEP
+                val tstamp   = String.format(Locale.US, "%.4f", qBeat + 1f)
+                when (note.ornament) {
+                    OrnamentType.TRILL         -> "        <trill staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
+                    OrnamentType.MORDENT       -> "        <mordent form=\"lower\" staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
+                    OrnamentType.UPPER_MORDENT -> "        <mordent form=\"upper\" staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
+                    OrnamentType.TURN          -> "        <turn staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
+                    OrnamentType.NONE, OrnamentType.GRACE_NOTE -> ""
+                }
             }
-        }
 
         return "      <measure n=\"$n\"$right>\n" +
                "        <staff n=\"1\"><layer n=\"1\">\n" +
@@ -196,6 +200,12 @@ $measuresXml    </section>
             // Fill gap before this chord with a rest
             val gap = qBeat - currentQBeat
             if (gap > 0.01f) sb.append(rest(gap)).append("\n")
+
+            // Prepend acciaccatura grace note when ornament is GRACE_NOTE.
+            // The grace note is one semitone below the main note.
+            if (chordNotes.firstOrNull()?.ornament == OrnamentType.GRACE_NOTE) {
+                sb.append(graceNoteElement(chordNotes.first().midi)).append("\n")
+            }
 
             sb.append(
                 renderChord(chordNotes, duration, startBeat, isCurrent,
@@ -267,6 +277,17 @@ $measuresXml    </section>
     }
 
     private fun rest(quarterBeats: Float): String = "<rest dur=\"${quarterBeatsToDur(quarterBeats)}\"/>"
+
+    /**
+     * Builds a MEI acciaccatura grace note element one semitone below [mainMidi].
+     * The `grace="acc"` attribute tells Verovio to render it as a small note with a slash.
+     */
+    private fun graceNoteElement(mainMidi: Int): String {
+        val graceMidi = mainMidi - 1
+        val (pname, oct, accidGes) = midiToMeiPitch(graceMidi, NoteAccidental.NONE)
+        val accGesAttr = if (accidGes != null) " accid.ges=\"$accidGes\"" else ""
+        return "<note pname=\"$pname\" oct=\"$oct\" dur=\"8\" grace=\"acc\"$accGesAttr/>"
+    }
 
     // ── Pitch conversion ──────────────────────────────────────────────────────
 

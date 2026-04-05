@@ -29,14 +29,21 @@ enum class PedalAction {
 
 /**
  * Musical ornament type for a note.
- * When applied, the ornament symbol is displayed above the note.
+ * When applied, the ornament symbol is displayed above (or before) the note.
  * The main note pitch is still the only one evaluated during practice.
  */
 enum class OrnamentType {
     NONE,
+    /** Rapid alternation between main note and the note a step above. */
     TRILL,
+    /** Lower mordent — quick alternation downward: main → lower → main. */
     MORDENT,
-    TURN
+    /** Inverted (upper) mordent — quick alternation upward: main → upper → main. */
+    UPPER_MORDENT,
+    /** Turn — four-note ornament circling the main note: upper → main → lower → main. */
+    TURN,
+    /** Acciaccatura — small crushed note (semitone below) played instantly before the main note. */
+    GRACE_NOTE
 }
 
 data class ExerciseStep(

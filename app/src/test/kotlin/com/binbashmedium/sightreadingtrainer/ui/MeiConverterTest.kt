@@ -629,6 +629,43 @@ class MeiConverterTest {
     }
 
     @Test
+    fun `mordent ornament produces lower mordent form attribute`() {
+        val note = noteWithOrnament(60, OrnamentType.MORDENT)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Mordent should produce form=\"lower\"", mei.contains("form=\"lower\""))
+    }
+
+    @Test
+    fun `upper mordent ornament produces mordent control event with upper form`() {
+        val note = noteWithOrnament(60, OrnamentType.UPPER_MORDENT)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Upper mordent should produce <mordent>", mei.contains("<mordent"))
+        assertTrue("Upper mordent should have form=\"upper\"", mei.contains("form=\"upper\""))
+    }
+
+    @Test
+    fun `grace note ornament produces inline grace note with acc attribute`() {
+        val note = noteWithOrnament(60, OrnamentType.GRACE_NOTE)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Grace note should produce a grace element", mei.contains("grace=\"acc\""))
+    }
+
+    @Test
+    fun `grace note ornament does not produce a control event`() {
+        val note = noteWithOrnament(60, OrnamentType.GRACE_NOTE)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertFalse("Grace note should not emit a control event", mei.contains("<trill") || mei.contains("<mordent") || mei.contains("<turn"))
+    }
+
+    @Test
+    fun `grace note pitch is one semitone below main note`() {
+        // Main note C5 (midi 60) → grace note B4 (midi 59, pname="b", oct=4)
+        val note = noteWithOrnament(60, OrnamentType.GRACE_NOTE)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Grace note should be B4 (one semitone below C5)", mei.contains("grace=\"acc\"") && mei.contains("pname=\"b\"") && mei.contains("oct=\"4\""))
+    }
+
+    @Test
     fun `no ornament control event when ornament is NONE`() {
         val note = noteWithOrnament(60, OrnamentType.NONE)
         val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)

@@ -225,7 +225,13 @@ fun SettingsScreen(
 
         Text("Ornaments", style = MaterialTheme.typography.titleSmall)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            itemsIndexed(listOf(OrnamentType.TRILL, OrnamentType.MORDENT, OrnamentType.TURN)) { _, type ->
+            itemsIndexed(listOf(
+                OrnamentType.TRILL,
+                OrnamentType.MORDENT,
+                OrnamentType.UPPER_MORDENT,
+                OrnamentType.TURN,
+                OrnamentType.GRACE_NOTE
+            )) { _, type ->
                 FilterChip(
                     selected = type in settings.selectedOrnaments,
                     onClick = {
@@ -235,7 +241,14 @@ fun SettingsScreen(
                             settings.selectedOrnaments + type
                         viewModel.updateSettings(settings.copy(selectedOrnaments = updated))
                     },
-                    label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                    label = {
+                        Text(when (type) {
+                            OrnamentType.UPPER_MORDENT -> "Upper Mordent"
+                            OrnamentType.MORDENT       -> "Lower Mordent"
+                            OrnamentType.GRACE_NOTE    -> "Grace Note"
+                            else -> type.name.lowercase().replaceFirstChar { it.uppercase() }
+                        })
+                    }
                 )
             }
         }
