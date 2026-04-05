@@ -13,6 +13,9 @@ local.properties
 dist/
 mocks/
 
+# Paparazzi generated snapshots (always regenerated in CI, never committed as goldens)
+*/src/test/snapshots/
+
 # IntelliJ / Android Studio
 .idea/
 *.iml
