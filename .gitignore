@@ -10,9 +10,8 @@ local.properties
 *.aab
 *.keystore
 
-# Tracked APK output directory
-!dist/
-!dist/*.apk
+dist/
+mocks/
 
 # IntelliJ / Android Studio
 .idea/
