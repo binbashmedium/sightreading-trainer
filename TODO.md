@@ -18,6 +18,8 @@
 
 ## Done (recent)
 
+- [x] **PracticeScreen emulator screenshot** — Added `PracticeScreenshotTest.kt` (instrumented test): launches MainActivity, navigates to PracticeScreen, waits 6 s for Verovio WebView to render, captures full screen via `UiDevice.takeScreenshot()` (PixelCopy, includes WebView hardware layer), saves to app external files dir; `uiautomator:2.3.0` dependency added; CI `practice-screenshot` job runs on every push/PR with `reactivecircus/android-emulator-runner@v2` (API 29, x86_64, pixel_5, animations disabled), has `continue-on-error: true` so emulator flakiness never blocks the release; `release-apk` now depends on `[test, screenshots, practice-screenshot]` and bundles all screenshots (menu + practice) into a single `screenshots.zip` attached to the GitHub release.
+
 - [x] **Paparazzi screenshot tests + release export** — Added `app.cash.paparazzi:1.3.5` plugin; extracted stateless `*Content` composables from `MainScreen`, `SettingsScreen`, `StatisticsScreen`, `HelpScreen`; `ScreenshotTest.kt` covers 8 scenarios (default + populated variants) for all four menu screens; CI `screenshots` job runs `recordPaparazziDebug` on every push/PR and uploads images as artifact; `release-apk` job also generates and attaches `screenshots.zip` to every GitHub release.
 
 - [x] **Fix CodeQL autobuild failure** — Added `.github/workflows/codeql.yml` with `build-mode: manual` using `./gradlew :domain:compileKotlin :app:compileDebugKotlin`; removed `dist/` folder (APKs) and `mocks/` folder (reference images/PDF) from the repository; updated `.gitignore` to exclude both directories.
