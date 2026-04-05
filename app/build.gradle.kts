@@ -51,11 +51,22 @@ android {
         }
     }
 
+    sourceSets {
+        // When Paparazzi plugin is skipped (standard unit-test CI step), exclude
+        // ScreenshotTest.kt from compilation so Paparazzi types are not needed on
+        // the test classpath at all.
+        named("test") {
+            if (project.findProperty("skipPaparazziPlugin") == "true") {
+                java.exclude("**/ScreenshotTest.kt")
+            }
+        }
+    }
+
     testOptions {
         unitTests {
             // Paparazzi snapshot tests are run via recordPaparazziDebug / verifyPaparazziDebug.
             // Exclude them from the standard unit-test task to avoid failures when no golden
-            // images are committed to the repository.
+            // images are committed to the repository (plugin-applied mode only).
             all { testTask ->
                 testTask.exclude("**/ScreenshotTest.class")
             }
@@ -84,15 +95,11 @@ android {
 
 // Apply Paparazzi plugin (registers recordPaparazziDebug / verifyPaparazziDebug).
 // When -PskipPaparazziPlugin=true is passed (e.g. in the unit-test CI step) the plugin
-// is not applied so its per-task modifications don't affect :app:test. We still add
-// the Paparazzi library JAR so that ScreenshotTest.kt compiles (types are on classpath
-// but the class itself is excluded from running via testOptions.unitTests.all above).
+// is not applied so its per-task modifications don't affect :app:test. ScreenshotTest.kt
+// is also excluded from compilation (see sourceSets below), so no Paparazzi types are
+// needed on the classpath at all.
 if (project.findProperty("skipPaparazziPlugin") != "true") {
     apply(plugin = "app.cash.paparazzi")
-} else {
-    dependencies {
-        testImplementation("app.cash.paparazzi:paparazzi:2.0.0-alpha04")
-    }
 }
 
 dependencies {
