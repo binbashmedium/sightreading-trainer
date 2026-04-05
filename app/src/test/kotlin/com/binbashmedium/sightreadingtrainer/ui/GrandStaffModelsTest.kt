@@ -15,6 +15,7 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.model.StepInputSnapshot
@@ -117,8 +118,182 @@ class GrandStaffModelsTest {
         // Triad — root + quality, no parenthetical
         assertEquals("CM", formatChordLabelShort(listOf(60, 64, 67)))
         assertEquals("Dm", formatChordLabelShort(listOf(62, 65, 69)))
+        assertEquals("C5", formatChordLabelShort(listOf(60, 67)))
+        assertEquals("Caug", formatChordLabelShort(listOf(60, 64, 68)))
+        assertEquals("Cdim7", formatChordLabelShort(listOf(60, 63, 66, 69)))
+        assertEquals("C6", formatChordLabelShort(listOf(60, 64, 67, 69)))
+        assertEquals("Cm6", formatChordLabelShort(listOf(60, 63, 67, 69)))
+        assertEquals("Cadd9", formatChordLabelShort(listOf(60, 64, 67, 74)))
+        // Suspended chord voicing (D-G-A) should resolve to Gsus2 instead of note list
+        assertEquals("Gsus2", formatChordLabelShort(listOf(62, 67, 69)))
         // Seventh chord
         assertEquals("CM7", formatChordLabelShort(listOf(60, 64, 67, 71)))
+        assertEquals("C11", formatChordLabelShort(listOf(60, 64, 67, 70, 74, 77)))
+        assertEquals("C13", formatChordLabelShort(listOf(60, 64, 67, 70, 74, 81)))
+        assertEquals("C7b9", formatChordLabelShort(listOf(60, 64, 67, 70, 73)))
+    }
+
+    @Test
+    fun `formatChordLabel uses key-aware enharmonic root spelling`() {
+        val chord = listOf(66, 70, 73) // Gb major / F# major pitch classes
+
+        assertEquals("F#M", formatChordLabelShort(chord, musicalKey = 7)) // G major (sharps)
+        assertEquals("GbM", formatChordLabelShort(chord, musicalKey = 8)) // Ab major (flats)
+    }
+
+    @Test
+    fun `resolveDisplayChordNotes maps single note runs to chord notes`() {
+        val steps = listOf(
+            ExerciseStep(notes = listOf(60)),
+            ExerciseStep(notes = listOf(64)),
+            ExerciseStep(notes = listOf(67)),
+            ExerciseStep(notes = listOf(64))
+        )
+
+        val resolved = resolveDisplayChordNotes(steps)
+
+        assertEquals(listOf(60, 64, 67), resolved[0])
+        assertEquals(listOf(60, 64, 67), resolved[1])
+        assertEquals(listOf(60, 64, 67), resolved[2])
+        assertEquals(listOf(60, 64, 67), resolved[3])
+    }
+
+    @Test
+    fun `resolveDisplayChordNotes keeps multi note step notes unchanged`() {
+        val steps = listOf(
+            ExerciseStep(notes = listOf(60, 64, 67)),
+            ExerciseStep(notes = listOf(62))
+        )
+
+        val resolved = resolveDisplayChordNotes(steps)
+
+        assertEquals(listOf(60, 64, 67), resolved[0])
+        assertEquals(listOf(62), resolved[1])
+    }
+
+    @Test
+    fun `resolveDisplayChordNotes splits consecutive detected chords in one run`() {
+        val steps = listOf(
+            ExerciseStep(notes = listOf(60)),
+            ExerciseStep(notes = listOf(64)),
+            ExerciseStep(notes = listOf(67)),
+            ExerciseStep(notes = listOf(62)),
+            ExerciseStep(notes = listOf(65)),
+            ExerciseStep(notes = listOf(69))
+        )
+
+        val resolved = resolveDisplayChordNotes(steps)
+
+        assertEquals(listOf(60, 64, 67), resolved[0])
+        assertEquals(listOf(60, 64, 67), resolved[2])
+        assertEquals(listOf(62, 65, 69), resolved[3])
+        assertEquals(listOf(62, 65, 69), resolved[5])
+    }
+
+    @Test
+    fun `resolveDisplayChordNotes keeps isolated melody notes as note labels`() {
+        val steps = listOf(
+            ExerciseStep(notes = listOf(60)),
+            ExerciseStep(notes = listOf(62)),
+            ExerciseStep(notes = listOf(65))
+        )
+
+        val resolved = resolveDisplayChordNotes(steps)
+
+        assertEquals(listOf(60), resolved[0])
+        assertEquals(listOf(62), resolved[1])
+        assertEquals(listOf(65), resolved[2])
+    }
+
+    @Test
+    fun `resolveDisplayChordNotes resolves suspended chord runs`() {
+        val steps = listOf(
+            ExerciseStep(notes = listOf(62)), // D
+            ExerciseStep(notes = listOf(67)), // G
+            ExerciseStep(notes = listOf(69))  // A
+        )
+
+        val resolved = resolveDisplayChordNotes(steps)
+
+        assertEquals("Gsus2", formatChordLabelShort(resolved[0].orEmpty()))
+        assertEquals("Gsus2", formatChordLabelShort(resolved[1].orEmpty()))
+        assertEquals("Gsus2", formatChordLabelShort(resolved[2].orEmpty()))
+    }
+
+    @Test
+    fun `resolveDisplayChordNotes resolves power-chord runs`() {
+        val steps = listOf(
+            ExerciseStep(notes = listOf(60)), // C
+            ExerciseStep(notes = listOf(67))  // G
+        )
+
+        val resolved = resolveDisplayChordNotes(steps)
+
+        assertEquals("C5", formatChordLabelShort(resolved[0].orEmpty()))
+        assertEquals("C5", formatChordLabelShort(resolved[1].orEmpty()))
+    }
+
+    @Test
+    fun `buildMeasureChordLabels creates one chord label per measure`() {
+        val steps = listOf(
+            ExerciseStep(notes = listOf(60)),
+            ExerciseStep(notes = listOf(64)),
+            ExerciseStep(notes = listOf(67)),
+            ExerciseStep(notes = listOf(64))
+        )
+        val stepBeats = listOf(0f, 2f, 4f, 6f) // all within measure 1
+
+        val labels = buildMeasureChordLabels(
+            steps = steps,
+            stepBeats = stepBeats,
+            handMode = HandMode.RIGHT,
+            musicalKey = 0
+        )
+
+        assertEquals(1, labels.size)
+        assertEquals(0f, labels.first().startBeat)
+        assertTrue(labels.first().name.startsWith("CM"))
+    }
+
+    @Test
+    fun `buildMeasureChordLabels tolerates extra tones in a measure`() {
+        val steps = listOf(
+            ExerciseStep(notes = listOf(60)),
+            ExerciseStep(notes = listOf(64)),
+            ExerciseStep(notes = listOf(65)),
+            ExerciseStep(notes = listOf(67)),
+            ExerciseStep(notes = listOf(71)),
+            ExerciseStep(notes = listOf(74))
+        )
+        val stepBeats = listOf(0f, 1f, 2f, 3f, 4f, 5f)
+
+        val labels = buildMeasureChordLabels(
+            steps = steps,
+            stepBeats = stepBeats,
+            handMode = HandMode.RIGHT,
+            musicalKey = 0
+        )
+
+        assertEquals(1, labels.size)
+        assertTrue(labels.first().name.startsWith("CM11"))
+    }
+
+    @Test
+    fun `buildMeasureChordLabels omits unresolved measures instead of note-name fallback`() {
+        val steps = listOf(
+            ExerciseStep(notes = listOf(60)),
+            ExerciseStep(notes = listOf(61))
+        )
+        val stepBeats = listOf(0f, 2f)
+
+        val labels = buildMeasureChordLabels(
+            steps = steps,
+            stepBeats = stepBeats,
+            handMode = HandMode.RIGHT,
+            musicalKey = 0
+        )
+
+        assertTrue(labels.isEmpty())
     }
 
     @Test
