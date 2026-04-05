@@ -49,7 +49,6 @@ android {
 
     testOptions {
         unitTests {
-            isIncludeAndroidResources = true
             // Paparazzi snapshot tests are run via recordPaparazziDebug / verifyPaparazziDebug.
             // Exclude them from the standard unit-test task to avoid failures when no golden
             // images are committed to the repository.

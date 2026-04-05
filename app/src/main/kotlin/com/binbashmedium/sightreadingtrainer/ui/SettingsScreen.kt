@@ -45,7 +45,7 @@ fun SettingsScreen(
     SettingsScreenContent(
         settings = settings,
         availableDevices = devices,
-        onSettingsChange = { onSettingsChange(it) },
+        onSettingsChange = { viewModel.updateSettings(it) },
         onBack = { navController.popBackStack() }
     )
 }
