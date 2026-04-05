@@ -14,10 +14,11 @@
 
 package com.binbashmedium.sightreadingtrainer.ui
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.fillMaxSize
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
@@ -36,7 +37,7 @@ class ScreenshotTest {
         theme = "android:Theme.Material.Light.NoActionBar"
     )
 
-    private fun <T> snap(name: String? = null, content: @androidx.compose.runtime.Composable () -> T) {
+    private fun snap(name: String? = null, content: @Composable () -> Unit) {
         paparazzi.snapshot(name = name) {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
