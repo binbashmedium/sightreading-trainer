@@ -203,7 +203,7 @@ fun HelpScreen(navController: NavController) {
             }
             HelpSubSection("Exercise Time") {
                 HelpBody(
-                    "Duration of a timed session in seconds (30 – 300 s, default 60 s). " +
+                    "Duration of a timed session in minutes (1 – 10 min, default 1 min). " +
                     "When an exercise chunk is completed before the timer expires, a new chunk " +
                     "is generated automatically in the same key so practice continues without " +
                     "interruption."

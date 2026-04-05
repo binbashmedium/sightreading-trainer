@@ -54,7 +54,7 @@ fun MainScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Text("Time: ${settings.exerciseTimeSec}s")
+        Text("Time: ${settings.exerciseTimeMin} min")
         Text(
             text = "Types: $typeSummary",
             maxLines = 2,

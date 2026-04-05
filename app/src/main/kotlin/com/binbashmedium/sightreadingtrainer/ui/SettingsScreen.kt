@@ -78,12 +78,12 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Text("Exercise Time: ${settings.exerciseTimeSec} s")
+        Text("Exercise Time: ${settings.exerciseTimeMin} min")
         Slider(
-            value = settings.exerciseTimeSec.toFloat(),
-            onValueChange = { viewModel.updateSettings(settings.copy(exerciseTimeSec = it.toInt())) },
-            valueRange = 30f..300f,
-            steps = 26
+            value = settings.exerciseTimeMin.toFloat(),
+            onValueChange = { viewModel.updateSettings(settings.copy(exerciseTimeMin = it.toInt())) },
+            valueRange = 1f..10f,
+            steps = 8
         )
 
         // Progression selector — shown only when PROGRESSIONS type is active

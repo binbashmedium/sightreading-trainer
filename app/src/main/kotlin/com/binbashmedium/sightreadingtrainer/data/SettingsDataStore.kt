@@ -43,7 +43,7 @@ class SettingsDataStore @Inject constructor(
         val MIDI_DEVICE = stringPreferencesKey("midi_device")
         val TIMING_TOLERANCE = intPreferencesKey("timing_tolerance_ms")
         val CHORD_WINDOW = intPreferencesKey("chord_window_ms")
-        val EXERCISE_TIME_SEC = intPreferencesKey("exercise_time_sec")
+        val EXERCISE_TIME_MIN = intPreferencesKey("exercise_time_min")
         val EXERCISE_TYPES = stringPreferencesKey("exercise_types")
         val HAND_MODE = stringPreferencesKey("hand_mode")
         val NOTE_ACCIDENTALS_ENABLED = booleanPreferencesKey("note_accidentals_enabled")
@@ -73,7 +73,7 @@ class SettingsDataStore @Inject constructor(
             midiDeviceName = prefs[Keys.MIDI_DEVICE] ?: "",
             timingToleranceMs = prefs[Keys.TIMING_TOLERANCE] ?: 200,
             chordWindowMs = prefs[Keys.CHORD_WINDOW] ?: 50,
-            exerciseTimeSec = (prefs[Keys.EXERCISE_TIME_SEC] ?: 60).coerceAtLeast(10),
+            exerciseTimeMin = (prefs[Keys.EXERCISE_TIME_MIN] ?: 1).coerceIn(1, 10),
             exerciseTypes = parseExerciseTypes(
                 prefs[Keys.EXERCISE_TYPES],
                 prefs[intPreferencesKey("difficulty")] ?: 1
@@ -109,7 +109,7 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.MIDI_DEVICE] = settings.midiDeviceName
             prefs[Keys.TIMING_TOLERANCE] = settings.timingToleranceMs
             prefs[Keys.CHORD_WINDOW] = settings.chordWindowMs
-            prefs[Keys.EXERCISE_TIME_SEC] = settings.exerciseTimeSec
+            prefs[Keys.EXERCISE_TIME_MIN] = settings.exerciseTimeMin
             prefs[Keys.EXERCISE_TYPES] = settings.exerciseTypes.sortedBy { it.ordinal }.joinToString(",") { it.name }
             prefs[Keys.HAND_MODE] = settings.handMode.name
             prefs[Keys.NOTE_ACCIDENTALS_ENABLED] = settings.noteAccidentalsEnabled

@@ -105,7 +105,7 @@ class PracticeViewModel @Inject constructor(
             val exercise = exerciseRepository.generateExercise(settings)
             sessionSettings = settings
             sessionKey = exercise.musicalKey
-            practiceSessionUseCase.startSession(exercise, settings.exerciseTimeSec)
+            practiceSessionUseCase.startSession(exercise, settings.exerciseTimeMin * 60)
             _isLoading.value = false
         }
     }
