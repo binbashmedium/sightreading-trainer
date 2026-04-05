@@ -27,12 +27,26 @@ enum class PedalAction {
     RELEASE
 }
 
+/**
+ * Musical ornament type for a note.
+ * When applied, the ornament symbol is displayed above the note.
+ * The main note pitch is still the only one evaluated during practice.
+ */
+enum class OrnamentType {
+    NONE,
+    TRILL,
+    MORDENT,
+    TURN
+}
+
 data class ExerciseStep(
     val notes: List<Int> = emptyList(),
     val noteAccidentals: List<NoteAccidental> = List(notes.size) { NoteAccidental.NONE },
     val pedalAction: PedalAction = PedalAction.NONE,
     val contentType: ExerciseContentType? = null,
-    val noteValue: NoteValue = NoteValue.QUARTER
+    val noteValue: NoteValue = NoteValue.QUARTER,
+    /** Ornament applied to the first note of this step. Does not affect note matching. */
+    val ornament: OrnamentType = OrnamentType.NONE
 ) {
     init {
         require(noteAccidentals.size == notes.size) {

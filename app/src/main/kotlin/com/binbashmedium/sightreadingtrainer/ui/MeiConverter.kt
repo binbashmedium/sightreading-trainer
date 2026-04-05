@@ -15,6 +15,7 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import java.util.Locale
 import kotlin.math.abs
@@ -63,6 +64,7 @@ object MeiConverter {
         val numMeasures  = lastMeasure - firstMeasure + 1
 
         val keySigAttr = keySignatureAttr(gameState.musicalKey)
+        val keySigAlteredPcs = keySignatureAlteredPitchClasses(gameState.musicalKey)
 
         val measuresXml = buildString {
             for (i in 0 until numMeasures) {
@@ -73,7 +75,8 @@ object MeiConverter {
                 val measurePedals = pedals.filter { it.startBeat >= mStartBeat && it.startBeat < mEndBeat }
                 val measureChords = chords.filter { it.startBeat >= mStartBeat && it.startBeat < mEndBeat }
                 val isLast        = i == numMeasures - 1
-                append(renderMeasure(i + 1, measureNotes, measurePedals, measureChords, mStartBeat, isLast, gameState.currentBeat))
+                append(renderMeasure(i + 1, measureNotes, measurePedals, measureChords,
+                    mStartBeat, isLast, gameState.currentBeat, keySigAlteredPcs))
             }
         }
 
@@ -104,7 +107,8 @@ $measuresXml    </section>
         chords: List<Chord>,
         measureStartBeat: Float,
         isLast: Boolean,
-        currentBeat: Float
+        currentBeat: Float,
+        keySigAlteredPcs: Set<Int> = emptySet()
     ): String {
         val treble = notes.filter { it.staff == StaffType.TREBLE }
         val bass   = notes.filter { it.staff == StaffType.BASS }
@@ -133,32 +137,56 @@ $measuresXml    </section>
             "        <harm tstamp=\"$tstamp\" staff=\"1\">$escapedName</harm>\n"
         }
 
+        // MEI ornament control events referencing specific notes by xml:id.
+        val ornamentXml = notes.filter { it.ornament != OrnamentType.NONE }.joinToString("") { note ->
+            val beatKey  = (note.startBeat * 10).roundToLong()
+            val prefix   = if (abs(note.startBeat - currentBeat) < 0.01f) "ncurr" else "nb"
+            val noteId   = "${prefix}${beatKey}m${note.midi}"
+            val staffNum = if (note.staff == StaffType.TREBLE) "1" else "2"
+            val qBeat    = (note.startBeat - measureStartBeat) / BEATS_PER_STEP
+            val tstamp   = String.format(Locale.US, "%.4f", qBeat + 1f)
+            when (note.ornament) {
+                OrnamentType.TRILL   -> "        <trill staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
+                OrnamentType.MORDENT -> "        <mordent staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
+                OrnamentType.TURN    -> "        <turn staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
+                OrnamentType.NONE    -> ""
+            }
+        }
+
         return "      <measure n=\"$n\"$right>\n" +
                "        <staff n=\"1\"><layer n=\"1\">\n" +
-               renderLayer(treble, measureStartBeat, currentBeat).prependIndent("          ") + "\n" +
+               renderLayer(treble, measureStartBeat, currentBeat, keySigAlteredPcs).prependIndent("          ") + "\n" +
                "        </layer></staff>\n" +
                "        <staff n=\"2\"><layer n=\"1\">\n" +
-               renderLayer(bass, measureStartBeat, currentBeat).prependIndent("          ") + "\n" +
+               renderLayer(bass, measureStartBeat, currentBeat, keySigAlteredPcs).prependIndent("          ") + "\n" +
                "        </layer></staff>\n" +
                pedalXml +
                harmXml +
+               ornamentXml +
                "      </measure>\n"
     }
 
     /**
      * Generates MEI layer content for one staff within one measure.
      * Fills gaps between notes with rests to complete the 4/4 measure.
+     *
+     * @param keySigAlteredPitchClasses Pitch classes (0–11) already altered by the key signature.
+     *   A natural sign is only emitted when the pitch class is in this set OR has been
+     *   sharped/flatted earlier in the same measure.
      */
     internal fun renderLayer(
         notes: List<NoteEvent>,
         measureStartBeat: Float,
-        currentBeat: Float
+        currentBeat: Float,
+        keySigAlteredPitchClasses: Set<Int> = emptySet()
     ): String {
         val byBeat = notes.groupBy { it.startBeat }.toSortedMap()
         if (byBeat.isEmpty()) return "<mRest/>"
 
         val sb = StringBuilder()
         var currentQBeat = 0f  // quarter-note beats from measure start
+        // Tracks pitch classes that have been sharped ("s") or flatted ("f") within this measure.
+        val withinMeasureAccidentals = mutableMapOf<Int, String>()   // pitchClass → "s" or "f"
 
         byBeat.forEach { (startBeat, chordNotes) ->
             val qBeat     = (startBeat - measureStartBeat) / BEATS_PER_STEP
@@ -169,7 +197,22 @@ $measuresXml    </section>
             val gap = qBeat - currentQBeat
             if (gap > 0.01f) sb.append(rest(gap)).append("\n")
 
-            sb.append(renderChord(chordNotes, duration, startBeat, isCurrent)).append("\n")
+            sb.append(
+                renderChord(chordNotes, duration, startBeat, isCurrent,
+                    keySigAlteredPitchClasses, withinMeasureAccidentals)
+            ).append("\n")
+
+            // Update within-measure accidental state.
+            chordNotes.forEach { note ->
+                val pc = ((note.midi % 12) + 12) % 12
+                val (_, _, accidGes) = midiToMeiPitch(note.midi, note.accidental)
+                when {
+                    accidGes == "s" -> withinMeasureAccidentals[pc] = "s"
+                    accidGes == "f" -> withinMeasureAccidentals[pc] = "f"
+                    note.accidental == NoteAccidental.NATURAL -> withinMeasureAccidentals.remove(pc)
+                }
+            }
+
             currentQBeat = qBeat + duration
         }
 
@@ -184,29 +227,41 @@ $measuresXml    </section>
         notes: List<NoteEvent>,
         duration: Float,
         startBeat: Float,
-        isCurrent: Boolean
+        isCurrent: Boolean,
+        keySigAlteredPitchClasses: Set<Int> = emptySet(),
+        withinMeasureAccidentals: Map<Int, String> = emptyMap()
     ): String {
         val dur     = quarterBeatsToDur(duration)
         val beatKey = (startBeat * 10).roundToLong()
         val prefix  = if (isCurrent) "ncurr" else "nb"
 
         return if (notes.size == 1) {
-            noteElement(notes.first(), dur, "${prefix}${beatKey}m${notes.first().midi}")
+            noteElement(notes.first(), dur, "${prefix}${beatKey}m${notes.first().midi}",
+                keySigAlteredPitchClasses, withinMeasureAccidentals)
         } else {
             val id = "chord-${prefix}${beatKey}"
             val noteLines = notes.joinToString("\n") { note ->
-                noteElement(note, dur, "${prefix}${beatKey}m${note.midi}")
+                noteElement(note, dur, "${prefix}${beatKey}m${note.midi}",
+                    keySigAlteredPitchClasses, withinMeasureAccidentals)
             }
             "<chord dur=\"$dur\" xml:id=\"$id\">\n$noteLines\n</chord>"
         }
     }
 
-    private fun noteElement(note: NoteEvent, dur: String, id: String): String {
+    private fun noteElement(
+        note: NoteEvent,
+        dur: String,
+        id: String,
+        keySigAlteredPitchClasses: Set<Int> = emptySet(),
+        withinMeasureAccidentals: Map<Int, String> = emptyMap()
+    ): String {
         val (pname, oct, accidGes) = midiToMeiPitch(note.midi, note.accidental)
         val color      = noteStateMeiColor(note.state)
         val colorAttr  = if (color != null) " color=\"$color\"" else ""
         val accGesAttr = if (accidGes != null) " accid.ges=\"$accidGes\"" else ""
-        val accAttr    = visualAccidAttr(note.accidental, accidGes)
+        val accAttr    = visualAccidAttr(note.accidental, accidGes,
+            keySigAlteredPitchClasses, withinMeasureAccidentals,
+            ((note.midi % 12) + 12) % 12)
         return "<note pname=\"$pname\" oct=\"$oct\" dur=\"$dur\"" +
                " xml:id=\"$id\"$accGesAttr$accAttr$colorAttr/>"
     }
@@ -240,9 +295,28 @@ $measuresXml    </section>
         }
     }
 
-    /** Returns the visual `accid` attribute string for a note, or empty string if none needed. */
-    private fun visualAccidAttr(accidental: NoteAccidental, accidGes: String?): String = when (accidental) {
-        NoteAccidental.NATURAL -> " accid=\"n\""
+    /**
+     * Returns the visual `accid` attribute string for a note, or empty string if none needed.
+     *
+     * Natural signs are suppressed unless the pitch class was previously altered
+     * (by key signature or an earlier note in the same measure) — matching standard
+     * notation practice where a natural cancellation only appears when necessary.
+     */
+    internal fun visualAccidAttr(
+        accidental: NoteAccidental,
+        accidGes: String?,
+        keySigAlteredPitchClasses: Set<Int> = emptySet(),
+        withinMeasureAccidentals: Map<Int, String> = emptyMap(),
+        pitchClass: Int = -1
+    ): String = when (accidental) {
+        NoteAccidental.NATURAL -> {
+            // Show natural only if this pitch class was altered in the key signature
+            // or by an accidental earlier in the same measure.
+            val needsNatural = pitchClass >= 0 &&
+                    (pitchClass in keySigAlteredPitchClasses ||
+                     withinMeasureAccidentals.containsKey(pitchClass))
+            if (needsNatural) " accid=\"n\"" else ""
+        }
         NoteAccidental.SHARP   -> if (accidGes == "s") " accid=\"s\"" else ""
         NoteAccidental.FLAT    -> if (accidGes == "f") " accid=\"f\"" else ""
         NoteAccidental.NONE    -> ""
@@ -276,6 +350,25 @@ $measuresXml    </section>
             else       -> "key.sig=\"0\""
         }
     }
+
+    /**
+     * Returns the set of pitch classes (0–11) that are already altered (sharped or flatted)
+     * by the key signature for [musicalKey].
+     *
+     * Standard sharp order (F C G D A E B): pitch classes 5,0,7,2,9,4,11
+     * Standard flat order (B E A D G C F):  pitch classes 11,4,9,2,7,0,5
+     */
+    internal fun keySignatureAlteredPitchClasses(musicalKey: Int): Set<Int> {
+        val (sharps, flats) = KEY_SIGNATURES.getOrElse(musicalKey) { 0 to 0 }
+        return when {
+            sharps > 0 -> SHARP_ORDER.take(sharps).toSet()
+            flats  > 0 -> FLAT_ORDER.take(flats).toSet()
+            else       -> emptySet()
+        }
+    }
+
+    private val SHARP_ORDER = listOf(5, 0, 7, 2, 9, 4, 11)  // F# C# G# D# A# E# B#
+    private val FLAT_ORDER  = listOf(11, 4, 9, 2, 7, 0, 5)  // Bb Eb Ab Db Gb Cb Fb
 
     // ── Note state color ──────────────────────────────────────────────────────
 

@@ -60,6 +60,11 @@ class SettingsDataStore @Inject constructor(
         val SELECTED_PROGRESSIONS = stringPreferencesKey("selected_progressions")
         val SELECTED_NOTE_VALUES = stringPreferencesKey("selected_note_values")
         val CHORD_NAMES_ENABLED = booleanPreferencesKey("chord_names_enabled")
+        val BASS_NOTE_RANGE_MIN = intPreferencesKey("bass_note_range_min")
+        val BASS_NOTE_RANGE_MAX = intPreferencesKey("bass_note_range_max")
+        val TREBLE_NOTE_RANGE_MIN = intPreferencesKey("treble_note_range_min")
+        val TREBLE_NOTE_RANGE_MAX = intPreferencesKey("treble_note_range_max")
+        val ORNAMENTS_ENABLED = booleanPreferencesKey("ornaments_enabled")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -89,7 +94,12 @@ class SettingsDataStore @Inject constructor(
             ),
             selectedProgressions = parseProgressions(prefs[Keys.SELECTED_PROGRESSIONS]),
             selectedNoteValues = parseNoteValues(prefs[Keys.SELECTED_NOTE_VALUES]),
-            chordNamesEnabled = prefs[Keys.CHORD_NAMES_ENABLED] ?: false
+            chordNamesEnabled = prefs[Keys.CHORD_NAMES_ENABLED] ?: false,
+            bassNoteRangeMin = (prefs[Keys.BASS_NOTE_RANGE_MIN] ?: 28).coerceIn(28, 72),
+            bassNoteRangeMax = (prefs[Keys.BASS_NOTE_RANGE_MAX] ?: 60).coerceIn(28, 72),
+            trebleNoteRangeMin = (prefs[Keys.TREBLE_NOTE_RANGE_MIN] ?: 60).coerceIn(48, 93),
+            trebleNoteRangeMax = (prefs[Keys.TREBLE_NOTE_RANGE_MAX] ?: 84).coerceIn(48, 93),
+            ornamentsEnabled = prefs[Keys.ORNAMENTS_ENABLED] ?: false
         )
     }
 
@@ -118,6 +128,11 @@ class SettingsDataStore @Inject constructor(
                 .sortedBy { it.ordinal }
                 .joinToString(",") { it.name }
             prefs[Keys.CHORD_NAMES_ENABLED] = settings.chordNamesEnabled
+            prefs[Keys.BASS_NOTE_RANGE_MIN] = settings.bassNoteRangeMin
+            prefs[Keys.BASS_NOTE_RANGE_MAX] = settings.bassNoteRangeMax
+            prefs[Keys.TREBLE_NOTE_RANGE_MIN] = settings.trebleNoteRangeMin
+            prefs[Keys.TREBLE_NOTE_RANGE_MAX] = settings.trebleNoteRangeMax
+            prefs[Keys.ORNAMENTS_ENABLED] = settings.ornamentsEnabled
         }
     }
 

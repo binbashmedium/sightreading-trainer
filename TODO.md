@@ -1,19 +1,15 @@
 # TODO
 
-## In Progress
+## Done (recent)
 
-- [x] **Chord/note names display option** — Add `chordNamesEnabled` setting to `AppSettings`; `SettingsDataStore` persists it; toggle in `SettingsScreen`; `MeiConverter.convert()` accepts `showChordNames` flag and emits `<harm>` control events above the treble staff for each chord group; `VerovioStaffView` and `PracticeScreen` wired to pass the setting; unit tests added to `MeiConverterTest`.
-
-## Open (pending implementation)
-
-- [ ] **Pedal mark alignment** — Pedal press/release marks should preferably start at a chord change or at the start of a beat, not mid-beat. Generation logic should snap pedal events to beat boundaries or chord boundaries; avoid placing pedal marks between notes within a beat group.
-- [ ]  ** Loading Screen ** when the exercise is loaded the fist time it takes some seconds. The Timer should start after the nodes are loaded. During loading a loading screen should be displayed. Maybe a spin wheel ?
-- [ ]  Add Link to Settings from Exercise screen, maybe a Zahnrad?
-- [ ]  App stops responding, points,bpm are not reset
-- [ ]  Remove points, the highscore is based on bpm, time (practice time of exercise) and right/wrong notes
-- [ ]  When accidentels are places are only valid for the note in the same bar. So a netral accudental is only valid if the note had a accidental in the same bar or trough the key. Sometimes a netral accidental accour in C-Major in a bar without a b or # in the same bar
-- [ ]  make note range configurable, Bass E1- C5, treble C3- A6
-- [ ]  Add ornaments, the notes are still checked completly and make it configurable
+- [x] **Loading Screen** — `PracticeViewModel.isLoading: StateFlow<Boolean>` added; set to true in `startSession()`, false after exercise is ready. `VerovioStaffView` exposes `onFirstRender` callback; `PracticeViewModel.onStaffRendered()` resets session start time once Verovio renders. `PracticeScreen` shows `CircularProgressIndicator` overlay when loading. Timer loop only runs when not loading.
+- [x] **Settings link from Exercise screen** — Gear icon `IconButton` (using `Icons.Filled.Settings`) added to `HeaderCard`; navigates to Settings screen. `material-icons-extended` dependency added.
+- [x] **App stops responding / reset fix** — `startSession()` now clears `_sessionResult` and calls `practiceSessionUseCase.resetSession()` before generating the next exercise, ensuring BPM/score state is cleared immediately on reload.
+- [x] **Remove points; redesign highscore** — `GameState.score` removed; `SessionResultUi.score` replaced with `accuracy: Int`, `bpm`, `practiceTimeSec`. `computeHighScore()` computes composite score from accuracy × BPM-factor × time-factor. Overlay now shows accuracy %, BPM, time and highscore.
+- [x] **Pedal mark alignment** — `applyPedalMarks` now builds cumulative beat positions and only places press/release at integer quarter-note beat boundaries. Release is ≥ 2 beats and ≤ 6 beats after press. 3 new unit tests added.
+- [x] **Natural accidental display fix** — `MeiConverter.visualAccidAttr` suppresses natural signs unless the pitch class was altered by the key signature or by an explicit accidental earlier in the same measure. `keySignatureAlteredPitchClasses()` helper computes the set of affected pitch classes. `renderLayer` tracks within-measure accidentals. 7 new unit tests added.
+- [x] **Configurable note range** — `AppSettings` gains `bassNoteRangeMin`/`Max` (MIDI 28–72) and `trebleNoteRangeMin`/`Max` (MIDI 48–93); `GenerateExerciseUseCase.applyNoteRanges()` octave-shifts then clamps generated notes; `SettingsDataStore` persists new fields; sliders added to `SettingsScreen`. 3 unit tests added.
+- [x] **Ornaments** — `OrnamentType` enum (NONE, TRILL, MORDENT, TURN) added to domain; `ExerciseStep.ornament` field; `GenerateExerciseUseCase.applyOrnaments()` randomly assigns ornaments (~1-in-6 on quarter-note+ steps) when `ornamentsEnabled`; `NoteEvent.ornament` carries it to the UI; `MeiConverter` emits `<trill>`/`<mordent>`/`<turn>` control events with `startid` references; notes still evaluated on main pitch only; `ornamentsEnabled` toggle in `SettingsScreen`. 7 unit tests added.
 
       
 

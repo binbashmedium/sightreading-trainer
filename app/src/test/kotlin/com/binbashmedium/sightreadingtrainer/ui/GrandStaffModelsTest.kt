@@ -357,7 +357,6 @@ class GrandStaffModelsTest {
         assertTrue(state.levelTitle.isNotEmpty())
         assertTrue(state.notes.isNotEmpty())
         assertTrue(state.chords.isNotEmpty())
-        assertTrue(state.score > 0)
     }
 
     @Test

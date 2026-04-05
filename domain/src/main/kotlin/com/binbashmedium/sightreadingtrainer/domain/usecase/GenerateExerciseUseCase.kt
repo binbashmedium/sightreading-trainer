@@ -22,6 +22,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
+import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import kotlin.random.Random
 
@@ -141,8 +142,10 @@ class GenerateExerciseUseCase {
         val mixedExercise = applyMeasurePatterns(materialPool, DEFAULT_EXERCISE_MEASURES, settings.selectedNoteValues.ifEmpty { NoteValue.entries.toSet() }, random)
         val accidentalsApplied = applyGeneratedAccidentals(mixedExercise, settings.noteAccidentalsEnabled)
         val pedalApplied = applyPedalMarks(accidentalsApplied, settings.pedalEventsEnabled)
+        val rangeApplied = applyNoteRanges(pedalApplied, settings, generatedKey)
+        val ornamentsApplied = applyOrnaments(rangeApplied, settings.ornamentsEnabled, random)
 
-        return Exercise(steps = pedalApplied, musicalKey = generatedKey, handMode = settings.handMode)
+        return Exercise(steps = ornamentsApplied, musicalKey = generatedKey, handMode = settings.handMode)
     }
 
     /**
@@ -520,27 +523,64 @@ class GenerateExerciseUseCase {
         return mutable
     }
 
+    /**
+     * Applies pedal press/release marks to the step list.
+     *
+     * Alignment rules:
+     * - Pedal press is only placed at a step whose cumulative beat position is
+     *   on an integer quarter-note boundary (e.g. 0, 1, 2, 3, 4, …).
+     * - Every ~4–8 beats a new press/release pair is injected.
+     * - Release snaps to the start of the first beat-boundary step that follows
+     *   the press by at least 2 quarter-note beats, within a 6-beat window.
+     */
     private fun applyPedalMarks(
         steps: List<ExerciseStep>,
         enabled: Boolean
     ): List<ExerciseStep> {
         if (!enabled || steps.size < 2) return steps
 
+        // Build cumulative beat positions for all steps.
+        val beatPositions = run {
+            var cursor = 0f
+            steps.map { step ->
+                val pos = cursor
+                cursor += step.noteValue.beats
+                pos
+            }
+        }
+
         val mutable = steps.map { it.copy() }.toMutableList()
         var index = 0
+        var nextEligibleBeat = 0f   // earliest beat at which a new PRESS may be placed
+
         while (index < mutable.lastIndex) {
-            val shouldAddPedal = mutable[index].pedalAction == PedalAction.NONE && index % 5 == 0
-            if (!shouldAddPedal) {
+            val beat = beatPositions[index]
+
+            // Only place a press at beat-boundary positions (integer quarter-note beats).
+            val isOnBeatBoundary = (beat - beat.toLong()) < 0.01f
+            val canPress = mutable[index].pedalAction == PedalAction.NONE &&
+                           isOnBeatBoundary &&
+                           beat >= nextEligibleBeat
+
+            if (!canPress) {
                 index++
                 continue
             }
 
-            val releaseIndex = (index + 1..minOf(index + 3, mutable.lastIndex))
-                .firstOrNull { mutable[it].pedalAction == PedalAction.NONE }
+            // Find a release: first beat-boundary step ≥ 2 beats after the press, within 6 beats.
+            val releaseIndex = (index + 1..mutable.lastIndex).firstOrNull { ri ->
+                val rBeat = beatPositions[ri]
+                val rIsOnBoundary = (rBeat - rBeat.toLong()) < 0.01f
+                rIsOnBoundary &&
+                        (rBeat - beat) >= 2f &&
+                        (rBeat - beat) <= 6f &&
+                        mutable[ri].pedalAction == PedalAction.NONE
+            }
 
             if (releaseIndex != null) {
                 mutable[index] = mutable[index].copy(pedalAction = PedalAction.PRESS)
                 mutable[releaseIndex] = mutable[releaseIndex].copy(pedalAction = PedalAction.RELEASE)
+                nextEligibleBeat = beatPositions[releaseIndex] + 4f  // ≥ 4 beats gap before next press
                 index = releaseIndex + 1
             } else {
                 index++
@@ -548,6 +588,75 @@ class GenerateExerciseUseCase {
         }
 
         return mutable
+    }
+
+    /**
+     * Clamps each note in every step to the configured bass/treble MIDI ranges.
+     * Notes are transposed by octaves (±12) until they fall within the configured range.
+     * If a note cannot be placed within range after octave shifting, it is snapped to the
+     * nearest boundary note in the same pitch class.
+     *
+     * Split point: MIDI < 60 → bass staff range; MIDI ≥ 60 → treble staff range.
+     */
+    private fun applyNoteRanges(
+        steps: List<ExerciseStep>,
+        settings: AppSettings,
+        key: Int
+    ): List<ExerciseStep> {
+        val bassMin = settings.bassNoteRangeMin.coerceIn(28, 72)
+        val bassMax = settings.bassNoteRangeMax.coerceIn(bassMin, 72)
+        val trebleMin = settings.trebleNoteRangeMin.coerceIn(48, 93)
+        val trebleMax = settings.trebleNoteRangeMax.coerceIn(trebleMin, 93)
+
+        return steps.map { step ->
+            val clampedNotes = step.notes.map { midi ->
+                clampMidiToRange(midi, if (midi < 60) bassMin to bassMax else trebleMin to trebleMax)
+            }
+            if (clampedNotes == step.notes) step
+            else step.copy(
+                notes = clampedNotes,
+                noteAccidentals = if (settings.noteAccidentalsEnabled) {
+                    // Recompute accidentals are reset to NONE after clamping
+                    List(clampedNotes.size) { NoteAccidental.NONE }
+                } else step.noteAccidentals
+            )
+        }
+    }
+
+    /**
+     * Randomly assigns ornaments (TRILL, MORDENT, TURN) to approximately 1 in 6 steps
+     * when [enabled]. Only quarter-note or longer steps receive ornaments (grace notes
+     * on eighth notes look crowded). The main note is never changed — ornaments are
+     * decorative only and do not affect note matching.
+     */
+    private fun applyOrnaments(
+        steps: List<ExerciseStep>,
+        enabled: Boolean,
+        random: Random
+    ): List<ExerciseStep> {
+        if (!enabled) return steps
+        val types = OrnamentType.entries.filter { it != OrnamentType.NONE }
+        return steps.map { step ->
+            if (step.ornament == OrnamentType.NONE &&
+                step.noteValue.beats >= 1f &&
+                step.notes.isNotEmpty() &&
+                random.nextInt(6) == 0
+            ) {
+                step.copy(ornament = types.random(random))
+            } else step
+        }
+    }
+
+    private fun clampMidiToRange(midi: Int, range: Pair<Int, Int>): Int {
+        val (min, max) = range
+        if (midi in min..max) return midi
+        // Shift by octaves
+        var shifted = midi
+        while (shifted < min) shifted += 12
+        while (shifted > max) shifted -= 12
+        if (shifted in min..max) return shifted
+        // Snap to nearest boundary
+        return if (kotlin.math.abs(shifted - min) <= kotlin.math.abs(shifted - max)) min else max
     }
 
     private fun naturalMidiFor(midi: Int): Int = when (midi % 12) {

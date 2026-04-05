@@ -222,6 +222,71 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Ornaments")
+            Switch(
+                checked = settings.ornamentsEnabled,
+                onCheckedChange = {
+                    viewModel.updateSettings(settings.copy(ornamentsEnabled = it))
+                }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Note ranges
+        Text("Bass Range: MIDI ${settings.bassNoteRangeMin}–${settings.bassNoteRangeMax}")
+        Text("Min (E1=28)", style = MaterialTheme.typography.bodySmall)
+        Slider(
+            value = settings.bassNoteRangeMin.toFloat(),
+            onValueChange = {
+                val newMin = it.toInt().coerceAtMost(settings.bassNoteRangeMax - 12)
+                viewModel.updateSettings(settings.copy(bassNoteRangeMin = newMin))
+            },
+            valueRange = 28f..72f,
+            steps = 43
+        )
+        Text("Max (C5=72)", style = MaterialTheme.typography.bodySmall)
+        Slider(
+            value = settings.bassNoteRangeMax.toFloat(),
+            onValueChange = {
+                val newMax = it.toInt().coerceAtLeast(settings.bassNoteRangeMin + 12)
+                viewModel.updateSettings(settings.copy(bassNoteRangeMax = newMax))
+            },
+            valueRange = 28f..72f,
+            steps = 43
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Text("Treble Range: MIDI ${settings.trebleNoteRangeMin}–${settings.trebleNoteRangeMax}")
+        Text("Min (C3=48)", style = MaterialTheme.typography.bodySmall)
+        Slider(
+            value = settings.trebleNoteRangeMin.toFloat(),
+            onValueChange = {
+                val newMin = it.toInt().coerceAtMost(settings.trebleNoteRangeMax - 12)
+                viewModel.updateSettings(settings.copy(trebleNoteRangeMin = newMin))
+            },
+            valueRange = 48f..93f,
+            steps = 44
+        )
+        Text("Max (A6=93)", style = MaterialTheme.typography.bodySmall)
+        Slider(
+            value = settings.trebleNoteRangeMax.toFloat(),
+            onValueChange = {
+                val newMax = it.toInt().coerceAtLeast(settings.trebleNoteRangeMin + 12)
+                viewModel.updateSettings(settings.copy(trebleNoteRangeMax = newMax))
+            },
+            valueRange = 48f..93f,
+            steps = 44
+        )
+
+        Spacer(Modifier.height(16.dp))
+
         // Timing tolerance
         Text("${stringResource(R.string.timing_tolerance)}: ${settings.timingToleranceMs} ms")
         Slider(

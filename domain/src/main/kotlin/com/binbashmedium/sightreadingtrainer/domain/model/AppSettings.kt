@@ -39,7 +39,16 @@ data class AppSettings(
      *  At least one must remain active; defaults to all four enabled. */
     val selectedNoteValues: Set<NoteValue> = NoteValue.entries.toSet(),
     /** When true, chord/note names are shown above each chord group on the staff. */
-    val chordNamesEnabled: Boolean = false
+    val chordNamesEnabled: Boolean = false,
+    /** Configurable MIDI note range for the bass staff. Min = E1 (28), Max = C5 (72). */
+    val bassNoteRangeMin: Int = 28,
+    val bassNoteRangeMax: Int = 60,
+    /** Configurable MIDI note range for the treble staff. Min = C3 (48), Max = A6 (93). */
+    val trebleNoteRangeMin: Int = 60,
+    val trebleNoteRangeMax: Int = 84,
+    /** When true, ornaments (trill, mordent, turn) are added to some notes. Notes are still
+     *  evaluated without ornament grace notes — only the main note pitch is matched. */
+    val ornamentsEnabled: Boolean = false
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }
