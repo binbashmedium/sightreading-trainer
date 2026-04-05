@@ -76,7 +76,7 @@ object MeiConverter {
                 val measureChords = chords.filter { it.startBeat >= mStartBeat && it.startBeat < mEndBeat }
                 val isLast        = i == numMeasures - 1
                 append(renderMeasure(i + 1, measureNotes, measurePedals, measureChords,
-                    mStartBeat, isLast, gameState.currentBeat, keySigAlteredPcs))
+                    mStartBeat, isLast, gameState.currentBeat, gameState.musicalKey, keySigAlteredPcs))
             }
         }
 
@@ -108,6 +108,7 @@ $measuresXml    </section>
         measureStartBeat: Float,
         isLast: Boolean,
         currentBeat: Float,
+        musicalKey: Int,
         keySigAlteredPcs: Set<Int> = emptySet()
     ): String {
         val treble = notes.filter { it.staff == StaffType.TREBLE }
@@ -176,10 +177,10 @@ $measuresXml    </section>
 
         return "      <measure n=\"$n\"$right>\n" +
                "        <staff n=\"1\"><layer n=\"1\">\n" +
-               renderLayer(treble, measureStartBeat, currentBeat, keySigAlteredPcs).prependIndent("          ") + "\n" +
+               renderLayer(treble, measureStartBeat, currentBeat, musicalKey, keySigAlteredPcs).prependIndent("          ") + "\n" +
                "        </layer></staff>\n" +
                "        <staff n=\"2\"><layer n=\"1\">\n" +
-               renderLayer(bass, measureStartBeat, currentBeat, keySigAlteredPcs).prependIndent("          ") + "\n" +
+               renderLayer(bass, measureStartBeat, currentBeat, musicalKey, keySigAlteredPcs).prependIndent("          ") + "\n" +
                "        </layer></staff>\n" +
                pedalXml +
                harmXml +
@@ -200,6 +201,7 @@ $measuresXml    </section>
         notes: List<NoteEvent>,
         measureStartBeat: Float,
         currentBeat: Float,
+        musicalKey: Int = 0,
         keySigAlteredPitchClasses: Set<Int> = emptySet()
     ): String {
         val byBeat = notes.groupBy { it.startBeat }.toSortedMap()
@@ -230,13 +232,13 @@ $measuresXml    </section>
 
             sb.append(
                 renderChord(chordNotes, duration, startBeat, isCurrent,
-                    keySigAlteredPitchClasses, withinMeasureAccidentals)
+                    musicalKey, keySigAlteredPitchClasses, withinMeasureAccidentals)
             ).append("\n")
 
             // Update within-measure accidental state.
             chordNotes.forEach { note ->
                 val pc = ((note.midi % 12) + 12) % 12
-                val (_, _, accidGes) = midiToMeiPitch(note.midi, note.accidental)
+                val (_, _, accidGes) = midiToMeiPitchInKey(note.midi, note.accidental, musicalKey)
                 when {
                     accidGes == "s" -> withinMeasureAccidentals[pc] = "s"
                     accidGes == "f" -> withinMeasureAccidentals[pc] = "f"
@@ -259,6 +261,7 @@ $measuresXml    </section>
         duration: Float,
         startBeat: Float,
         isCurrent: Boolean,
+        musicalKey: Int = 0,
         keySigAlteredPitchClasses: Set<Int> = emptySet(),
         withinMeasureAccidentals: Map<Int, String> = emptyMap()
     ): String {
@@ -268,12 +271,12 @@ $measuresXml    </section>
 
         return if (notes.size == 1) {
             noteElement(notes.first(), dur, "${prefix}${beatKey}m${notes.first().midi}",
-                keySigAlteredPitchClasses, withinMeasureAccidentals)
+                musicalKey, keySigAlteredPitchClasses, withinMeasureAccidentals)
         } else {
             val id = "chord-${prefix}${beatKey}"
             val noteLines = notes.joinToString("\n") { note ->
                 noteElement(note, dur, "${prefix}${beatKey}m${note.midi}",
-                    keySigAlteredPitchClasses, withinMeasureAccidentals)
+                    musicalKey, keySigAlteredPitchClasses, withinMeasureAccidentals)
             }
             "<chord dur=\"$dur\" xml:id=\"$id\">\n$noteLines\n</chord>"
         }
@@ -283,10 +286,11 @@ $measuresXml    </section>
         note: NoteEvent,
         dur: String,
         id: String,
+        musicalKey: Int = 0,
         keySigAlteredPitchClasses: Set<Int> = emptySet(),
         withinMeasureAccidentals: Map<Int, String> = emptyMap()
     ): String {
-        val (pname, oct, accidGes) = midiToMeiPitch(note.midi, note.accidental)
+        val (pname, oct, accidGes) = midiToMeiPitchInKey(note.midi, note.accidental, musicalKey)
         val color      = noteStateMeiColor(note.state)
         val colorAttr  = if (color != null) " color=\"$color\"" else ""
         val accGesAttr = if (accidGes != null) " accid.ges=\"$accidGes\"" else ""
@@ -321,23 +325,45 @@ $measuresXml    </section>
      * @return Triple(pname, oct, accid.ges) where accid.ges is null (natural), "s" (sharp), or "f" (flat).
      */
     internal fun midiToMeiPitch(midi: Int, accidental: NoteAccidental): Triple<String, Int, String?> {
+        return midiToMeiPitchInKey(midi, accidental, 0)
+    }
+
+    /**
+     * Key-aware spelling variant of [midiToMeiPitch].
+     *
+     * With [NoteAccidental.NONE], the converter prefers enharmonic spellings that match
+     * the active key signature direction (sharp keys use sharp spellings, flat keys use
+     * flat spellings), including edge spellings like E# / B# where required by the key.
+     */
+    internal fun midiToMeiPitchInKey(midi: Int, accidental: NoteAccidental, musicalKey: Int): Triple<String, Int, String?> {
         val pitchClass = ((midi % 12) + 12) % 12
-        val oct = (midi / 12) - 1
-        return when (pitchClass) {
-            0  -> Triple("c", oct, null)
-            1  -> if (accidental == NoteAccidental.FLAT) Triple("d", oct, "f") else Triple("c", oct, "s")
-            2  -> Triple("d", oct, null)
-            3  -> if (accidental == NoteAccidental.FLAT) Triple("e", oct, "f") else Triple("d", oct, "s")
-            4  -> Triple("e", oct, null)
-            5  -> Triple("f", oct, null)
-            6  -> if (accidental == NoteAccidental.FLAT) Triple("g", oct, "f") else Triple("f", oct, "s")
-            7  -> Triple("g", oct, null)
-            8  -> if (accidental == NoteAccidental.FLAT) Triple("a", oct, "f") else Triple("g", oct, "s")
-            9  -> Triple("a", oct, null)
-            10 -> if (accidental == NoteAccidental.FLAT) Triple("b", oct, "f") else Triple("a", oct, "s")
-            11 -> Triple("b", oct, null)
-            else -> Triple("c", oct, null)
+        val keySigAccidental = keySignatureAccidentalDirection(musicalKey)
+        val keySigAltered = keySignatureAlteredPitchClasses(musicalKey)
+
+        val spelling = when (accidental) {
+            NoteAccidental.SHARP -> sharpSpellingForPitchClass(pitchClass)
+            NoteAccidental.FLAT -> flatSpellingForPitchClass(pitchClass)
+            NoteAccidental.NATURAL -> naturalSpellingForPitchClass(pitchClass)
+            NoteAccidental.NONE -> {
+                val natural = naturalSpellingForPitchClass(pitchClass)
+                if (natural != null && pitchClass in keySigAltered) {
+                    when (keySigAccidental) {
+                        "s" -> sharpSpellingForPitchClass(pitchClass) ?: natural
+                        "f" -> flatSpellingForPitchClass(pitchClass) ?: natural
+                        else -> natural
+                    }
+                } else {
+                    natural ?: when (keySigAccidental) {
+                        "f" -> flatSpellingForPitchClass(pitchClass)
+                        else -> sharpSpellingForPitchClass(pitchClass)
+                    }
+                }
+            }
         }
+        val (pname, accidGes, accidentalOffset) = spelling ?: Triple("c", null, 0)
+        val letterPc = NATURAL_LETTER_PCS[pname] ?: 0
+        val oct = octaveForSpelling(midi, letterPc, accidentalOffset)
+        return Triple(pname, oct, accidGes)
     }
 
     /**
@@ -414,6 +440,48 @@ $measuresXml    </section>
 
     private val SHARP_ORDER = listOf(5, 0, 7, 2, 9, 4, 11)  // F# C# G# D# A# E# B#
     private val FLAT_ORDER  = listOf(11, 4, 9, 2, 7, 0, 5)  // Bb Eb Ab Db Gb Cb Fb
+    private val NATURAL_LETTER_PCS = mapOf(
+        "c" to 0, "d" to 2, "e" to 4, "f" to 5, "g" to 7, "a" to 9, "b" to 11
+    )
+
+    private fun naturalSpellingForPitchClass(pitchClass: Int): Triple<String, String?, Int>? = when (pitchClass) {
+        0 -> Triple("c", null, 0)
+        2 -> Triple("d", null, 0)
+        4 -> Triple("e", null, 0)
+        5 -> Triple("f", null, 0)
+        7 -> Triple("g", null, 0)
+        9 -> Triple("a", null, 0)
+        11 -> Triple("b", null, 0)
+        else -> null
+    }
+
+    private fun sharpSpellingForPitchClass(pitchClass: Int): Triple<String, String?, Int>? {
+        val basePc = (pitchClass + 11) % 12
+        val letter = NATURAL_LETTER_PCS.entries.firstOrNull { it.value == basePc }?.key ?: return null
+        return Triple(letter, "s", +1)
+    }
+
+    private fun flatSpellingForPitchClass(pitchClass: Int): Triple<String, String?, Int>? {
+        val basePc = (pitchClass + 1) % 12
+        val letter = NATURAL_LETTER_PCS.entries.firstOrNull { it.value == basePc }?.key ?: return null
+        return Triple(letter, "f", -1)
+    }
+
+    private fun keySignatureAccidentalDirection(musicalKey: Int): String? {
+        val (sharps, flats) = KEY_SIGNATURES.getOrElse(musicalKey) { 0 to 0 }
+        return when {
+            sharps > 0 -> "s"
+            flats > 0 -> "f"
+            else -> null
+        }
+    }
+
+    private fun octaveForSpelling(midi: Int, letterPc: Int, accidentalOffset: Int): Int {
+        var octave = ((midi - accidentalOffset) / 12) - 1
+        while (((octave + 1) * 12 + letterPc + accidentalOffset) < midi) octave++
+        while (((octave + 1) * 12 + letterPc + accidentalOffset) > midi) octave--
+        return octave
+    }
 
     // ── Note state color ──────────────────────────────────────────────────────
 
