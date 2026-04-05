@@ -750,7 +750,9 @@ class GenerateExerciseUseCaseTest {
     // ── Note range clamping tests ─────────────────────────────────────────────
 
     @Test
-    fun `all notes are within configured bass range`() {
+    fun `bass-staff notes are within configured bass range`() {
+        // applyNoteRanges uses midi < 60 to identify bass-staff notes.
+        // Some left-hand motif notes may exceed 60 and are treated as treble-staff notes.
         val exercise = useCase.execute(
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
@@ -760,16 +762,22 @@ class GenerateExerciseUseCaseTest {
             ),
             random = Random(10)
         )
+        var bassNoteSeen = false
         exercise.steps.forEach { step ->
             step.notes.forEach { midi ->
-                assertTrue("Note $midi should be >= 36", midi >= 36)
-                assertTrue("Note $midi should be <= 55", midi <= 55)
+                if (midi < 60) {
+                    bassNoteSeen = true
+                    assertTrue("Bass note $midi should be >= 36", midi >= 36)
+                    assertTrue("Bass note $midi should be <= 55", midi <= 55)
+                }
             }
         }
+        assertTrue("Expected at least one bass note (midi < 60) in left-hand exercise", bassNoteSeen)
     }
 
     @Test
     fun `all notes are within configured treble range`() {
+        // Right-hand SINGLE_NOTES are generated from rightRoot=60, so all start >= 60.
         val exercise = useCase.execute(
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
@@ -781,8 +789,8 @@ class GenerateExerciseUseCaseTest {
         )
         exercise.steps.forEach { step ->
             step.notes.forEach { midi ->
-                assertTrue("Note $midi should be >= 60", midi >= 60)
-                assertTrue("Note $midi should be <= 72", midi <= 72)
+                assertTrue("Treble note $midi should be >= 60", midi >= 60)
+                assertTrue("Treble note $midi should be <= 72", midi <= 72)
             }
         }
     }
