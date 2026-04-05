@@ -259,24 +259,42 @@ fun HelpScreen(navController: NavController) {
                     "quarter-note-or-longer steps will receive an ornament. All ornaments are " +
                     "decorative only — only the main note pitch is evaluated during practice."
                 )
-                HelpBody("Available ornament types:")
+                HelpBody("How to play each ornament type:")
                 HelpBody(
-                    "• Trill — rapid alternation between the main note and the note a step above."
+                    "• Trill (tr) — Rapidly alternate between the written note and the note a " +
+                    "step above for the full duration of the note. In Baroque style (18th century) " +
+                    "start on the upper note; in Classical/Romantic style (19th century) start " +
+                    "on the written note."
                 )
                 HelpBody(
-                    "• Upper Mordent (inverted mordent) — two quick notes upward: " +
-                    "main → upper neighbour → main."
+                    "• Upper Mordent (inverted mordent) — Play three notes quickly: written note, " +
+                    "the note one step above, then back to the written note. The symbol looks like " +
+                    "a short wavy line without a slash."
                 )
                 HelpBody(
-                    "• Lower Mordent — two quick notes downward: main → lower neighbour → main."
+                    "• Lower Mordent — Play three notes quickly: written note, the note one step " +
+                    "below, then back to the written note. The symbol looks like a wavy line with " +
+                    "a vertical slash through it."
                 )
                 HelpBody(
-                    "• Turn — four-note ornament circling the main note: " +
-                    "upper → main → lower → main."
+                    "• Turn (grupetto) — Play four notes in quick succession: the note one step " +
+                    "above the written note, the written note, the note one step below, then back " +
+                    "to the written note. The symbol looks like a sideways S above the note."
                 )
                 HelpBody(
-                    "• Grace Note (acciaccatura) — a small crushed note one semitone below the " +
-                    "main note, played instantly before it. Shown as a tiny note with a slash."
+                    "• Appoggiatura — Play the small grace note (shown without a slash) for " +
+                    "roughly half the value of the main note with a slight lean, then resolve to " +
+                    "the main note for the remaining duration."
+                )
+                HelpBody(
+                    "• Acciaccatura — Play the small slashed grace note as fast as possible, " +
+                    "practically together with the main note. It takes no rhythmic value — the " +
+                    "main note keeps its full duration."
+                )
+                HelpBody(
+                    "• Arpeggiation — Rather than striking all chord notes at once, roll them " +
+                    "rapidly from the lowest to the highest, holding each note as you go. " +
+                    "Only applied to chords (multiple simultaneous notes)."
                 )
             }
             HelpSubSection("Timing Tolerance") {

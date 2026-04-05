@@ -644,25 +644,74 @@ class MeiConverterTest {
     }
 
     @Test
-    fun `grace note ornament produces inline grace note with acc attribute`() {
-        val note = noteWithOrnament(60, OrnamentType.GRACE_NOTE)
+    fun `acciaccatura ornament produces inline grace note with acc attribute`() {
+        val note = noteWithOrnament(60, OrnamentType.ACCIACCATURA)
         val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
-        assertTrue("Grace note should produce a grace element", mei.contains("grace=\"acc\""))
+        assertTrue("Acciaccatura should produce grace=\"acc\"", mei.contains("grace=\"acc\""))
     }
 
     @Test
-    fun `grace note ornament does not produce a control event`() {
-        val note = noteWithOrnament(60, OrnamentType.GRACE_NOTE)
+    fun `acciaccatura ornament does not produce a control event`() {
+        val note = noteWithOrnament(60, OrnamentType.ACCIACCATURA)
         val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
-        assertFalse("Grace note should not emit a control event", mei.contains("<trill") || mei.contains("<mordent") || mei.contains("<turn"))
+        assertFalse("Acciaccatura should not emit a control event", mei.contains("<trill") || mei.contains("<mordent") || mei.contains("<turn"))
     }
 
     @Test
-    fun `grace note pitch is one semitone below main note`() {
-        // Main note C5 (midi 60) → grace note B4 (midi 59, pname="b", oct=4)
-        val note = noteWithOrnament(60, OrnamentType.GRACE_NOTE)
+    fun `acciaccatura pitch is one semitone below main note`() {
+        // Main note C5 (midi 60) → acciaccatura B4 (midi 59, pname="b", oct=4)
+        val note = noteWithOrnament(60, OrnamentType.ACCIACCATURA)
         val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
-        assertTrue("Grace note should be B4 (one semitone below C5)", mei.contains("grace=\"acc\"") && mei.contains("pname=\"b\"") && mei.contains("oct=\"4\""))
+        assertTrue("Acciaccatura should be B4 (one semitone below C5)",
+            mei.contains("grace=\"acc\"") && mei.contains("pname=\"b\"") && mei.contains("oct=\"4\""))
+    }
+
+    @Test
+    fun `appoggiatura ornament produces inline grace note with unacc attribute`() {
+        val note = noteWithOrnament(60, OrnamentType.APPOGGIATURA)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Appoggiatura should produce grace=\"unacc\"", mei.contains("grace=\"unacc\""))
+    }
+
+    @Test
+    fun `appoggiatura pitch is one semitone above main note`() {
+        // Main note C5 (midi 60) → appoggiatura C#5 (midi 61, accid.ges="s", pname="c", oct=5)
+        val note = noteWithOrnament(60, OrnamentType.APPOGGIATURA)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Appoggiatura should be C#5 (one semitone above C5)",
+            mei.contains("grace=\"unacc\"") && mei.contains("pname=\"c\"") && mei.contains("accid.ges=\"s\""))
+    }
+
+    @Test
+    fun `appoggiatura does not produce a control event`() {
+        val note = noteWithOrnament(60, OrnamentType.APPOGGIATURA)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertFalse("Appoggiatura should not emit a control event", mei.contains("<trill") || mei.contains("<mordent") || mei.contains("<turn") || mei.contains("<arpeg"))
+    }
+
+    @Test
+    fun `arpeggiation produces arpeg control event in MEI`() {
+        val note1 = noteWithOrnament(60, OrnamentType.ARPEGGIATION)
+        val note2 = NoteEvent(midi = 64, startBeat = 0f, duration = 1f, expected = true,
+            state = NoteState.NONE, staff = StaffType.TREBLE, ornament = OrnamentType.ARPEGGIATION)
+        val state = GameState(levelTitle = "Test", elapsedTime = 0L, bpm = 0f,
+            notes = listOf(note1, note2), chords = emptyList(), pedalMarks = emptyList(),
+            currentBeat = 0f, musicalKey = 0)
+        val mei = MeiConverter.convert(state, 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Arpeggiation should produce an <arpeg> element", mei.contains("<arpeg"))
+    }
+
+    @Test
+    fun `arpeggiation emits one arpeg per staff per beat not one per note`() {
+        // Two notes at same beat on treble staff — should produce exactly one <arpeg>
+        val note1 = noteWithOrnament(60, OrnamentType.ARPEGGIATION)
+        val note2 = NoteEvent(midi = 64, startBeat = 0f, duration = 1f, expected = true,
+            state = NoteState.NONE, staff = StaffType.TREBLE, ornament = OrnamentType.ARPEGGIATION)
+        val state = GameState(levelTitle = "Test", elapsedTime = 0L, bpm = 0f,
+            notes = listOf(note1, note2), chords = emptyList(), pedalMarks = emptyList(),
+            currentBeat = 0f, musicalKey = 0)
+        val mei = MeiConverter.convert(state, 0f, BEATS_PER_MEASURE_UNITS)
+        assertEquals("Should have exactly one <arpeg> element", 1, mei.split("<arpeg").size - 1)
     }
 
     @Test

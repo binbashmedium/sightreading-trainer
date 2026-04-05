@@ -34,16 +34,29 @@ enum class PedalAction {
  */
 enum class OrnamentType {
     NONE,
-    /** Rapid alternation between main note and the note a step above. */
+    /** Trill — rapid alternation between the written note and the note a step above. */
     TRILL,
-    /** Lower mordent — quick alternation downward: main → lower → main. */
+    /** Lower mordent — quick alternation downward: main → lower neighbour → main. */
     MORDENT,
-    /** Inverted (upper) mordent — quick alternation upward: main → upper → main. */
+    /** Inverted (upper) mordent — quick alternation upward: main → upper neighbour → main. */
     UPPER_MORDENT,
-    /** Turn — four-note ornament circling the main note: upper → main → lower → main. */
+    /** Turn (grupetto) — four notes circling the main note: upper → main → lower → main. */
     TURN,
-    /** Acciaccatura — small crushed note (semitone below) played instantly before the main note. */
-    GRACE_NOTE
+    /**
+     * Appoggiatura — small grace note (no slash) a step above the main note.
+     * Takes approximately half the value of the main note, played with slight emphasis.
+     */
+    APPOGGIATURA,
+    /**
+     * Acciaccatura — small crushed note (with slash) one semitone below the main note.
+     * Played as fast as possible; takes no rhythmic value from the main note.
+     */
+    ACCIACCATURA,
+    /**
+     * Arpeggiation — chord notes rolled upward in rapid succession rather than struck together.
+     * Only meaningful on chords; single-note steps are left unornamented.
+     */
+    ARPEGGIATION
 }
 
 data class ExerciseStep(

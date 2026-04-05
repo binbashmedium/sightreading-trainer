@@ -230,7 +230,9 @@ fun SettingsScreen(
                 OrnamentType.MORDENT,
                 OrnamentType.UPPER_MORDENT,
                 OrnamentType.TURN,
-                OrnamentType.GRACE_NOTE
+                OrnamentType.APPOGGIATURA,
+                OrnamentType.ACCIACCATURA,
+                OrnamentType.ARPEGGIATION
             )) { _, type ->
                 FilterChip(
                     selected = type in settings.selectedOrnaments,
@@ -245,7 +247,9 @@ fun SettingsScreen(
                         Text(when (type) {
                             OrnamentType.UPPER_MORDENT -> "Upper Mordent"
                             OrnamentType.MORDENT       -> "Lower Mordent"
-                            OrnamentType.GRACE_NOTE    -> "Grace Note"
+                            OrnamentType.ACCIACCATURA  -> "Acciaccatura"
+                            OrnamentType.APPOGGIATURA  -> "Appoggiatura"
+                            OrnamentType.ARPEGGIATION  -> "Arpeggiation"
                             else -> type.name.lowercase().replaceFirstChar { it.uppercase() }
                         })
                     }

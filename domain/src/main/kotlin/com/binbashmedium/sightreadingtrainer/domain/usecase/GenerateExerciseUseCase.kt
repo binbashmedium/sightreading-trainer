@@ -635,14 +635,17 @@ class GenerateExerciseUseCase {
         random: Random
     ): List<ExerciseStep> {
         if (selectedOrnaments.isEmpty()) return steps
-        val types = selectedOrnaments.toList()
         return steps.map { step ->
             if (step.ornament == OrnamentType.NONE &&
                 step.noteValue.beats >= 1f &&
                 step.notes.isNotEmpty() &&
                 random.nextInt(6) == 0
             ) {
-                step.copy(ornament = types.random(random))
+                // Arpeggiation only makes musical sense on chords (multiple notes).
+                val eligible = selectedOrnaments.filter {
+                    it != OrnamentType.ARPEGGIATION || step.notes.size > 1
+                }
+                if (eligible.isEmpty()) step else step.copy(ornament = eligible.random(random))
             } else step
         }
     }

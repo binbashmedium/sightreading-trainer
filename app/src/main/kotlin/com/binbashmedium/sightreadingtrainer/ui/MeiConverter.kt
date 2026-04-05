@@ -137,10 +137,15 @@ $measuresXml    </section>
             "        <harm tstamp=\"$tstamp\" staff=\"1\">$escapedName</harm>\n"
         }
 
+        // Ornament types rendered inline in the layer — excluded from control events.
+        val inlineOrnamentTypes = setOf(
+            OrnamentType.NONE, OrnamentType.ACCIACCATURA,
+            OrnamentType.APPOGGIATURA, OrnamentType.ARPEGGIATION
+        )
+
         // MEI ornament control events referencing specific notes by xml:id.
-        // GRACE_NOTE is rendered inline in the layer (not as a control event) — exclude it here.
         val ornamentXml = notes
-            .filter { it.ornament != OrnamentType.NONE && it.ornament != OrnamentType.GRACE_NOTE }
+            .filter { it.ornament !in inlineOrnamentTypes }
             .joinToString("") { note ->
                 val beatKey  = (note.startBeat * 10).roundToLong()
                 val prefix   = if (abs(note.startBeat - currentBeat) < 0.01f) "ncurr" else "nb"
@@ -153,8 +158,20 @@ $measuresXml    </section>
                     OrnamentType.MORDENT       -> "        <mordent form=\"lower\" staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
                     OrnamentType.UPPER_MORDENT -> "        <mordent form=\"upper\" staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
                     OrnamentType.TURN          -> "        <turn staff=\"$staffNum\" startid=\"#$noteId\" tstamp=\"$tstamp\"/>\n"
-                    OrnamentType.NONE, OrnamentType.GRACE_NOTE -> ""
+                    else -> ""
                 }
+            }
+
+        // MEI <arpeg> control events — one per (beat, staff) group to avoid duplicates.
+        val arpegXml = notes
+            .filter { it.ornament == OrnamentType.ARPEGGIATION }
+            .groupBy { it.startBeat to it.staff }
+            .entries.joinToString("") { (key, _) ->
+                val (startBeat, staff) = key
+                val qBeat    = (startBeat - measureStartBeat) / BEATS_PER_STEP
+                val tstamp   = String.format(Locale.US, "%.4f", qBeat + 1f)
+                val staffNum = if (staff == StaffType.TREBLE) "1" else "2"
+                "        <arpeg tstamp=\"$tstamp\" staff=\"$staffNum\"/>\n"
             }
 
         return "      <measure n=\"$n\"$right>\n" +
@@ -167,6 +184,7 @@ $measuresXml    </section>
                pedalXml +
                harmXml +
                ornamentXml +
+               arpegXml +
                "      </measure>\n"
     }
 
@@ -201,10 +219,13 @@ $measuresXml    </section>
             val gap = qBeat - currentQBeat
             if (gap > 0.01f) sb.append(rest(gap)).append("\n")
 
-            // Prepend acciaccatura grace note when ornament is GRACE_NOTE.
-            // The grace note is one semitone below the main note.
-            if (chordNotes.firstOrNull()?.ornament == OrnamentType.GRACE_NOTE) {
-                sb.append(graceNoteElement(chordNotes.first().midi)).append("\n")
+            // Prepend inline grace notes before the main chord when applicable.
+            when (chordNotes.firstOrNull()?.ornament) {
+                // Acciaccatura: small note with slash, one semitone below main note.
+                OrnamentType.ACCIACCATURA -> sb.append(graceNoteElement(chordNotes.first().midi, "acc", -1)).append("\n")
+                // Appoggiatura: small note without slash, one semitone above main note.
+                OrnamentType.APPOGGIATURA -> sb.append(graceNoteElement(chordNotes.first().midi, "unacc", +1)).append("\n")
+                else -> {}
             }
 
             sb.append(
@@ -279,14 +300,17 @@ $measuresXml    </section>
     private fun rest(quarterBeats: Float): String = "<rest dur=\"${quarterBeatsToDur(quarterBeats)}\"/>"
 
     /**
-     * Builds a MEI acciaccatura grace note element one semitone below [mainMidi].
-     * The `grace="acc"` attribute tells Verovio to render it as a small note with a slash.
+     * Builds a MEI grace note element offset from [mainMidi] by [semitoneOffset].
+     *
+     * @param graceAttr `"acc"` for acciaccatura (small note with slash through stem),
+     *                  `"unacc"` for appoggiatura (small note without slash).
+     * @param semitoneOffset Chromatic offset from main note (e.g. -1 = one semitone below).
      */
-    private fun graceNoteElement(mainMidi: Int): String {
-        val graceMidi = mainMidi - 1
+    private fun graceNoteElement(mainMidi: Int, graceAttr: String = "acc", semitoneOffset: Int = -1): String {
+        val graceMidi = mainMidi + semitoneOffset
         val (pname, oct, accidGes) = midiToMeiPitch(graceMidi, NoteAccidental.NONE)
         val accGesAttr = if (accidGes != null) " accid.ges=\"$accidGes\"" else ""
-        return "<note pname=\"$pname\" oct=\"$oct\" dur=\"8\" grace=\"acc\"$accGesAttr/>"
+        return "<note pname=\"$pname\" oct=\"$oct\" dur=\"8\" grace=\"$graceAttr\"$accGesAttr/>"
     }
 
     // ── Pitch conversion ──────────────────────────────────────────────────────
