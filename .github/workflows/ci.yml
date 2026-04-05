@@ -49,11 +49,10 @@ jobs:
         run: ./gradlew :domain:test --no-daemon
 
       - name: Run app unit tests
-        # -PskipPaparazziPlugin=true skips registering the Paparazzi plugin's per-task
-        # machinery (bytecode instrumentation, custom reporter, preparePaparazziDebugResources
-        # dependency) so it cannot interfere with non-screenshot tests. ScreenshotTest.kt
-        # still compiles because paparazzi is an explicit testImplementation dependency;
-        # the class is excluded from running via testOptions.unitTests.all in build.gradle.kts.
+        # -PskipPaparazziPlugin=true (1) skips registering the Paparazzi plugin so its
+        # bytecode instrumentation and custom reporter don't interfere with unit tests, and
+        # (2) causes build.gradle.kts to omit src/screenshotTest/kotlin from the test source
+        # set, so ScreenshotTest.kt is never compiled and no Paparazzi types are needed.
         run: ./gradlew :app:test -PskipPaparazziPlugin=true --no-daemon
 
       - name: Upload test results

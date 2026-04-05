@@ -51,11 +51,23 @@ android {
         }
     }
 
+    sourceSets {
+        // ScreenshotTest.kt lives in src/screenshotTest/kotlin and is only added to the
+        // test compilation classpath when the Paparazzi plugin is applied (screenshots CI
+        // step). When -PskipPaparazziPlugin=true (unit-test CI step) the directory is not
+        // included, so no Paparazzi types are needed on the classpath.
+        named("test") {
+            if (project.findProperty("skipPaparazziPlugin") != "true") {
+                java.srcDir("src/screenshotTest/kotlin")
+            }
+        }
+    }
+
     testOptions {
         unitTests {
-            // ScreenshotTest is run via recordPaparazziDebug / verifyPaparazziDebug only.
-            // Exclude it from the standard :app:test task in all configurations so that
-            // it never runs without the Paparazzi plugin machinery (which would fail).
+            // When the Paparazzi plugin IS applied (screenshots CI step), still exclude
+            // ScreenshotTest from the standard :app:test task; it only runs via
+            // recordPaparazziDebug / verifyPaparazziDebug.
             all { testTask ->
                 testTask.exclude("**/ScreenshotTest.class")
             }
@@ -85,8 +97,9 @@ android {
 // Apply Paparazzi plugin (registers recordPaparazziDebug / verifyPaparazziDebug).
 // When -PskipPaparazziPlugin=true is passed (e.g. in the unit-test CI step) the plugin
 // is not applied so its bytecode instrumentation and custom test reporter don't interfere
-// with :app:test. ScreenshotTest.kt still compiles because paparazzi is an explicit
-// testImplementation dependency (see below); it is excluded from running via testOptions.
+// with :app:test. ScreenshotTest.kt also lives in a separate src/screenshotTest/kotlin
+// source directory that is only added to the test classpath when the plugin IS applied
+// (see sourceSets above), so no Paparazzi types are needed when running unit tests.
 if (project.findProperty("skipPaparazziPlugin") != "true") {
     apply(plugin = "app.cash.paparazzi")
 }
@@ -133,10 +146,6 @@ dependencies {
 
     // Tests
     testImplementation("junit:junit:4.13.2")
-    // Paparazzi library must be on the test classpath so ScreenshotTest.kt compiles even when
-    // -PskipPaparazziPlugin=true suppresses the plugin. ScreenshotTest is excluded from running
-    // in :app:test via testOptions.unitTests.all (see above).
-    testImplementation("app.cash.paparazzi:paparazzi:2.0.0-alpha04")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(composeBom)
