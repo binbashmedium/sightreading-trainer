@@ -143,7 +143,7 @@ class GenerateExerciseUseCase {
         val accidentalsApplied = applyGeneratedAccidentals(mixedExercise, settings.noteAccidentalsEnabled)
         val pedalApplied = applyPedalMarks(accidentalsApplied, settings.pedalEventsEnabled)
         val rangeApplied = applyNoteRanges(pedalApplied, settings, generatedKey)
-        val ornamentsApplied = applyOrnaments(rangeApplied, settings.ornamentsEnabled, random)
+        val ornamentsApplied = applyOrnaments(rangeApplied, settings.selectedOrnaments, random)
 
         return Exercise(steps = ornamentsApplied, musicalKey = generatedKey, handMode = settings.handMode)
     }
@@ -631,11 +631,11 @@ class GenerateExerciseUseCase {
      */
     private fun applyOrnaments(
         steps: List<ExerciseStep>,
-        enabled: Boolean,
+        selectedOrnaments: Set<OrnamentType>,
         random: Random
     ): List<ExerciseStep> {
-        if (!enabled) return steps
-        val types = OrnamentType.entries.filter { it != OrnamentType.NONE }
+        if (selectedOrnaments.isEmpty()) return steps
+        val types = selectedOrnaments.toList()
         return steps.map { step ->
             if (step.ornament == OrnamentType.NONE &&
                 step.noteValue.beats >= 1f &&

@@ -26,6 +26,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
+import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -64,7 +65,7 @@ class SettingsDataStore @Inject constructor(
         val BASS_NOTE_RANGE_MAX = intPreferencesKey("bass_note_range_max")
         val TREBLE_NOTE_RANGE_MIN = intPreferencesKey("treble_note_range_min")
         val TREBLE_NOTE_RANGE_MAX = intPreferencesKey("treble_note_range_max")
-        val ORNAMENTS_ENABLED = booleanPreferencesKey("ornaments_enabled")
+        val SELECTED_ORNAMENTS = stringPreferencesKey("selected_ornaments")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -99,7 +100,7 @@ class SettingsDataStore @Inject constructor(
             bassNoteRangeMax = (prefs[Keys.BASS_NOTE_RANGE_MAX] ?: 60).coerceIn(28, 72),
             trebleNoteRangeMin = (prefs[Keys.TREBLE_NOTE_RANGE_MIN] ?: 60).coerceIn(48, 93),
             trebleNoteRangeMax = (prefs[Keys.TREBLE_NOTE_RANGE_MAX] ?: 84).coerceIn(48, 93),
-            ornamentsEnabled = prefs[Keys.ORNAMENTS_ENABLED] ?: false
+            selectedOrnaments = parseSelectedOrnaments(prefs[Keys.SELECTED_ORNAMENTS])
         )
     }
 
@@ -132,7 +133,8 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.BASS_NOTE_RANGE_MAX] = settings.bassNoteRangeMax
             prefs[Keys.TREBLE_NOTE_RANGE_MIN] = settings.trebleNoteRangeMin
             prefs[Keys.TREBLE_NOTE_RANGE_MAX] = settings.trebleNoteRangeMax
-            prefs[Keys.ORNAMENTS_ENABLED] = settings.ornamentsEnabled
+            prefs[Keys.SELECTED_ORNAMENTS] = settings.selectedOrnaments
+                .sortedBy { it.ordinal }.joinToString(",") { it.name }
         }
     }
 
@@ -214,3 +216,10 @@ internal fun parseSelectedProgressions(raw: String?): Set<ChordProgression> {
 
     return if (parsed.isNotEmpty()) parsed else setOf(ChordProgression.I_IV_V_I)
 }
+
+internal fun parseSelectedOrnaments(raw: String?): Set<OrnamentType> =
+    raw
+        ?.split(",")
+        ?.mapNotNull { name -> OrnamentType.entries.find { it.name == name.trim() && it != OrnamentType.NONE } }
+        ?.toSet()
+        .orEmpty()

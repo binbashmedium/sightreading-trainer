@@ -33,6 +33,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
+import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 
 @Composable
 fun SettingsScreen(
@@ -222,18 +223,21 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Ornaments")
-            Switch(
-                checked = settings.ornamentsEnabled,
-                onCheckedChange = {
-                    viewModel.updateSettings(settings.copy(ornamentsEnabled = it))
-                }
-            )
+        Text("Ornaments", style = MaterialTheme.typography.titleSmall)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(listOf(OrnamentType.TRILL, OrnamentType.MORDENT, OrnamentType.TURN)) { _, type ->
+                FilterChip(
+                    selected = type in settings.selectedOrnaments,
+                    onClick = {
+                        val updated = if (type in settings.selectedOrnaments)
+                            settings.selectedOrnaments - type
+                        else
+                            settings.selectedOrnaments + type
+                        viewModel.updateSettings(settings.copy(selectedOrnaments = updated))
+                    },
+                    label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                )
+            }
         }
 
         Spacer(Modifier.height(16.dp))

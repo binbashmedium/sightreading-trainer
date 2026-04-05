@@ -46,9 +46,9 @@ data class AppSettings(
     /** Configurable MIDI note range for the treble staff. Min = C3 (48), Max = A6 (93). */
     val trebleNoteRangeMin: Int = 60,
     val trebleNoteRangeMax: Int = 84,
-    /** When true, ornaments (trill, mordent, turn) are added to some notes. Notes are still
-     *  evaluated without ornament grace notes — only the main note pitch is matched. */
-    val ornamentsEnabled: Boolean = false
+    /** Which ornament types (TRILL, MORDENT, TURN) may appear in generated exercises.
+     *  Empty set means no ornaments are used. Notes are always evaluated on main pitch only. */
+    val selectedOrnaments: Set<OrnamentType> = emptySet()
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }

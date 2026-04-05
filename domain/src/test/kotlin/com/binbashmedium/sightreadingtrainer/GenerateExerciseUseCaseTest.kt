@@ -810,29 +810,29 @@ class GenerateExerciseUseCaseTest {
     // ── Ornaments tests ───────────────────────────────────────────────────────
 
     @Test
-    fun `no ornaments when ornaments disabled`() {
+    fun `no ornaments when selectedOrnaments is empty`() {
         val exercise = useCase.execute(
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
-                ornamentsEnabled = false
+                selectedOrnaments = emptySet()
             ),
             random = Random(1)
         )
         assertTrue(
-            "No ornaments expected when disabled",
+            "No ornaments expected when selectedOrnaments is empty",
             exercise.steps.all { it.ornament == OrnamentType.NONE }
         )
     }
 
     @Test
-    fun `ornaments are applied when enabled`() {
-        // Use a large number of steps to ensure ornaments appear (1-in-6 chance)
+    fun `ornaments are applied when selectedOrnaments is non-empty`() {
+        // Use a large number of seeds to ensure ornaments appear (1-in-6 chance)
         var foundOrnament = false
         for (seed in 0..50) {
             val exercise = useCase.execute(
                 AppSettings(
                     exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
-                    ornamentsEnabled = true
+                    selectedOrnaments = setOf(OrnamentType.TRILL, OrnamentType.MORDENT, OrnamentType.TURN)
                 ),
                 random = Random(seed)
             )
@@ -845,11 +845,36 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
+    fun `only selected ornament types appear`() {
+        // Only TRILL is selected — no MORDENT or TURN should appear
+        var foundOrnament = false
+        for (seed in 0..50) {
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                    selectedOrnaments = setOf(OrnamentType.TRILL)
+                ),
+                random = Random(seed)
+            )
+            exercise.steps.forEach { step ->
+                assertTrue(
+                    "Only TRILL or NONE expected, got ${step.ornament}",
+                    step.ornament == OrnamentType.NONE || step.ornament == OrnamentType.TRILL
+                )
+            }
+            if (exercise.steps.any { it.ornament == OrnamentType.TRILL }) {
+                foundOrnament = true
+            }
+        }
+        assertTrue("At least one TRILL should appear across seeds 0-50", foundOrnament)
+    }
+
+    @Test
     fun `ornaments only on quarter notes or longer`() {
         val exercise = useCase.execute(
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
-                ornamentsEnabled = true,
+                selectedOrnaments = setOf(OrnamentType.TRILL, OrnamentType.MORDENT, OrnamentType.TURN),
                 selectedNoteValues = NoteValue.entries.toSet()
             ),
             random = Random(7)

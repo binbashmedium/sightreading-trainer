@@ -251,6 +251,15 @@ fun HelpScreen(navController: NavController) {
                     "pedal steps are generated."
                 )
             }
+            HelpSubSection("Ornaments") {
+                HelpBody(
+                    "Select which ornament types may appear above notes: Trill, Mordent, and/or " +
+                    "Turn. Any combination can be active at the same time; selecting none disables " +
+                    "ornaments entirely. When at least one type is enabled, approximately one in " +
+                    "six quarter-note-or-longer steps will receive an ornament. The ornament is " +
+                    "decorative only — only the main note pitch is evaluated during practice."
+                )
+            }
             HelpSubSection("Timing Tolerance") {
                 HelpBody(
                     "How many milliseconds before the expected beat a note can be played and " +
@@ -300,10 +309,11 @@ fun HelpScreen(navController: NavController) {
         // ── Scoring ───────────────────────────────────────────────────────────
         HelpSection("Scoring") {
             HelpBody(
-                "Each correctly played step scores one point. Missing or wrong steps score " +
-                "zero. The current session score is shown in the top-left of the practice " +
-                "screen. Your all-time high score is saved automatically and shown on the " +
-                "main screen and in the finish overlay."
+                "At the end of each session the finish overlay shows your accuracy (% of " +
+                "correctly played notes), the BPM and practice time, and a composite highscore. " +
+                "The highscore formula is: accuracy × BPM-factor × time-factor × 1000, where " +
+                "BPM-factor = BPM / 120 (capped at 240 BPM) and time-factor = minutes practiced " +
+                "(capped at 5 min). Your all-time highscore is saved automatically."
             )
         }
 
