@@ -4,6 +4,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    // Paparazzi is applied below conditionally so the plugin's task-level modifications
+    // (bytecode instrumentation, custom test reporter, preparePaparazziDebugResources dep)
+    // don't interfere with standard unit tests when running :app:test.
+    // Pass -PskipPaparazziPlugin=true to run unit tests without the plugin overhead.
+    // The screenshots job omits this flag and calls recordPaparazziDebug directly.
 }
 
 android {
@@ -46,6 +51,29 @@ android {
         }
     }
 
+    sourceSets {
+        // ScreenshotTest.kt lives in src/screenshotTest/kotlin and is only added to the
+        // test compilation classpath when the Paparazzi plugin is applied (screenshots CI
+        // step). When -PskipPaparazziPlugin=true (unit-test CI step) the directory is not
+        // included, so no Paparazzi types are needed on the classpath.
+        named("test") {
+            if (project.findProperty("skipPaparazziPlugin") != "true") {
+                java.srcDir("src/screenshotTest/kotlin")
+            }
+        }
+    }
+
+    testOptions {
+        unitTests {
+            // When the Paparazzi plugin IS applied (screenshots CI step), still exclude
+            // ScreenshotTest from the standard :app:test task; it only runs via
+            // recordPaparazziDebug / verifyPaparazziDebug.
+            all { testTask ->
+                testTask.exclude("**/ScreenshotTest.class")
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
@@ -64,6 +92,16 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+// Apply Paparazzi plugin (registers recordPaparazziDebug / verifyPaparazziDebug).
+// When -PskipPaparazziPlugin=true is passed (e.g. in the unit-test CI step) the plugin
+// is not applied so its bytecode instrumentation and custom test reporter don't interfere
+// with :app:test. ScreenshotTest.kt also lives in a separate src/screenshotTest/kotlin
+// source directory that is only added to the test classpath when the plugin IS applied
+// (see sourceSets above), so no Paparazzi types are needed when running unit tests.
+if (project.findProperty("skipPaparazziPlugin") != "true") {
+    apply(plugin = "app.cash.paparazzi")
 }
 
 dependencies {
@@ -112,4 +150,5 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }
