@@ -18,6 +18,8 @@
 
 ## Done (recent)
 
+- [x] **Paparazzi screenshot tests + release export** — Added `app.cash.paparazzi:1.3.5` plugin; extracted stateless `*Content` composables from `MainScreen`, `SettingsScreen`, `StatisticsScreen`, `HelpScreen`; `ScreenshotTest.kt` covers 8 scenarios (default + populated variants) for all four menu screens; CI `screenshots` job runs `recordPaparazziDebug` on every push/PR and uploads images as artifact; `release-apk` job also generates and attaches `screenshots.zip` to every GitHub release.
+
 - [x] **Fix CodeQL autobuild failure** — Added `.github/workflows/codeql.yml` with `build-mode: manual` using `./gradlew :domain:compileKotlin :app:compileDebugKotlin`; removed `dist/` folder (APKs) and `mocks/` folder (reference images/PDF) from the repository; updated `.gitignore` to exclude both directories.
 
 - [x] **Thin cursor line + pedal mark rendering** — `staff.html`: cursor `stroke-width` changed from fixed 30 to proportional (0.5% of viewBox width, min 2) for a slim line at any screen size. `MeiConverter`: pedal marks now converted to MEI `<pedal tstamp="..." staff="2" dir="down/up" [color="..."]/>` control events; `Locale.US` used for tstamp formatting to avoid locale-dependent decimal separators. 7 new `MeiConverterTest` pedal tests added (141 total pass).

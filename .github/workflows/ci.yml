@@ -61,6 +61,36 @@ jobs:
             app/build/reports/tests/
           retention-days: 14
 
+  screenshots:
+    name: Generate screenshots
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Override Java home for Gradle
+        run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
+
+      - name: Record Paparazzi screenshots
+        run: ./gradlew :app:recordPaparazziDebug --no-daemon
+
+      - name: Upload screenshots artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: app/src/test/snapshots/images/
+          retention-days: 14
+
   build-debug:
     name: Build debug APK
     needs: test
@@ -117,7 +147,15 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --no-daemon
 
-      - name: Upload APK to GitHub release
+      - name: Generate screenshots
+        run: ./gradlew :app:recordPaparazziDebug --no-daemon
+
+      - name: Zip screenshots
+        run: zip -r screenshots.zip app/src/test/snapshots/images/
+
+      - name: Upload APK and screenshots to GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: |
+            app/build/outputs/apk/debug/app-debug.apk
+            screenshots.zip
