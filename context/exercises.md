@@ -71,18 +71,21 @@ data class NoteEvent(
   val duration: Float,
   val expected: Boolean,
   val state: NoteState = NoteState.NONE,
-  val staff: StaffType = StaffType.TREBLE
+  val staff: StaffType = StaffType.TREBLE,
+  val accidental: NoteAccidental = NoteAccidental.NONE,
+  val ornament: OrnamentType = OrnamentType.NONE
 )
 
-data class Chord(val name: String, val notes: List<Int>, val startBeat: Float)
+data class Chord(val name: String, val notes: List<Int>, val startBeat: Float,
+                 val staff: StaffType = StaffType.TREBLE)
 
 data class GameState(
   val levelTitle: String,
   val elapsedTime: Long,
-  val score: Int,
   val bpm: Float,
   val notes: List<NoteEvent>,
   val chords: List<Chord>,
+  val pedalMarks: List<PedalMark>,
   val currentBeat: Float,
   val musicalKey: Int = 0
 )

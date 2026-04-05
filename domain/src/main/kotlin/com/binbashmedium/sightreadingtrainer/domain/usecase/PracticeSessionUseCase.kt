@@ -176,6 +176,11 @@ class PracticeSessionUseCase(
     fun processChord(playedNotes: List<NoteEvent>, toleranceMs: Long = 200L): MatchResult =
         processInput(PerformanceInput(notes = playedNotes), toleranceMs)
 
+    /** Resets the session start time to now — call this once Verovio has rendered the first staff. */
+    fun resetStartTime() {
+        _state.value = _state.value?.copy(startTimeMs = System.currentTimeMillis()) ?: return
+    }
+
     fun resetSession() {
         pedalIsPressed = false
         lastPedalReleaseTimestampMs = null

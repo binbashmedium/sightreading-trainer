@@ -20,6 +20,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
+import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.usecase.GenerateExerciseUseCase
 import org.junit.Assert.assertEquals
@@ -688,6 +689,246 @@ class GenerateExerciseUseCaseTest {
             val totalBeats = exercise.steps.sumOf { it.noteValue.beats.toDouble() }.toFloat()
             val expectedBeats = GenerateExerciseUseCase.DEFAULT_EXERCISE_MEASURES * GenerateExerciseUseCase.BEATS_PER_MEASURE
             assertEquals("noteValues=$noteValues", expectedBeats, totalBeats, 0.01f)
+        }
+    }
+
+    // ── Pedal mark alignment tests ────────────────────────────────────────────
+
+    @Test
+    fun `pedal marks are placed only at beat-boundary positions`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                pedalEventsEnabled = true
+            ),
+            random = Random(42)
+        )
+        // Build cumulative beat positions for each step
+        var cursor = 0f
+        exercise.steps.forEach { step ->
+            val beat = cursor
+            if (step.pedalAction != PedalAction.NONE) {
+                val isOnBoundary = (beat - beat.toLong()) < 0.01f
+                assertTrue(
+                    "Pedal action ${step.pedalAction} at beat $beat is not on integer boundary",
+                    isOnBoundary
+                )
+            }
+            cursor += step.noteValue.beats
+        }
+    }
+
+    @Test
+    fun `every pedal press is followed by a release`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                pedalEventsEnabled = true
+            ),
+            random = Random(99)
+        )
+        val pressCount = exercise.steps.count { it.pedalAction == PedalAction.PRESS }
+        val releaseCount = exercise.steps.count { it.pedalAction == PedalAction.RELEASE }
+        assertEquals("Every press must have a matching release", pressCount, releaseCount)
+    }
+
+    @Test
+    fun `no pedal marks when pedal events disabled`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                pedalEventsEnabled = false
+            ),
+            random = Random(1)
+        )
+        assertTrue(
+            "No pedal marks expected when disabled",
+            exercise.steps.none { it.pedalAction != PedalAction.NONE }
+        )
+    }
+
+    // ── Note range clamping tests ─────────────────────────────────────────────
+
+    @Test
+    fun `bass-staff notes are within configured bass range`() {
+        // applyNoteRanges uses midi < 60 to identify bass-staff notes.
+        // Some left-hand motif notes may exceed 60 and are treated as treble-staff notes.
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.LEFT,
+                bassNoteRangeMin = 36,  // C2
+                bassNoteRangeMax = 55   // G3
+            ),
+            random = Random(10)
+        )
+        var bassNoteSeen = false
+        exercise.steps.forEach { step ->
+            step.notes.forEach { midi ->
+                if (midi < 60) {
+                    bassNoteSeen = true
+                    assertTrue("Bass note $midi should be >= 36", midi >= 36)
+                    assertTrue("Bass note $midi should be <= 55", midi <= 55)
+                }
+            }
+        }
+        assertTrue("Expected at least one bass note (midi < 60) in left-hand exercise", bassNoteSeen)
+    }
+
+    @Test
+    fun `all notes are within configured treble range`() {
+        // Right-hand SINGLE_NOTES are generated from rightRoot=60, so all start >= 60.
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.RIGHT,
+                trebleNoteRangeMin = 60,  // C4
+                trebleNoteRangeMax = 72   // C5
+            ),
+            random = Random(20)
+        )
+        exercise.steps.forEach { step ->
+            step.notes.forEach { midi ->
+                assertTrue("Treble note $midi should be >= 60", midi >= 60)
+                assertTrue("Treble note $midi should be <= 72", midi <= 72)
+            }
+        }
+    }
+
+    @Test
+    fun `notes default range does not restrict exercise generation`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                handMode = HandMode.RIGHT
+            ),
+            random = Random(5)
+        )
+        assertTrue("Exercise should have steps", exercise.steps.isNotEmpty())
+    }
+
+    // ── Ornaments tests ───────────────────────────────────────────────────────
+
+    @Test
+    fun `no ornaments when selectedOrnaments is empty`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                selectedOrnaments = emptySet()
+            ),
+            random = Random(1)
+        )
+        assertTrue(
+            "No ornaments expected when selectedOrnaments is empty",
+            exercise.steps.all { it.ornament == OrnamentType.NONE }
+        )
+    }
+
+    @Test
+    fun `ornaments are applied when selectedOrnaments is non-empty`() {
+        // Use a large number of seeds to ensure ornaments appear (1-in-6 chance)
+        var foundOrnament = false
+        for (seed in 0..50) {
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                    selectedOrnaments = setOf(OrnamentType.TRILL, OrnamentType.MORDENT, OrnamentType.TURN)
+                ),
+                random = Random(seed)
+            )
+            if (exercise.steps.any { it.ornament != OrnamentType.NONE }) {
+                foundOrnament = true
+                break
+            }
+        }
+        assertTrue("At least one exercise with seeds 0-50 should have ornaments", foundOrnament)
+    }
+
+    @Test
+    fun `only selected ornament types appear`() {
+        // Only TRILL is selected — no MORDENT or TURN should appear
+        var foundOrnament = false
+        for (seed in 0..50) {
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                    selectedOrnaments = setOf(OrnamentType.TRILL)
+                ),
+                random = Random(seed)
+            )
+            exercise.steps.forEach { step ->
+                assertTrue(
+                    "Only TRILL or NONE expected, got ${step.ornament}",
+                    step.ornament == OrnamentType.NONE || step.ornament == OrnamentType.TRILL
+                )
+            }
+            if (exercise.steps.any { it.ornament == OrnamentType.TRILL }) {
+                foundOrnament = true
+            }
+        }
+        assertTrue("At least one TRILL should appear across seeds 0-50", foundOrnament)
+    }
+
+    @Test
+    fun `ornaments only on quarter notes or longer`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                selectedOrnaments = setOf(OrnamentType.TRILL, OrnamentType.MORDENT, OrnamentType.TURN),
+                selectedNoteValues = NoteValue.entries.toSet()
+            ),
+            random = Random(7)
+        )
+        exercise.steps.forEach { step ->
+            if (step.ornament != OrnamentType.NONE) {
+                assertTrue(
+                    "Ornaments should only appear on quarter notes or longer, not ${step.noteValue}",
+                    step.noteValue.beats >= 1f
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `non-arpeggiation ornaments only applied to single-note steps`() {
+        // Use chord-producing exercise types so we get multi-note steps
+        for (seed in 0..30) {
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.TRIADS),
+                    selectedOrnaments = setOf(OrnamentType.TRILL, OrnamentType.MORDENT, OrnamentType.TURN)
+                ),
+                random = Random(seed)
+            )
+            exercise.steps.forEach { step ->
+                if (step.ornament != OrnamentType.NONE) {
+                    assertEquals(
+                        "Non-arpeggiation ornament ${step.ornament} should only appear on single-note steps",
+                        1, step.notes.size
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `arpeggiation only applied to chord steps`() {
+        for (seed in 0..30) {
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.TRIADS, ExerciseContentType.SINGLE_NOTES),
+                    selectedOrnaments = setOf(OrnamentType.ARPEGGIATION)
+                ),
+                random = Random(seed)
+            )
+            exercise.steps.forEach { step ->
+                if (step.ornament == OrnamentType.ARPEGGIATION) {
+                    assertTrue(
+                        "Arpeggiation should only appear on chord steps (notes.size > 1)",
+                        step.notes.size > 1
+                    )
+                }
+            }
         }
     }
 }

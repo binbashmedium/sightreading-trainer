@@ -203,7 +203,7 @@ fun HelpScreen(navController: NavController) {
             }
             HelpSubSection("Exercise Time") {
                 HelpBody(
-                    "Duration of a timed session in seconds (30 – 300 s, default 60 s). " +
+                    "Duration of a timed session in minutes (1 – 10 min, default 1 min). " +
                     "When an exercise chunk is completed before the timer expires, a new chunk " +
                     "is generated automatically in the same key so practice continues without " +
                     "interruption."
@@ -249,6 +249,52 @@ fun HelpScreen(navController: NavController) {
                     "When ON, sustain-pedal press/release steps can be inserted into the " +
                     "exercise. Requires a sustain pedal on your MIDI keyboard. When OFF, no " +
                     "pedal steps are generated."
+                )
+            }
+            HelpSubSection("Ornaments") {
+                HelpBody(
+                    "Ornamental symbols appear above (or before) notes as decorative performance " +
+                    "guides. Select any combination of types; selecting none disables ornaments " +
+                    "entirely. When at least one type is active, approximately one in six " +
+                    "quarter-note-or-longer steps will receive an ornament. All ornaments are " +
+                    "decorative only — only the main note pitch is evaluated during practice."
+                )
+                HelpBody("How to play each ornament type:")
+                HelpBody(
+                    "• Trill (tr) — Rapidly alternate between the written note and the note a " +
+                    "step above for the full duration of the note. In Baroque style (18th century) " +
+                    "start on the upper note; in Classical/Romantic style (19th century) start " +
+                    "on the written note."
+                )
+                HelpBody(
+                    "• Upper Mordent (inverted mordent) — Play three notes quickly: written note, " +
+                    "the note one step above, then back to the written note. The symbol looks like " +
+                    "a short wavy line without a slash."
+                )
+                HelpBody(
+                    "• Lower Mordent — Play three notes quickly: written note, the note one step " +
+                    "below, then back to the written note. The symbol looks like a wavy line with " +
+                    "a vertical slash through it."
+                )
+                HelpBody(
+                    "• Turn (grupetto) — Play four notes in quick succession: the note one step " +
+                    "above the written note, the written note, the note one step below, then back " +
+                    "to the written note. The symbol looks like a sideways S above the note."
+                )
+                HelpBody(
+                    "• Appoggiatura — Play the small grace note (shown without a slash) for " +
+                    "roughly half the value of the main note with a slight lean, then resolve to " +
+                    "the main note for the remaining duration."
+                )
+                HelpBody(
+                    "• Acciaccatura — Play the small slashed grace note as fast as possible, " +
+                    "practically together with the main note. It takes no rhythmic value — the " +
+                    "main note keeps its full duration."
+                )
+                HelpBody(
+                    "• Arpeggiation — Rather than striking all chord notes at once, roll them " +
+                    "rapidly from the lowest to the highest, holding each note as you go. " +
+                    "Only applied to chords (multiple simultaneous notes)."
                 )
             }
             HelpSubSection("Timing Tolerance") {
@@ -300,10 +346,11 @@ fun HelpScreen(navController: NavController) {
         // ── Scoring ───────────────────────────────────────────────────────────
         HelpSection("Scoring") {
             HelpBody(
-                "Each correctly played step scores one point. Missing or wrong steps score " +
-                "zero. The current session score is shown in the top-left of the practice " +
-                "screen. Your all-time high score is saved automatically and shown on the " +
-                "main screen and in the finish overlay."
+                "At the end of each session the finish overlay shows your accuracy (% of " +
+                "correctly played notes), the BPM and practice time, and a composite highscore. " +
+                "The highscore formula is: accuracy × BPM-factor × time-factor × 1000, where " +
+                "BPM-factor = BPM / 120 (capped at 240 BPM) and time-factor = minutes practiced " +
+                "(capped at 5 min). Your all-time highscore is saved automatically."
             )
         }
 

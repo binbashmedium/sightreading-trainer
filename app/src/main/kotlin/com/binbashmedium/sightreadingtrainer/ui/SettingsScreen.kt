@@ -33,6 +33,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
+import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 
 @Composable
 fun SettingsScreen(
@@ -77,12 +78,12 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Text("Exercise Time: ${settings.exerciseTimeSec} s")
+        Text("Exercise Time: ${settings.exerciseTimeMin} min")
         Slider(
-            value = settings.exerciseTimeSec.toFloat(),
-            onValueChange = { viewModel.updateSettings(settings.copy(exerciseTimeSec = it.toInt())) },
-            valueRange = 30f..300f,
-            steps = 26
+            value = settings.exerciseTimeMin.toFloat(),
+            onValueChange = { viewModel.updateSettings(settings.copy(exerciseTimeMin = it.toInt())) },
+            valueRange = 1f..10f,
+            steps = 8
         )
 
         // Progression selector — shown only when PROGRESSIONS type is active
@@ -219,6 +220,91 @@ fun SettingsScreen(
                 }
             )
         }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("Ornaments", style = MaterialTheme.typography.titleSmall)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(listOf(
+                OrnamentType.TRILL,
+                OrnamentType.MORDENT,
+                OrnamentType.UPPER_MORDENT,
+                OrnamentType.TURN,
+                OrnamentType.APPOGGIATURA,
+                OrnamentType.ACCIACCATURA,
+                OrnamentType.ARPEGGIATION
+            )) { _, type ->
+                FilterChip(
+                    selected = type in settings.selectedOrnaments,
+                    onClick = {
+                        val updated = if (type in settings.selectedOrnaments)
+                            settings.selectedOrnaments - type
+                        else
+                            settings.selectedOrnaments + type
+                        viewModel.updateSettings(settings.copy(selectedOrnaments = updated))
+                    },
+                    label = {
+                        Text(when (type) {
+                            OrnamentType.UPPER_MORDENT -> "Upper Mordent"
+                            OrnamentType.MORDENT       -> "Lower Mordent"
+                            OrnamentType.ACCIACCATURA  -> "Acciaccatura"
+                            OrnamentType.APPOGGIATURA  -> "Appoggiatura"
+                            OrnamentType.ARPEGGIATION  -> "Arpeggiation"
+                            else -> type.name.lowercase().replaceFirstChar { it.uppercase() }
+                        })
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Note ranges
+        Text("Bass Range: MIDI ${settings.bassNoteRangeMin}–${settings.bassNoteRangeMax}")
+        Text("Min (E1=28)", style = MaterialTheme.typography.bodySmall)
+        Slider(
+            value = settings.bassNoteRangeMin.toFloat(),
+            onValueChange = {
+                val newMin = it.toInt().coerceAtMost(settings.bassNoteRangeMax - 12)
+                viewModel.updateSettings(settings.copy(bassNoteRangeMin = newMin))
+            },
+            valueRange = 28f..72f,
+            steps = 43
+        )
+        Text("Max (C5=72)", style = MaterialTheme.typography.bodySmall)
+        Slider(
+            value = settings.bassNoteRangeMax.toFloat(),
+            onValueChange = {
+                val newMax = it.toInt().coerceAtLeast(settings.bassNoteRangeMin + 12)
+                viewModel.updateSettings(settings.copy(bassNoteRangeMax = newMax))
+            },
+            valueRange = 28f..72f,
+            steps = 43
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Text("Treble Range: MIDI ${settings.trebleNoteRangeMin}–${settings.trebleNoteRangeMax}")
+        Text("Min (C3=48)", style = MaterialTheme.typography.bodySmall)
+        Slider(
+            value = settings.trebleNoteRangeMin.toFloat(),
+            onValueChange = {
+                val newMin = it.toInt().coerceAtMost(settings.trebleNoteRangeMax - 12)
+                viewModel.updateSettings(settings.copy(trebleNoteRangeMin = newMin))
+            },
+            valueRange = 48f..93f,
+            steps = 44
+        )
+        Text("Max (A6=93)", style = MaterialTheme.typography.bodySmall)
+        Slider(
+            value = settings.trebleNoteRangeMax.toFloat(),
+            onValueChange = {
+                val newMax = it.toInt().coerceAtLeast(settings.trebleNoteRangeMin + 12)
+                viewModel.updateSettings(settings.copy(trebleNoteRangeMax = newMax))
+            },
+            valueRange = 48f..93f,
+            steps = 44
+        )
 
         Spacer(Modifier.height(16.dp))
 

@@ -26,6 +26,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
+import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -42,7 +43,7 @@ class SettingsDataStore @Inject constructor(
         val MIDI_DEVICE = stringPreferencesKey("midi_device")
         val TIMING_TOLERANCE = intPreferencesKey("timing_tolerance_ms")
         val CHORD_WINDOW = intPreferencesKey("chord_window_ms")
-        val EXERCISE_TIME_SEC = intPreferencesKey("exercise_time_sec")
+        val EXERCISE_TIME_MIN = intPreferencesKey("exercise_time_min")
         val EXERCISE_TYPES = stringPreferencesKey("exercise_types")
         val HAND_MODE = stringPreferencesKey("hand_mode")
         val NOTE_ACCIDENTALS_ENABLED = booleanPreferencesKey("note_accidentals_enabled")
@@ -60,6 +61,11 @@ class SettingsDataStore @Inject constructor(
         val SELECTED_PROGRESSIONS = stringPreferencesKey("selected_progressions")
         val SELECTED_NOTE_VALUES = stringPreferencesKey("selected_note_values")
         val CHORD_NAMES_ENABLED = booleanPreferencesKey("chord_names_enabled")
+        val BASS_NOTE_RANGE_MIN = intPreferencesKey("bass_note_range_min")
+        val BASS_NOTE_RANGE_MAX = intPreferencesKey("bass_note_range_max")
+        val TREBLE_NOTE_RANGE_MIN = intPreferencesKey("treble_note_range_min")
+        val TREBLE_NOTE_RANGE_MAX = intPreferencesKey("treble_note_range_max")
+        val SELECTED_ORNAMENTS = stringPreferencesKey("selected_ornaments")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -67,7 +73,7 @@ class SettingsDataStore @Inject constructor(
             midiDeviceName = prefs[Keys.MIDI_DEVICE] ?: "",
             timingToleranceMs = prefs[Keys.TIMING_TOLERANCE] ?: 200,
             chordWindowMs = prefs[Keys.CHORD_WINDOW] ?: 50,
-            exerciseTimeSec = (prefs[Keys.EXERCISE_TIME_SEC] ?: 60).coerceAtLeast(10),
+            exerciseTimeMin = (prefs[Keys.EXERCISE_TIME_MIN] ?: 1).coerceIn(1, 10),
             exerciseTypes = parseExerciseTypes(
                 prefs[Keys.EXERCISE_TYPES],
                 prefs[intPreferencesKey("difficulty")] ?: 1
@@ -89,7 +95,12 @@ class SettingsDataStore @Inject constructor(
             ),
             selectedProgressions = parseProgressions(prefs[Keys.SELECTED_PROGRESSIONS]),
             selectedNoteValues = parseNoteValues(prefs[Keys.SELECTED_NOTE_VALUES]),
-            chordNamesEnabled = prefs[Keys.CHORD_NAMES_ENABLED] ?: false
+            chordNamesEnabled = prefs[Keys.CHORD_NAMES_ENABLED] ?: false,
+            bassNoteRangeMin = (prefs[Keys.BASS_NOTE_RANGE_MIN] ?: 28).coerceIn(28, 72),
+            bassNoteRangeMax = (prefs[Keys.BASS_NOTE_RANGE_MAX] ?: 60).coerceIn(28, 72),
+            trebleNoteRangeMin = (prefs[Keys.TREBLE_NOTE_RANGE_MIN] ?: 60).coerceIn(48, 93),
+            trebleNoteRangeMax = (prefs[Keys.TREBLE_NOTE_RANGE_MAX] ?: 84).coerceIn(48, 93),
+            selectedOrnaments = parseSelectedOrnaments(prefs[Keys.SELECTED_ORNAMENTS])
         )
     }
 
@@ -98,7 +109,7 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.MIDI_DEVICE] = settings.midiDeviceName
             prefs[Keys.TIMING_TOLERANCE] = settings.timingToleranceMs
             prefs[Keys.CHORD_WINDOW] = settings.chordWindowMs
-            prefs[Keys.EXERCISE_TIME_SEC] = settings.exerciseTimeSec
+            prefs[Keys.EXERCISE_TIME_MIN] = settings.exerciseTimeMin
             prefs[Keys.EXERCISE_TYPES] = settings.exerciseTypes.sortedBy { it.ordinal }.joinToString(",") { it.name }
             prefs[Keys.HAND_MODE] = settings.handMode.name
             prefs[Keys.NOTE_ACCIDENTALS_ENABLED] = settings.noteAccidentalsEnabled
@@ -118,6 +129,12 @@ class SettingsDataStore @Inject constructor(
                 .sortedBy { it.ordinal }
                 .joinToString(",") { it.name }
             prefs[Keys.CHORD_NAMES_ENABLED] = settings.chordNamesEnabled
+            prefs[Keys.BASS_NOTE_RANGE_MIN] = settings.bassNoteRangeMin
+            prefs[Keys.BASS_NOTE_RANGE_MAX] = settings.bassNoteRangeMax
+            prefs[Keys.TREBLE_NOTE_RANGE_MIN] = settings.trebleNoteRangeMin
+            prefs[Keys.TREBLE_NOTE_RANGE_MAX] = settings.trebleNoteRangeMax
+            prefs[Keys.SELECTED_ORNAMENTS] = settings.selectedOrnaments
+                .sortedBy { it.ordinal }.joinToString(",") { it.name }
         }
     }
 
@@ -199,3 +216,10 @@ internal fun parseSelectedProgressions(raw: String?): Set<ChordProgression> {
 
     return if (parsed.isNotEmpty()) parsed else setOf(ChordProgression.I_IV_V_I)
 }
+
+internal fun parseSelectedOrnaments(raw: String?): Set<OrnamentType> =
+    raw
+        ?.split(",")
+        ?.mapNotNull { name -> OrnamentType.entries.find { it.name == name.trim() && it != OrnamentType.NONE } }
+        ?.toSet()
+        .orEmpty()

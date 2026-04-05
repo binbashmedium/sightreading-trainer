@@ -27,12 +27,46 @@ enum class PedalAction {
     RELEASE
 }
 
+/**
+ * Musical ornament type for a note.
+ * When applied, the ornament symbol is displayed above (or before) the note.
+ * The main note pitch is still the only one evaluated during practice.
+ */
+enum class OrnamentType {
+    NONE,
+    /** Trill — rapid alternation between the written note and the note a step above. */
+    TRILL,
+    /** Lower mordent — quick alternation downward: main → lower neighbour → main. */
+    MORDENT,
+    /** Inverted (upper) mordent — quick alternation upward: main → upper neighbour → main. */
+    UPPER_MORDENT,
+    /** Turn (grupetto) — four notes circling the main note: upper → main → lower → main. */
+    TURN,
+    /**
+     * Appoggiatura — small grace note (no slash) a step above the main note.
+     * Takes approximately half the value of the main note, played with slight emphasis.
+     */
+    APPOGGIATURA,
+    /**
+     * Acciaccatura — small crushed note (with slash) one semitone below the main note.
+     * Played as fast as possible; takes no rhythmic value from the main note.
+     */
+    ACCIACCATURA,
+    /**
+     * Arpeggiation — chord notes rolled upward in rapid succession rather than struck together.
+     * Only meaningful on chords; single-note steps are left unornamented.
+     */
+    ARPEGGIATION
+}
+
 data class ExerciseStep(
     val notes: List<Int> = emptyList(),
     val noteAccidentals: List<NoteAccidental> = List(notes.size) { NoteAccidental.NONE },
     val pedalAction: PedalAction = PedalAction.NONE,
     val contentType: ExerciseContentType? = null,
-    val noteValue: NoteValue = NoteValue.QUARTER
+    val noteValue: NoteValue = NoteValue.QUARTER,
+    /** Ornament applied to the first note of this step. Does not affect note matching. */
+    val ornament: OrnamentType = OrnamentType.NONE
 ) {
     init {
         require(noteAccidentals.size == notes.size) {

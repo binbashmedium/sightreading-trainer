@@ -35,12 +35,34 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class SessionResultUi(
-    val score: Int,
     val correctNotes: Int,
     val wrongNotes: Int,
+    val bpm: Float,
+    val practiceTimeSec: Long,
     val highScore: Int,
     val isNewHighScore: Boolean
-)
+) {
+    /** Accuracy 0–100 % */
+    val accuracy: Int get() {
+        val total = correctNotes + wrongNotes
+        return if (total == 0) 0 else (correctNotes * 100 / total)
+    }
+}
+
+/** Composite highscore: accuracy × BPM-factor, scaled to session time. */
+internal fun computeHighScore(
+    correctNotes: Int,
+    wrongNotes: Int,
+    bpm: Float,
+    practiceTimeSec: Long
+): Int {
+    val total = correctNotes + wrongNotes
+    if (total == 0) return 0
+    val accuracy = correctNotes.toFloat() / total
+    val bpmFactor = bpm.coerceIn(0f, 240f) / 120f   // 1.0 at 120 BPM
+    val timeFactor = (practiceTimeSec.coerceIn(0L, 300L) / 60f).coerceAtLeast(0.1f)
+    return (accuracy * bpmFactor * timeFactor * 1000).toInt()
+}
 
 internal fun hasSessionTimedOut(state: PracticeState, nowMs: Long): Boolean =
     (nowMs - state.startTimeMs) >= state.sessionDurationSec * 1_000L
@@ -58,6 +80,8 @@ class PracticeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
     private val _sessionResult = MutableStateFlow<SessionResultUi?>(null)
     val sessionResult: StateFlow<SessionResultUi?> = _sessionResult.asStateFlow()
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private var chordDetector: ChordDetector? = null
     private var noteCollectorJob: Job? = null
@@ -73,14 +97,24 @@ class PracticeViewModel @Inject constructor(
     /** Generate a new exercise from current settings and start the session. */
     fun startSession() {
         viewModelScope.launch {
+            _isLoading.value = true
+            _sessionResult.value = null
+            practiceSessionUseCase.resetSession()   // clear stale state immediately
             chordDetector?.reset()
             val settings = settingsRepository.settings.first()
             val exercise = exerciseRepository.generateExercise(settings)
             sessionSettings = settings
             sessionKey = exercise.musicalKey
-            _sessionResult.value = null
-            practiceSessionUseCase.startSession(exercise, settings.exerciseTimeSec)
+            practiceSessionUseCase.startSession(exercise, settings.exerciseTimeMin * 60)
+            _isLoading.value = false
         }
+    }
+
+    /** Called by the UI once Verovio has finished rendering to start the session timer. */
+    fun onStaffRendered() {
+        val state = practiceSessionUseCase.state.value ?: return
+        // Reset the session start time so the timer begins from when notes are visible.
+        practiceSessionUseCase.resetStartTime()
     }
 
     /** Discard the current exercise and generate a fresh one. */
@@ -144,8 +178,15 @@ class PracticeViewModel @Inject constructor(
         if (_sessionResult.value != null) return
 
         val settings = settingsRepository.settings.first()
-        val highScore = maxOf(settings.highScore, state.score)
-        val isNewHighScore = state.score > settings.highScore
+        val practiceTimeSec = (System.currentTimeMillis() - state.startTimeMs) / 1000L
+        val sessionScore = computeHighScore(
+            correctNotes = state.correctNotesCount,
+            wrongNotes = state.wrongNotesCount,
+            bpm = state.bpm,
+            practiceTimeSec = practiceTimeSec
+        )
+        val highScore = maxOf(settings.highScore, sessionScore)
+        val isNewHighScore = sessionScore > settings.highScore
         val updatedSettings = settings.copy(
             highScore = highScore,
             totalCorrectNotes = settings.totalCorrectNotes + state.correctNotesCount,
@@ -156,9 +197,10 @@ class PracticeViewModel @Inject constructor(
             wrongNoteStats = settings.wrongNoteStats.mergeCounts(state.wrongNoteStats)
         )
         _sessionResult.value = SessionResultUi(
-            score = state.score,
             correctNotes = state.correctNotesCount,
             wrongNotes = state.wrongNotesCount,
+            bpm = state.bpm,
+            practiceTimeSec = practiceTimeSec,
             highScore = highScore,
             isNewHighScore = isNewHighScore
         )

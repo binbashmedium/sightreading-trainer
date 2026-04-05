@@ -53,10 +53,12 @@ fun VerovioStaffView(
     startBeat: Float = 0f,
     endBeat: Float = Float.MAX_VALUE,
     @Suppress("UNUSED_PARAMETER") measureNumberLabel: Int? = null,
-    showChordNames: Boolean = false
+    showChordNames: Boolean = false,
+    onFirstRender: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     var pageLoaded by remember { mutableStateOf(false) }
+    var firstRenderFired by remember { mutableStateOf(false) }
 
     val webView = remember(context) {
         WebView(context).apply {
@@ -100,6 +102,10 @@ fun VerovioStaffView(
         val jsonMei = JSONObject.quote(mei)  // properly escapes the MEI string for JS
         val js = "renderMei($jsonMei, ${showCursor});"
         webView.evaluateJavascript(js, null)
+        if (!firstRenderFired) {
+            firstRenderFired = true
+            onFirstRender?.invoke()
+        }
     }
 
     AndroidView(

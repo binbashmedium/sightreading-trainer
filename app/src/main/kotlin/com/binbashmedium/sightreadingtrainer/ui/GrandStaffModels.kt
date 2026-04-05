@@ -17,6 +17,7 @@ package com.binbashmedium.sightreadingtrainer.ui
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
+import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.model.StepInputSnapshot
 import kotlin.math.absoluteValue
@@ -116,7 +117,9 @@ data class NoteEvent(
     val expected: Boolean,
     val state: NoteState = NoteState.NONE,
     val staff: StaffType = StaffType.TREBLE,
-    val accidental: NoteAccidental = NoteAccidental.NONE
+    val accidental: NoteAccidental = NoteAccidental.NONE,
+    /** Ornament on this note (only the first note of a step carries it). */
+    val ornament: OrnamentType = OrnamentType.NONE
 )
 
 data class PedalMark(
@@ -136,7 +139,6 @@ data class Chord(
 data class GameState(
     val levelTitle: String,
     val elapsedTime: Long,
-    val score: Int,
     val bpm: Float,
     val notes: List<NoteEvent>,
     val chords: List<Chord>,
@@ -641,7 +643,6 @@ fun generateExampleGameState(nowMs: Long = System.currentTimeMillis()): GameStat
     return GameState(
         levelTitle = "C - Mixed Practice",
         elapsedTime = (phase * 1_000L) + (nowMs % 1_000L),
-        score = 100 + (phase * 15),
         bpm = if (phase > 1) 60f + phase * 2f else 0f,
         notes = notes,
         chords = chords,

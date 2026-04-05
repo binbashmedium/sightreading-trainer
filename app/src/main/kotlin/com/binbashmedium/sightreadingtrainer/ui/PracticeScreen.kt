@@ -30,8 +30,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -76,9 +81,11 @@ fun PracticeScreen(
     val state by viewModel.practiceState.collectAsState()
     val sessionResult by viewModel.sessionResult.collectAsState()
     val settings by viewModel.settings.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isLoading) {
+        if (isLoading) return@LaunchedEffect
         while (true) {
             val currentNow = System.currentTimeMillis()
             now = currentNow
@@ -103,7 +110,7 @@ fun PracticeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            HeaderCard(gameState = gameState)
+            HeaderCard(gameState = gameState, onSettingsClick = { navController.navigate("settings") })
 
             Card(
                 modifier = Modifier
@@ -129,7 +136,8 @@ fun PracticeScreen(
                                 startBeat = rowStart,
                                 endBeat = rowEnd,
                                 measureNumberLabel = rowMeasureLabel(rowStart),
-                                showChordNames = settings.chordNamesEnabled
+                                showChordNames = settings.chordNamesEnabled,
+                                onFirstRender = if (rowIdx == 0) viewModel::onStaffRendered else null
                             )
                         }
                     }
@@ -146,7 +154,8 @@ fun PracticeScreen(
                         startBeat = landscapeStart,
                         endBeat = landscapeEnd,
                         measureNumberLabel = rowMeasureLabel(landscapeStart),
-                        showChordNames = settings.chordNamesEnabled
+                        showChordNames = settings.chordNamesEnabled,
+                        onFirstRender = viewModel::onStaffRendered
                     )
                 }
             }
@@ -162,26 +171,49 @@ fun PracticeScreen(
         if (isComplete) {
             val result = sessionResult!!
             SessionCompleteOverlay(
-                score = result.score,
+                accuracy = result.accuracy,
                 highScore = result.highScore,
                 isNewHighScore = result.isNewHighScore,
                 correctNotes = result.correctNotes,
                 wrongNotes = result.wrongNotes,
-                bpm = gameState.bpm,
+                bpm = result.bpm,
+                practiceTimeSec = result.practiceTimeSec,
                 onRestart = { viewModel.reloadSession() }
             )
+        }
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xCC000000)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(color = Color(0xFFF2F6FF))
+                    Text(
+                        text = "Loading exercise…",
+                        color = Color(0xFFF2F6FF),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun SessionCompleteOverlay(
-    score: Int,
+    accuracy: Int,
     highScore: Int,
     isNewHighScore: Boolean,
     correctNotes: Int,
     wrongNotes: Int,
     bpm: Float,
+    practiceTimeSec: Long,
     onRestart: () -> Unit
 ) {
     Box(
@@ -210,18 +242,34 @@ private fun SessionCompleteOverlay(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "$score pts",
+                    text = "$accuracy%",
                     color = Color(0xFFFFD700),
                     fontSize = 48.sp,
                     fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "Highscore: $highScore pts",
-                    color = if (isNewHighScore) Color(0xFFB7FFB7) else Color(0xFFB0C4DE),
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Accuracy",
+                    color = Color(0xFFB0C4DE),
+                    style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center
                 )
+                if (isNewHighScore) {
+                    Text(
+                        text = "New Highscore! $highScore",
+                        color = Color(0xFFB7FFB7),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                } else {
+                    Text(
+                        text = "Highscore: $highScore",
+                        color = Color(0xFFB0C4DE),
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Text(
                     text = "Correct / Wrong: $correctNotes / $wrongNotes",
                     color = Color(0xFFB0C4DE),
@@ -236,6 +284,12 @@ private fun SessionCompleteOverlay(
                         textAlign = TextAlign.Center
                     )
                 }
+                Text(
+                    text = "Time: ${practiceTimeSec}s",
+                    color = Color(0xFFB0C4DE),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = onRestart,
@@ -249,7 +303,7 @@ private fun SessionCompleteOverlay(
 }
 
 @Composable
-private fun HeaderCard(gameState: GameState) {
+private fun HeaderCard(gameState: GameState, onSettingsClick: () -> Unit = {}) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -259,7 +313,7 @@ private fun HeaderCard(gameState: GameState) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -285,12 +339,11 @@ private fun HeaderCard(gameState: GameState) {
                     style = MaterialTheme.typography.titleMedium
                 )
             }
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                Text(
-                    text = "${gameState.score} pts",
-                    color = Color(0xFFF2F6FF),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = Color(0xFFF2F6FF)
                 )
             }
         }
@@ -763,7 +816,8 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
                 expected = true,
                 state = noteOutcome.expectedStates.getOrElse(noteIndex) { NoteState.NONE },
                 staff = staffForExercise(midi, exercise.handMode),
-                accidental = step.noteAccidentals.getOrElse(noteIndex) { NoteAccidental.NONE }
+                accidental = step.noteAccidentals.getOrElse(noteIndex) { NoteAccidental.NONE },
+                ornament = if (noteIndex == 0) step.ornament else com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType.NONE
             )
         }
         val extraEvents = noteOutcome.extraNotes.map { midi ->
@@ -814,7 +868,6 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
     return GameState(
         levelTitle = levelTitle,
         elapsedTime = elapsed,
-        score = score,
         bpm = bpm,
         notes = expectedNotes,
         chords = chords,

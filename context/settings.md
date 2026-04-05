@@ -23,7 +23,15 @@ data class AppSettings(
     /** Selectable pool of keys (0 = C … 11 = B). */
     val selectedKeys: Set<Int> = setOf(0),
     /** Active chord progressions used when PROGRESSIONS type is selected. */
-    val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I)
+    val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I),
+    val selectedNoteValues: Set<NoteValue> = NoteValue.entries.toSet(),
+    val chordNamesEnabled: Boolean = false,
+    val bassNoteRangeMin: Int = 28,
+    val bassNoteRangeMax: Int = 60,
+    val trebleNoteRangeMin: Int = 60,
+    val trebleNoteRangeMax: Int = 84,
+    /** Which ornament types (TRILL, MORDENT, TURN) may appear. Empty = no ornaments. */
+    val selectedOrnaments: Set<OrnamentType> = emptySet()
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }
@@ -71,6 +79,10 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 - `pedalEventsEnabled`
 - `selectedKeys` (0-11 pool; one key is chosen per exercise)
 - `selectedProgressions` (used when `PROGRESSIONS` type is active)
+- `selectedNoteValues` (which note durations may appear in measures)
+- `bassNoteRangeMin`/`bassNoteRangeMax` (MIDI 28–72 clamp for bass-staff notes)
+- `trebleNoteRangeMin`/`trebleNoteRangeMax` (MIDI 48–93 clamp for treble-staff notes)
+- `selectedOrnaments` (TRILL/MORDENT/TURN; empty set = no ornaments)
 
 ## SettingsScreen UI
 
@@ -82,6 +94,9 @@ The screen includes:
 - hand-mode chips
 - generated note-accidental toggle
 - generated pedal-mark toggle
+- ornament type multi-select chips (Trill, Mordent, Turn; none required)
+- note-value multi-select chips (Whole, Half, Quarter, Eighth; at least one required)
+- note-range sliders (bass min/max, treble min/max)
 - timing tolerance slider
 - chord-window slider
 - sound toggle

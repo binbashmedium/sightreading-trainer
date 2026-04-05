@@ -18,7 +18,7 @@ data class AppSettings(
     val midiDeviceName: String = "",
     val timingToleranceMs: Int = 200,
     val chordWindowMs: Int = 50,
-    val exerciseTimeSec: Int = 60,
+    val exerciseTimeMin: Int = 1,
     val exerciseTypes: Set<ExerciseContentType> = setOf(ExerciseContentType.SINGLE_NOTES),
     val handMode: HandMode = HandMode.RIGHT,
     val noteAccidentalsEnabled: Boolean = false,
@@ -39,7 +39,16 @@ data class AppSettings(
      *  At least one must remain active; defaults to all four enabled. */
     val selectedNoteValues: Set<NoteValue> = NoteValue.entries.toSet(),
     /** When true, chord/note names are shown above each chord group on the staff. */
-    val chordNamesEnabled: Boolean = false
+    val chordNamesEnabled: Boolean = false,
+    /** Configurable MIDI note range for the bass staff. Min = E1 (28), Max = C5 (72). */
+    val bassNoteRangeMin: Int = 28,
+    val bassNoteRangeMax: Int = 60,
+    /** Configurable MIDI note range for the treble staff. Min = C3 (48), Max = A6 (93). */
+    val trebleNoteRangeMin: Int = 60,
+    val trebleNoteRangeMax: Int = 84,
+    /** Which ornament types (TRILL, MORDENT, TURN) may appear in generated exercises.
+     *  Empty set means no ornaments are used. Notes are always evaluated on main pitch only. */
+    val selectedOrnaments: Set<OrnamentType> = emptySet()
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }

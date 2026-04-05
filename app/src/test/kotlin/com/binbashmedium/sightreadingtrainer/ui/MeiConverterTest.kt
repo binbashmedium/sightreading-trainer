@@ -15,6 +15,7 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
+import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -322,7 +323,6 @@ class MeiConverterTest {
         val gameState = GameState(
             levelTitle = "Test",
             elapsedTime = 0L,
-            score = 0,
             bpm = 0f,
             notes = listOf(note),
             chords = emptyList(),
@@ -340,7 +340,6 @@ class MeiConverterTest {
         val gameState = GameState(
             levelTitle = "Test",
             elapsedTime = 0L,
-            score = 0,
             bpm = 0f,
             notes = emptyList(),
             chords = emptyList(),
@@ -353,18 +352,23 @@ class MeiConverterTest {
     }
 
     @Test
-    fun `natural accidental produces accid-n in note`() {
+    fun `natural accidental produces accid-n when pitch class is altered by key signature`() {
+        // E4 (midi=64, pitch class 4) is E# in F# major (6 sharps: includes pc 4).
+        // When the key alters pc 4, a NATURAL accidental must be shown explicitly.
         val note = NoteEvent(midi = 64, startBeat = 0f, duration = 1f,
             expected = true, state = NoteState.NONE, staff = StaffType.TREBLE,
             accidental = NoteAccidental.NATURAL)
-        val result = MeiConverter.renderLayer(listOf(note), 0f, -1f)
-        assertTrue("Natural accidental should produce accid=n", result.contains("accid=\"n\""))
+        val result = MeiConverter.renderLayer(
+            notes = listOf(note), measureStartBeat = 0f, currentBeat = -1f,
+            keySigAlteredPitchClasses = setOf(4)  // F# major alters E → needs natural
+        )
+        assertTrue("Natural accidental should produce accid=n when key sig alters that pitch", result.contains("accid=\"n\""))
     }
 
     // ── Pedal marks ───────────────────────────────────────────────────────────
 
     private fun gameStateWithPedals(pedals: List<PedalMark>) = GameState(
-        levelTitle = "Test", elapsedTime = 0L, score = 0, bpm = 0f,
+        levelTitle = "Test", elapsedTime = 0L, bpm = 0f,
         notes = emptyList(), chords = emptyList(),
         pedalMarks = pedals, currentBeat = 0f
     )
@@ -423,7 +427,7 @@ class MeiConverterTest {
     // ── Chord names (<harm>) ──────────────────────────────────────────────────
 
     private fun gameStateWithChords(chords: List<Chord>) = GameState(
-        levelTitle = "Test", elapsedTime = 0L, score = 0, bpm = 0f,
+        levelTitle = "Test", elapsedTime = 0L, bpm = 0f,
         notes = emptyList(), chords = chords,
         pedalMarks = emptyList(), currentBeat = 0f
     )
@@ -514,5 +518,206 @@ class MeiConverterTest {
         )
         val harmCount = mei.split("<harm").size - 1
         assertEquals("Two chords should produce two harm elements", 2, harmCount)
+    }
+
+    // ── Natural accidental display tests ─────────────────────────────────────
+
+    @Test
+    fun `natural accidental is suppressed when no prior alteration in C major`() {
+        // C major: no key-signature alterations. A NATURAL on a diatonic pitch should not show.
+        // Pitch class 0 (C) is not altered by key signature in C major.
+        val result = MeiConverter.visualAccidAttr(
+            accidental = NoteAccidental.NATURAL,
+            accidGes = null,
+            keySigAlteredPitchClasses = emptySet(),  // C major: no alterations
+            withinMeasureAccidentals = emptyMap(),
+            pitchClass = 0  // C
+        )
+        assertEquals("Natural should be suppressed in C major with no prior alteration", "", result)
+    }
+
+    @Test
+    fun `natural accidental is shown when pitch class was altered by key signature`() {
+        // G major has F# (pitch class 5). A natural on F should show.
+        val result = MeiConverter.visualAccidAttr(
+            accidental = NoteAccidental.NATURAL,
+            accidGes = null,
+            keySigAlteredPitchClasses = setOf(5),   // G major: F# is altered
+            withinMeasureAccidentals = emptyMap(),
+            pitchClass = 5  // F
+        )
+        assertEquals("Natural should be shown when key sig alters this pitch class", " accid=\"n\"", result)
+    }
+
+    @Test
+    fun `natural accidental is shown when pitch was sharped earlier in same measure`() {
+        val result = MeiConverter.visualAccidAttr(
+            accidental = NoteAccidental.NATURAL,
+            accidGes = null,
+            keySigAlteredPitchClasses = emptySet(),
+            withinMeasureAccidentals = mapOf(0 to "s"),  // C was sharped earlier
+            pitchClass = 0  // C
+        )
+        assertEquals("Natural should be shown after in-measure sharp", " accid=\"n\"", result)
+    }
+
+    @Test
+    fun `natural accidental is shown when pitch was flatted earlier in same measure`() {
+        val result = MeiConverter.visualAccidAttr(
+            accidental = NoteAccidental.NATURAL,
+            accidGes = null,
+            keySigAlteredPitchClasses = emptySet(),
+            withinMeasureAccidentals = mapOf(2 to "f"),  // D was flatted earlier
+            pitchClass = 2  // D
+        )
+        assertEquals("Natural should be shown after in-measure flat", " accid=\"n\"", result)
+    }
+
+    @Test
+    fun `keySignatureAlteredPitchClasses returns empty set for C major`() {
+        val pcs = MeiConverter.keySignatureAlteredPitchClasses(0)  // C major
+        assertTrue("C major should have no altered pitch classes", pcs.isEmpty())
+    }
+
+    @Test
+    fun `keySignatureAlteredPitchClasses returns F sharp for G major`() {
+        val pcs = MeiConverter.keySignatureAlteredPitchClasses(7)  // G major (1 sharp = F#)
+        assertTrue("G major should contain pitch class 5 (F)", 5 in pcs)
+        assertEquals("G major should have exactly 1 altered pitch class", 1, pcs.size)
+    }
+
+    @Test
+    fun `keySignatureAlteredPitchClasses returns 2 flats for Bb major`() {
+        val pcs = MeiConverter.keySignatureAlteredPitchClasses(10)  // Bb major (2 flats = Bb, Eb)
+        assertEquals("Bb major should have 2 altered pitch classes", 2, pcs.size)
+        assertTrue("Bb (pitch class 11) should be altered", 11 in pcs)
+        assertTrue("Eb (pitch class 4) should be altered", 4 in pcs)
+    }
+
+    // ── Ornament control event tests ─────────────────────────────────────────
+
+    private fun noteWithOrnament(midi: Int, ornament: OrnamentType, beat: Float = 0f) = NoteEvent(
+        midi = midi, startBeat = beat, duration = 1f, expected = true,
+        state = NoteState.NONE, staff = StaffType.TREBLE, ornament = ornament
+    )
+
+    private fun gameStateWithOrnamentNote(note: NoteEvent) = GameState(
+        levelTitle = "Test", elapsedTime = 0L, bpm = 0f,
+        notes = listOf(note), chords = emptyList(), pedalMarks = emptyList(),
+        currentBeat = 0f, musicalKey = 0
+    )
+
+    @Test
+    fun `trill ornament produces trill control event in MEI`() {
+        val note = noteWithOrnament(60, OrnamentType.TRILL)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("MEI should contain a <trill> element", mei.contains("<trill"))
+    }
+
+    @Test
+    fun `mordent ornament produces mordent control event in MEI`() {
+        val note = noteWithOrnament(60, OrnamentType.MORDENT)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("MEI should contain a <mordent> element", mei.contains("<mordent"))
+    }
+
+    @Test
+    fun `turn ornament produces turn control event in MEI`() {
+        val note = noteWithOrnament(60, OrnamentType.TURN)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("MEI should contain a <turn> element", mei.contains("<turn"))
+    }
+
+    @Test
+    fun `mordent ornament produces lower mordent form attribute`() {
+        val note = noteWithOrnament(60, OrnamentType.MORDENT)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Mordent should produce form=\"lower\"", mei.contains("form=\"lower\""))
+    }
+
+    @Test
+    fun `upper mordent ornament produces mordent control event with upper form`() {
+        val note = noteWithOrnament(60, OrnamentType.UPPER_MORDENT)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Upper mordent should produce <mordent>", mei.contains("<mordent"))
+        assertTrue("Upper mordent should have form=\"upper\"", mei.contains("form=\"upper\""))
+    }
+
+    @Test
+    fun `acciaccatura ornament produces inline grace note with acc attribute`() {
+        val note = noteWithOrnament(60, OrnamentType.ACCIACCATURA)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Acciaccatura should produce grace=\"acc\"", mei.contains("grace=\"acc\""))
+    }
+
+    @Test
+    fun `acciaccatura ornament does not produce a control event`() {
+        val note = noteWithOrnament(60, OrnamentType.ACCIACCATURA)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertFalse("Acciaccatura should not emit a control event", mei.contains("<trill") || mei.contains("<mordent") || mei.contains("<turn"))
+    }
+
+    @Test
+    fun `acciaccatura pitch is one semitone below main note`() {
+        // Main note C5 (midi 60) → acciaccatura B4 (midi 59, pname="b", oct=4)
+        val note = noteWithOrnament(60, OrnamentType.ACCIACCATURA)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Acciaccatura should be B4 (one semitone below C5)",
+            mei.contains("grace=\"acc\"") && mei.contains("pname=\"b\"") && mei.contains("oct=\"4\""))
+    }
+
+    @Test
+    fun `appoggiatura ornament produces inline grace note with unacc attribute`() {
+        val note = noteWithOrnament(60, OrnamentType.APPOGGIATURA)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Appoggiatura should produce grace=\"unacc\"", mei.contains("grace=\"unacc\""))
+    }
+
+    @Test
+    fun `appoggiatura pitch is one semitone above main note`() {
+        // Main note C5 (midi 60) → appoggiatura C#5 (midi 61, accid.ges="s", pname="c", oct=5)
+        val note = noteWithOrnament(60, OrnamentType.APPOGGIATURA)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Appoggiatura should be C#5 (one semitone above C5)",
+            mei.contains("grace=\"unacc\"") && mei.contains("pname=\"c\"") && mei.contains("accid.ges=\"s\""))
+    }
+
+    @Test
+    fun `appoggiatura does not produce a control event`() {
+        val note = noteWithOrnament(60, OrnamentType.APPOGGIATURA)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertFalse("Appoggiatura should not emit a control event", mei.contains("<trill") || mei.contains("<mordent") || mei.contains("<turn") || mei.contains("<arpeg"))
+    }
+
+    @Test
+    fun `arpeggiation produces arpeg control event in MEI`() {
+        val note1 = noteWithOrnament(60, OrnamentType.ARPEGGIATION)
+        val note2 = NoteEvent(midi = 64, startBeat = 0f, duration = 1f, expected = true,
+            state = NoteState.NONE, staff = StaffType.TREBLE, ornament = OrnamentType.ARPEGGIATION)
+        val state = GameState(levelTitle = "Test", elapsedTime = 0L, bpm = 0f,
+            notes = listOf(note1, note2), chords = emptyList(), pedalMarks = emptyList(),
+            currentBeat = 0f, musicalKey = 0)
+        val mei = MeiConverter.convert(state, 0f, BEATS_PER_MEASURE_UNITS)
+        assertTrue("Arpeggiation should produce an <arpeg> element", mei.contains("<arpeg"))
+    }
+
+    @Test
+    fun `arpeggiation emits one arpeg per staff per beat not one per note`() {
+        // Two notes at same beat on treble staff — should produce exactly one <arpeg>
+        val note1 = noteWithOrnament(60, OrnamentType.ARPEGGIATION)
+        val note2 = NoteEvent(midi = 64, startBeat = 0f, duration = 1f, expected = true,
+            state = NoteState.NONE, staff = StaffType.TREBLE, ornament = OrnamentType.ARPEGGIATION)
+        val state = GameState(levelTitle = "Test", elapsedTime = 0L, bpm = 0f,
+            notes = listOf(note1, note2), chords = emptyList(), pedalMarks = emptyList(),
+            currentBeat = 0f, musicalKey = 0)
+        val mei = MeiConverter.convert(state, 0f, BEATS_PER_MEASURE_UNITS)
+        assertEquals("Should have exactly one <arpeg> element", 1, mei.split("<arpeg").size - 1)
+    }
+
+    @Test
+    fun `no ornament control event when ornament is NONE`() {
+        val note = noteWithOrnament(60, OrnamentType.NONE)
+        val mei = MeiConverter.convert(gameStateWithOrnamentNote(note), 0f, BEATS_PER_MEASURE_UNITS)
+        assertFalse("MEI should not contain ornament elements", mei.contains("<trill") || mei.contains("<mordent") || mei.contains("<turn"))
     }
 }
