@@ -541,7 +541,7 @@ fun GrandStaffCanvas(
                 end = Offset(x, bassTopY + lineSpacing * 4f),
                 strokeWidth = 1f
             )
-            val label = formatChordLabelShort(chord.notes, gameState.musicalKey)
+            val label = chord.name
             val labelY = if (chord.staff == StaffType.BASS) bassLabelY else trebleLabelY
             drawContext.canvas.nativeCanvas.drawText(label, x + 2f, labelY, labelPaint)
         }
