@@ -199,6 +199,12 @@ Rendered chord labels should use harmonic names and roman numerals only when the
 
 Single notes should render as note names only and should not show harmonic chord labels.
 Clustered chord voicings and inversions should still resolve to their harmonic chord labels rather than falling back to raw note names.
+For chord-name display, consecutive single-note runs (including `ARPEGGIOS` and mixed single-note passages) that complete a detectable chord now use that chord label (for example C-E-G[-E] shows `CM`) instead of changing label per single note.
+Suspended triads are also recognized for labeling (for example D-G-A resolves to `Gsus2`).
+Additional supported labels now include power/sixth/add/extended/altered forms such as `C5`, `C6`, `Cm6`, `Cadd9`, `C11`, `C13`, `C7b9`, `C7#9`, `C7#11`, and `C7b13`.
+Chord root spellings are key-signature aware for display (`F#` preferred in sharp keys, `Gb` preferred in flat keys).
+Chord labels are now generated measure-wise from all notes in the bar (`buildMeasureChordLabels`), producing one harmonic label per measure with tolerant matching for extra passing tones.
+If a measure cannot be resolved to a known harmonic quality, no chord label is shown (instead of fallback note-name text).
 
 ## Extending Exercises
 
