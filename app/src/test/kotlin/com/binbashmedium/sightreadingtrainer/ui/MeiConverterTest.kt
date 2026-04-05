@@ -352,12 +352,17 @@ class MeiConverterTest {
     }
 
     @Test
-    fun `natural accidental produces accid-n in note`() {
+    fun `natural accidental produces accid-n when pitch class is altered by key signature`() {
+        // E4 (midi=64, pitch class 4) is E# in F# major (6 sharps: includes pc 4).
+        // When the key alters pc 4, a NATURAL accidental must be shown explicitly.
         val note = NoteEvent(midi = 64, startBeat = 0f, duration = 1f,
             expected = true, state = NoteState.NONE, staff = StaffType.TREBLE,
             accidental = NoteAccidental.NATURAL)
-        val result = MeiConverter.renderLayer(listOf(note), 0f, -1f)
-        assertTrue("Natural accidental should produce accid=n", result.contains("accid=\"n\""))
+        val result = MeiConverter.renderLayer(
+            notes = listOf(note), measureStartBeat = 0f, currentBeat = -1f,
+            keySigAlteredPitchClasses = setOf(4)  // F# major alters E → needs natural
+        )
+        assertTrue("Natural accidental should produce accid=n when key sig alters that pitch", result.contains("accid=\"n\""))
     }
 
     // ── Pedal marks ───────────────────────────────────────────────────────────
