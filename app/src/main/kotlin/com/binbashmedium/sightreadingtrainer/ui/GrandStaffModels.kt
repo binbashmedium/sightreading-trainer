@@ -15,6 +15,7 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
@@ -23,6 +24,8 @@ import com.binbashmedium.sightreadingtrainer.domain.model.StepInputSnapshot
 import kotlin.math.absoluteValue
 
 val KEY_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+private val SHARP_KEY_NAMES = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+private val FLAT_KEY_NAMES = listOf("C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B")
 
 /**
  * Key signatures as (sharps, flats) pairs indexed by musicalKey (0=C ... 11=B).
@@ -498,16 +501,40 @@ fun computeBeamGroups(notes: List<NoteEvent>): List<BeamGroup> {
 private val SCALE_DEGREES = listOf(0, 2, 4, 5, 7, 9, 11)
 private val ROMAN_NUMERALS = listOf("I", "ii", "iii", "IV", "V", "vi", "vii")
 private val CHORD_QUALITIES = mapOf(
+    listOf(0, 7) to "5",
     listOf(0, 4, 7) to "M",
     listOf(0, 3, 7) to "m",
+    listOf(0, 4, 8) to "aug",
+    listOf(0, 2, 7) to "sus2",
+    listOf(0, 5, 7) to "sus4",
+    listOf(0, 2, 4, 7) to "add9",
+    listOf(0, 2, 3, 7) to "madd9",
+    listOf(0, 4, 7, 9) to "6",
+    listOf(0, 3, 7, 9) to "m6",
     listOf(0, 3, 6) to "dim",
+    listOf(0, 3, 6, 9) to "dim7",
     listOf(0, 4, 7, 11) to "M7",
     listOf(0, 4, 7, 10) to "7",
     listOf(0, 3, 7, 10) to "m7",
     listOf(0, 3, 6, 10) to "m7b5",
     listOf(0, 2, 4, 7, 11) to "M9",
     listOf(0, 2, 4, 7, 10) to "9",
-    listOf(0, 2, 3, 7, 10) to "m9"
+    listOf(0, 2, 3, 7, 10) to "m9",
+    listOf(0, 2, 4, 5, 7, 11) to "M11",
+    listOf(0, 2, 4, 5, 7, 10) to "11",
+    listOf(0, 2, 3, 5, 7, 10) to "m11",
+    listOf(0, 2, 4, 7, 9, 11) to "M13",
+    listOf(0, 2, 4, 7, 9, 10) to "13",
+    listOf(0, 2, 3, 7, 9, 10) to "m13",
+    listOf(0, 1, 4, 7, 10) to "7b9",
+    listOf(0, 3, 4, 7, 10) to "7#9",
+    listOf(0, 4, 6, 7, 10) to "7#11",
+    listOf(0, 4, 7, 8, 10) to "7b13"
+)
+private val CHORD_QUALITY_PRIORITY = mapOf(
+    // Ambiguous suspended voicings (e.g. D-G-A) should prefer sus2 naming over sus4.
+    "sus2" to 2,
+    "sus4" to 1
 )
 
 private data class DetectedChord(
@@ -518,11 +545,19 @@ private data class DetectedChord(
 fun formatChordLabel(notes: List<Int>, musicalKey: Int): String {
     if (notes.isEmpty()) return "?"
     if (notes.size == 1) return noteName(notes.first())
-    if (notes.size == 2) return notes.joinToString(" - ") { noteName(it) }
+    if (notes.size == 2) {
+        val dyad = detectChord(notes)
+        if (dyad?.quality == "5") {
+            val rootName = pitchClassNameForKey(dyad.rootPitchClass, musicalKey)
+            val roman = romanNumeralForChord(dyad.rootPitchClass, dyad.quality, musicalKey)
+            return if (roman != null) "$rootName${dyad.quality} ($roman)" else "$rootName${dyad.quality}"
+        }
+        return notes.joinToString(" - ") { noteName(it) }
+    }
 
     val detected = detectChord(notes)
     if (detected != null) {
-        val rootName = KEY_NAMES[detected.rootPitchClass]
+        val rootName = pitchClassNameForKey(detected.rootPitchClass, musicalKey)
         val roman = romanNumeralForChord(detected.rootPitchClass, detected.quality, musicalKey)
         return if (roman != null) "$rootName${detected.quality} ($roman)" else "$rootName${detected.quality}"
     }
@@ -535,13 +570,190 @@ fun formatChordLabel(notes: List<Int>, musicalKey: Int): String {
  * Used when horizontal space is tight (label area ≈ beat width).
  * Single notes → note name, intervals → "X-Y", chords → "RootQuality".
  */
-fun formatChordLabelShort(notes: List<Int>): String {
+fun formatChordLabelShort(notes: List<Int>, musicalKey: Int? = null): String {
     if (notes.isEmpty()) return "?"
     if (notes.size == 1) return noteName(notes.first())
-    if (notes.size == 2) return "${noteName(notes.first())}-${noteName(notes.last())}"
+    if (notes.size == 2) {
+        val dyad = detectChord(notes)
+        if (dyad?.quality == "5") {
+            val rootName = if (musicalKey != null) pitchClassNameForKey(dyad.rootPitchClass, musicalKey)
+            else KEY_NAMES[dyad.rootPitchClass]
+            return "$rootName${dyad.quality}"
+        }
+        return "${noteName(notes.first())}-${noteName(notes.last())}"
+    }
     val detected = detectChord(notes)
-    if (detected != null) return "${KEY_NAMES[detected.rootPitchClass]}${detected.quality}"
+    if (detected != null) {
+        val rootName = if (musicalKey != null) pitchClassNameForKey(detected.rootPitchClass, musicalKey)
+        else KEY_NAMES[detected.rootPitchClass]
+        return "$rootName${detected.quality}"
+    }
     return notes.take(2).joinToString("-") { noteName(it) }
+}
+
+private fun pitchClassNameForKey(pitchClass: Int, musicalKey: Int): String {
+    val keySig = KEY_SIGNATURES.getOrElse(musicalKey.coerceIn(0, 11)) { 0 to 0 }
+    return if (keySig.second > 0) FLAT_KEY_NAMES[pitchClass] else SHARP_KEY_NAMES[pitchClass]
+}
+
+/**
+ * Builds one harmonic label per measure from all notes that start in that measure.
+ *
+ * This runs before rendering and intentionally uses the full note collection per bar.
+ * If exact chord detection fails, a tolerant superset match is attempted so measures with
+ * passing tones can still receive a harmonic label.
+ */
+fun buildMeasureChordLabels(
+    steps: List<ExerciseStep>,
+    stepBeats: List<Float>,
+    handMode: HandMode,
+    musicalKey: Int
+): List<Chord> {
+    if (steps.isEmpty() || stepBeats.isEmpty()) return emptyList()
+    val notesByMeasure = linkedMapOf<Int, MutableList<Int>>()
+
+    steps.forEachIndexed { index, step ->
+        val startBeat = stepBeats.getOrElse(index) { 0f }
+        val measure = (startBeat / BEATS_PER_MEASURE_UNITS).toInt()
+        val bucket = notesByMeasure.getOrPut(measure) { mutableListOf() }
+        bucket += step.notes
+    }
+
+    return notesByMeasure.mapNotNull { (measure, measureNotes) ->
+        if (measureNotes.isEmpty()) return@mapNotNull null
+        val detected = detectChord(measureNotes) ?: detectChordSuperset(measureNotes)
+        if (detected == null) return@mapNotNull null
+        val rootName = pitchClassNameForKey(detected.rootPitchClass, musicalKey)
+        val roman = romanNumeralForChord(detected.rootPitchClass, detected.quality, musicalKey)
+        val label = if (roman != null) "$rootName${detected.quality} ($roman)" else "$rootName${detected.quality}"
+        val staff = if (measureNotes.all { staffForExercise(it, handMode) == StaffType.BASS }) {
+            StaffType.BASS
+        } else {
+            StaffType.TREBLE
+        }
+        Chord(
+            name = label,
+            notes = measureNotes.distinct(),
+            startBeat = measure * BEATS_PER_MEASURE_UNITS,
+            staff = staff
+        )
+    }
+}
+
+/**
+ * Resolves display-label note groups for each exercise step.
+ *
+ * Multi-note steps keep their own notes.
+ * Consecutive single-note steps are grouped into short segments and resolved to one
+ * detectable chord when possible, so C-E-G style runs show "CM" instead of per-note labels.
+ * This intentionally also covers non-ARPEGGIOS material in mixed exercises.
+ */
+fun resolveDisplayChordNotes(steps: List<ExerciseStep>): List<List<Int>?> {
+    val resolved = MutableList<List<Int>?>(steps.size) { null }
+    var index = 0
+
+    while (index < steps.size) {
+        val step = steps[index]
+        val isSingleNoteStep = step.notes.size == 1
+
+        if (!isSingleNoteStep) {
+            resolved[index] = step.notes.takeIf { it.isNotEmpty() }
+            index++
+            continue
+        }
+
+        val runStart = index
+        var runEndExclusive = index
+        while (
+            runEndExclusive < steps.size &&
+            steps[runEndExclusive].notes.size == 1
+        ) {
+            runEndExclusive++
+        }
+
+        var cursor = runStart
+        while (cursor < runEndExclusive) {
+            var probeEndExclusive = cursor + 1
+            var detectedLabelNotes: List<Int>? = null
+            var detectedPitchClasses: Set<Int> = emptySet()
+
+            while (probeEndExclusive <= minOf(cursor + 6, runEndExclusive)) {
+                val probeNotes = steps.subList(cursor, probeEndExclusive).map { it.notes.first() }
+                val probeLabelNotes = arpeggioSegmentLabelNotes(probeNotes)
+                if (probeLabelNotes != null) {
+                    detectedLabelNotes = probeLabelNotes
+                    detectedPitchClasses = probeLabelNotes.map { ((it % 12) + 12) % 12 }.toSet()
+                    break
+                }
+                probeEndExclusive++
+            }
+
+            if (detectedLabelNotes != null) {
+                while (probeEndExclusive < minOf(cursor + 6, runEndExclusive)) {
+                    val nextPc = ((steps[probeEndExclusive].notes.first() % 12) + 12) % 12
+                    if (nextPc !in detectedPitchClasses) break
+                    probeEndExclusive++
+                }
+            }
+
+            val segmentEndExclusive = if (detectedLabelNotes != null) probeEndExclusive else cursor + 1
+            val labelNotes = detectedLabelNotes ?: listOf(steps[cursor].notes.first())
+
+            for (i in cursor until segmentEndExclusive) {
+                resolved[i] = labelNotes
+            }
+            cursor = segmentEndExclusive
+        }
+
+        index = runEndExclusive
+    }
+
+    return resolved
+}
+
+private fun arpeggioSegmentLabelNotes(notes: List<Int>): List<Int>? {
+    val firstMidiByPitchClass = linkedMapOf<Int, Int>()
+    notes.take(6).forEach { midi ->
+        val pitchClass = ((midi % 12) + 12) % 12
+        firstMidiByPitchClass.putIfAbsent(pitchClass, midi)
+    }
+    if (firstMidiByPitchClass.size < 2) return null
+
+    val pitchClasses = firstMidiByPitchClass.keys.toList()
+    for (candidateRoot in pitchClasses) {
+        val intervals = pitchClasses
+            .map { (it - candidateRoot + 12) % 12 }
+            .distinct()
+            .sorted()
+        if (intervals in CHORD_QUALITIES.keys) {
+            val orderedPitchClasses = intervals.map { (candidateRoot + it) % 12 }
+            return orderedPitchClasses.mapNotNull { firstMidiByPitchClass[it] }
+        }
+    }
+    return null
+}
+
+private fun detectChordSuperset(notes: List<Int>): DetectedChord? {
+    val pitchClasses = notes
+        .map { ((it % 12) + 12) % 12 }
+        .distinct()
+        .sorted()
+    if (pitchClasses.size < 3) return null
+
+    var best: Pair<DetectedChord, Int>? = null
+    for (candidateRoot in pitchClasses) {
+        CHORD_QUALITIES.forEach { (intervals, quality) ->
+            if (intervals.size < 3) return@forEach
+            val chordPcs = intervals.map { (candidateRoot + it) % 12 }.toSet()
+            if (chordPcs.all { it in pitchClasses }) {
+                val score = intervals.size * 10 - (pitchClasses.size - intervals.size)
+                if (best == null || score > best!!.second) {
+                    best = DetectedChord(candidateRoot, quality) to score
+                }
+            }
+        }
+    }
+    return best?.first
 }
 
 fun chordQualitySuffix(notes: List<Int>): String = detectChord(notes)?.quality.orEmpty()
@@ -562,6 +774,12 @@ fun romanNumeralForChord(rootPitchClass: Int, quality: String, musicalKey: Int):
         "7", "m7" -> "${baseRoman}7"
         "M9" -> "${baseRoman}maj9"
         "9", "m9" -> "${baseRoman}9"
+        "M11" -> "${baseRoman}maj11"
+        "11", "m11" -> "${baseRoman}11"
+        "M13" -> "${baseRoman}maj13"
+        "13", "m13" -> "${baseRoman}13"
+        "7b9", "7#9", "7#11", "7b13" -> "${baseRoman}$quality"
+        "5", "6", "m6", "sus2", "sus4", "add9", "madd9", "aug", "dim7" -> "${baseRoman}$quality"
         else -> baseRoman
     }
 }
@@ -572,16 +790,20 @@ private fun detectChord(notes: List<Int>): DetectedChord? {
         .distinct()
         .sorted()
 
+    var best: Pair<DetectedChord, Int>? = null
     for (candidateRoot in pitchClasses) {
         val intervals = pitchClasses
             .map { (it - candidateRoot + 12) % 12 }
             .distinct()
             .sorted()
         val quality = CHORD_QUALITIES[intervals] ?: continue
-        return DetectedChord(candidateRoot, quality)
+        val score = intervals.size * 10 + (CHORD_QUALITY_PRIORITY[quality] ?: 0)
+        if (best == null || score > best!!.second) {
+            best = DetectedChord(candidateRoot, quality) to score
+        }
     }
 
-    return null
+    return best?.first
 }
 
 /** Returns the 0-based page index for the given beat (portrait pagination). */
