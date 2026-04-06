@@ -639,7 +639,7 @@ private fun detectChord(notes: List<Int>): DetectedChord? {
             .sorted()
         val quality = CHORD_QUALITIES[intervals] ?: continue
         val score = intervals.size * 10 + (CHORD_QUALITY_PRIORITY[quality] ?: 0)
-        if (best == null || score > best.second) {
+        if (best == null || score > best!!.second) {
             best = DetectedChord(candidateRoot, quality) to score
         }
     }
@@ -782,11 +782,12 @@ fun resolveDisplayChordNotes(steps: List<ExerciseStep>): List<List<Int>?> {
             var probeEndExclusive = cursor + 1
             var detectedLabelNotes: List<Int>? = null
             var detectedPitchClasses: Set<Int> = emptySet()
+            val minNoteCount = if (runEndExclusive - cursor <= 2) 2 else 3
 
             while (probeEndExclusive <= minOf(cursor + 6, runEndExclusive)) {
                 val probeNotes = steps.subList(cursor, probeEndExclusive).map { it.notes.first() }
                 val probeLabelNotes = arpeggioSegmentLabelNotes(probeNotes)
-                if (probeLabelNotes != null) {
+                if (probeLabelNotes != null && probeLabelNotes.size >= minNoteCount) {
                     detectedLabelNotes = probeLabelNotes
                     detectedPitchClasses = probeLabelNotes.map { ((it % 12) + 12) % 12 }.toSet()
                     break
