@@ -1,5 +1,9 @@
 # TODO
 
+## In Progress
+
+- [x] **Google Play Release Bundle** — Dokumentation und Release-Workflow für ein signiertes Android App Bundle (`.aab`) ergänzt: `README.md` enthält `bundleRelease` inkl. Output-Pfad und Keystore-Umgebungsvariablen; `fastlane/Fastfile` enthält Lane `build_release_bundle`.
+
 ## Done (recent)
 
 - [x] **Loading Screen** — `PracticeViewModel.isLoading: StateFlow<Boolean>` added; set to true in `startSession()`, false after exercise is ready. `VerovioStaffView` exposes `onFirstRender` callback; `PracticeViewModel.onStaffRendered()` resets session start time once Verovio renders. `PracticeScreen` shows `CircularProgressIndicator` overlay when loading. Timer loop only runs when not loading.

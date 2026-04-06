@@ -35,8 +35,33 @@ App ID: `com.binbashmedium.sightreadingtrainer`
 # Debug APK
 ./gradlew assembleDebug
 
+# Google Play Release Bundle (AAB)
+# requires signing env vars (see below)
+./gradlew bundleRelease
+
 # Run all tests
 ./gradlew test
 ```
 
 APK output: `app/build/outputs/apk/debug/app-debug.apk`
+
+Play Store bundle output: `app/build/outputs/bundle/release/app-release.aab`
+
+### Release signing for Google Play
+
+`bundleRelease` will create a signed `.aab` when the following environment variables are set:
+
+- `KEYSTORE_PATH` (path to `.jks` or `.keystore`)
+- `KEYSTORE_PASSWORD`
+- `KEY_ALIAS`
+- `KEY_PASSWORD`
+
+Example:
+
+```bash
+export KEYSTORE_PATH="$HOME/keys/upload-keystore.jks"
+export KEYSTORE_PASSWORD="***"
+export KEY_ALIAS="upload"
+export KEY_PASSWORD="***"
+./gradlew bundleRelease
+```

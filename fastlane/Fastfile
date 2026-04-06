@@ -1,0 +1,11 @@
+default_platform(:android)
+
+platform :android do
+  desc "Build a signed Google Play App Bundle (.aab)"
+  lane :build_release_bundle do
+    gradle(
+      task: "bundle",
+      build_type: "Release"
+    )
+  end
+end
