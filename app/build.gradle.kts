@@ -66,11 +66,16 @@ android {
 
     testOptions {
         unitTests {
-            // When the Paparazzi plugin IS applied (screenshots CI step), still exclude
-            // ScreenshotTest from the standard :app:test task; it only runs via
-            // recordPaparazziDebug / verifyPaparazziDebug.
+            // When running without the Paparazzi plugin (unit-test CI step), exclude
+            // ScreenshotTest from every test task. The kotlin.exclude above already
+            // prevents it from compiling, but this is a belt-and-suspenders guard.
+            // When the plugin IS applied (screenshots job) we must NOT exclude it,
+            // because recordPaparazziDebug is a Test task and unitTests.all applies
+            // to it — excluding ScreenshotTest there would leave it with zero tests.
             all { testTask ->
-                testTask.exclude("**/ScreenshotTest.class")
+                if (project.findProperty("skipPaparazziPlugin") == "true") {
+                    testTask.exclude("**/ScreenshotTest.class")
+                }
             }
         }
     }
