@@ -589,4 +589,32 @@ class GrandStaffModelsTest {
 
         assertTrue(labels.isEmpty())
     }
+
+    @Test
+    fun `buildMeasureChordLabels falls back to windowed probe when superset detection misses a power chord`() {
+        // C-G-Db-Ab: combined pitch classes {0,1,7,8} contain no ≥3-note chord subset,
+        // so detectChordSuperset returns null. However the consecutive Db-Ab pair (positions
+        // 2-3) forms a Db5/C#5 power chord which the windowed probe fallback detects.
+        val steps = listOf(
+            ExerciseStep(notes = listOf(60)),  // C
+            ExerciseStep(notes = listOf(67)),  // G
+            ExerciseStep(notes = listOf(61)),  // Db/C#
+            ExerciseStep(notes = listOf(68))   // Ab/G#
+        )
+        val stepBeats = listOf(0f, 2f, 4f, 6f)
+
+        val labels = buildMeasureChordLabels(
+            steps = steps,
+            stepBeats = stepBeats,
+            handMode = HandMode.RIGHT,
+            musicalKey = 0
+        )
+
+        assertEquals(1, labels.size)
+        // In C major (sharp spellings) PC=1 → "C#", quality "5" → "C#5"
+        assertTrue(
+            "Expected a power-chord label containing '5', got: ${labels[0].name}",
+            labels[0].name.contains("5")
+        )
+    }
 }

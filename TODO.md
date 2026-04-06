@@ -8,6 +8,7 @@
 - [x] **Key-aware enharmonic chord roots** — `pitchClassNameForKey()` uses `SHARP_KEY_NAMES`/`FLAT_KEY_NAMES` based on the active key signature; `formatChordLabel()` and `formatChordLabelShort()` use it. Tests added.
 - [x] **Measure-level chord detector for display** — `buildMeasureChordLabels()` collects all notes per bar and emits one `Chord` per measure with exact or superset detection. Tests added.
 - [x] **No note-name fallback for unresolved bars** — `buildMeasureChordLabels()` omits measures where no chord can be detected; regression test added.
+- [x] **Windowed-probe fallback in measure labeling** — `buildMeasureChordLabels()` now falls back to `resolveDisplayChordNotes` on the measure's single-note steps when `detectChord` and `detectChordSuperset` both fail; catches power-chord pairs embedded in chromatic passages (e.g. C-G-Db-Ab → C#5). Unit test added.
 - [x] **Stable suspended-voicing naming** — `detectChord()` now collects all candidate matches and picks the highest-priority quality, making sus2/sus4 disambiguation deterministic. Test added.
 
 - [x] **Loading Screen** — `PracticeViewModel.isLoading: StateFlow<Boolean>` added; set to true in `startSession()`, false after exercise is ready. `VerovioStaffView` exposes `onFirstRender` callback; `PracticeViewModel.onStaffRendered()` resets session start time once Verovio renders. `PracticeScreen` shows `CircularProgressIndicator` overlay when loading. Timer loop only runs when not loading.

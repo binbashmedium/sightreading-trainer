@@ -717,16 +717,25 @@ fun buildMeasureChordLabels(
 ): List<Chord> {
     if (steps.isEmpty() || stepBeats.isEmpty()) return emptyList()
     val notesByMeasure = linkedMapOf<Int, MutableList<Int>>()
+    val stepsByMeasure = linkedMapOf<Int, MutableList<ExerciseStep>>()
 
     steps.forEachIndexed { index, step ->
         val startBeat = stepBeats.getOrElse(index) { 0f }
         val measure = (startBeat / BEATS_PER_MEASURE_UNITS).toInt()
         notesByMeasure.getOrPut(measure) { mutableListOf() } += step.notes
+        stepsByMeasure.getOrPut(measure) { mutableListOf() } += step
     }
 
     return notesByMeasure.mapNotNull { (measure, measureNotes) ->
         if (measureNotes.isEmpty()) return@mapNotNull null
-        val detected = detectChord(measureNotes) ?: detectChordSuperset(measureNotes)
+        val detected = detectChord(measureNotes)
+            ?: detectChordSuperset(measureNotes)
+            ?: run {
+                // Fallback: windowed arpeggio probe on the measure's steps
+                val resolvedNotes = resolveDisplayChordNotes(stepsByMeasure[measure].orEmpty())
+                val firstChordNotes = resolvedNotes.firstOrNull { it != null && it.size >= 2 }
+                firstChordNotes?.let { detectChord(it) }
+            }
             ?: return@mapNotNull null
         val rootName = pitchClassNameForKey(detected.rootPitchClass, musicalKey)
         val roman = romanNumeralForChord(detected.rootPitchClass, detected.quality, musicalKey)

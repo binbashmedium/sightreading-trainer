@@ -204,7 +204,8 @@ Suspended triads are also recognized for labeling (for example D-G-A resolves to
 Additional supported labels now include power/sixth/add/extended/altered forms such as `C5`, `C6`, `Cm6`, `Cadd9`, `C11`, `C13`, `C7b9`, `C7#9`, `C7#11`, and `C7b13`.
 Chord root spellings are key-signature aware for display (`F#` preferred in sharp keys, `Gb` preferred in flat keys).
 Chord labels are now generated measure-wise from all notes in the bar (`buildMeasureChordLabels`), producing one harmonic label per measure with tolerant matching for extra passing tones.
-If a measure cannot be resolved to a known harmonic quality, no chord label is shown (instead of fallback note-name text).
+When `detectChord` and `detectChordSuperset` both fail (e.g. the combined pitch-class set contains no ≥3-note chord subset), `buildMeasureChordLabels` falls back to `resolveDisplayChordNotes` on the measure's steps: if any consecutive sub-run of single-note steps forms a detectable chord (including 2-note power chords when only 2 steps remain), that chord is used as the measure label.
+If a measure cannot be resolved to a known harmonic quality by any of the three methods, no chord label is shown (instead of fallback note-name text).
 Ambiguous suspended pitch sets are resolved deterministically with `sus2` priority over `sus4` for stable labeling.
 
 ## Extending Exercises
