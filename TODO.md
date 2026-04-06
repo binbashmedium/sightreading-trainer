@@ -2,6 +2,14 @@
 
 ## Done (recent)
 
+- [x] **Single-note run chord-name display fix** — `resolveDisplayChordNotes()` groups consecutive single-note steps into runs and resolves them to a detected chord when possible (e.g. C-E-G displays `CM`). 4 unit tests added: run grouping, passthrough, split boundaries, isolated-melody fallback.
+- [x] **Suspended chord label detection** — `CHORD_QUALITIES` extended with `sus2` and `sus4`; `CHORD_QUALITY_PRIORITY` map ensures `Gsus2` is preferred over `Dsus4` for D-G-A. Tests added.
+- [x] **Extended chord quality detection** — Added `5`, `aug`, `dim7`, `6`, `m6`, `add9`, `madd9`, `M11`/`11`/`m11`, `M13`/`13`/`m13`, `7b9`, `7#9`, `7#11`, `7b13` to `CHORD_QUALITIES`. Regression tests added.
+- [x] **Key-aware enharmonic chord roots** — `pitchClassNameForKey()` uses `SHARP_KEY_NAMES`/`FLAT_KEY_NAMES` based on the active key signature; `formatChordLabel()` and `formatChordLabelShort()` use it. Tests added.
+- [x] **Measure-level chord detector for display** — `buildMeasureChordLabels()` collects all notes per bar and emits one `Chord` per measure with exact or superset detection. Tests added.
+- [x] **No note-name fallback for unresolved bars** — `buildMeasureChordLabels()` omits measures where no chord can be detected; regression test added.
+- [x] **Stable suspended-voicing naming** — `detectChord()` now collects all candidate matches and picks the highest-priority quality, making sus2/sus4 disambiguation deterministic. Test added.
+
 - [x] **Loading Screen** — `PracticeViewModel.isLoading: StateFlow<Boolean>` added; set to true in `startSession()`, false after exercise is ready. `VerovioStaffView` exposes `onFirstRender` callback; `PracticeViewModel.onStaffRendered()` resets session start time once Verovio renders. `PracticeScreen` shows `CircularProgressIndicator` overlay when loading. Timer loop only runs when not loading.
 - [x] **Settings link from Exercise screen** — Gear icon `IconButton` (using `Icons.Filled.Settings`) added to `HeaderCard`; navigates to Settings screen. `material-icons-extended` dependency added.
 - [x] **App stops responding / reset fix** — `startSession()` now clears `_sessionResult` and calls `practiceSessionUseCase.resetSession()` before generating the next exercise, ensuring BPM/score state is cleared immediately on reload.
