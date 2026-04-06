@@ -35,8 +35,67 @@ App ID: `com.binbashmedium.sightreadingtrainer`
 # Debug APK
 ./gradlew assembleDebug
 
+# Google Play Release Bundle (AAB)
+# requires signing env vars (see below)
+./gradlew bundleRelease
+
 # Run all tests
 ./gradlew test
 ```
 
 APK output: `app/build/outputs/apk/debug/app-debug.apk`
+
+Play Store bundle output: `app/build/outputs/bundle/release/app-release.aab`
+
+### Release signing for Google Play
+
+`bundleRelease` will create a signed `.aab` when the following environment variables are set:
+
+- `KEYSTORE_PATH` (path to `.jks` or `.keystore`)
+- `KEYSTORE_PASSWORD`
+- `KEY_ALIAS`
+- `KEY_PASSWORD`
+
+Example:
+
+```bash
+export KEYSTORE_PATH="$HOME/keys/upload-keystore.jks"
+export KEYSTORE_PASSWORD="***"
+export KEY_ALIAS="upload"
+export KEY_PASSWORD="***"
+./gradlew bundleRelease
+```
+
+## GitHub Actions Release Bundle
+
+Für den manuellen Workflow `.github/workflows/android-release-bundle.yml` müssen diese GitHub Secrets gesetzt sein:
+
+- `KEYSTORE_BASE64`
+- `KEYSTORE_PASSWORD`
+- `KEY_ALIAS`
+- `KEY_PASSWORD`
+
+### Upload-Keystore lokal erstellen (kurz)
+
+Falls noch kein Upload-Key vorhanden ist, kannst du lokal z. B. so eine `.jks` erzeugen:
+
+```bash
+keytool -genkeypair \
+  -v \
+  -storetype JKS \
+  -keystore upload-keystore.jks \
+  -alias upload \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
+```
+
+### Keystore als Base64 codieren und als Secret speichern
+
+```bash
+base64 -w 0 upload-keystore.jks
+```
+
+Den ausgegebenen String vollständig als Secret `KEYSTORE_BASE64` in GitHub eintragen.
+
+> Wichtig: Der Keystore darf **niemals** ins Repository committed werden.

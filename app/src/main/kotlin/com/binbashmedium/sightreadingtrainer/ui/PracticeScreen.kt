@@ -541,7 +541,7 @@ fun GrandStaffCanvas(
                 end = Offset(x, bassTopY + lineSpacing * 4f),
                 strokeWidth = 1f
             )
-            val label = formatChordLabelShort(chord.notes)
+            val label = chord.name
             val labelY = if (chord.staff == StaffType.BASS) bassLabelY else trebleLabelY
             drawContext.canvas.nativeCanvas.drawText(label, x + 2f, labelY, labelPaint)
         }
@@ -834,18 +834,12 @@ private fun com.binbashmedium.sightreadingtrainer.domain.model.PracticeState.toG
         expectedEvents + extraEvents
     }
 
-    val chords = exercise.steps.mapIndexedNotNull { idx, step ->
-        val notes = step.notes
-        if (notes.isEmpty()) return@mapIndexedNotNull null
-        val chordStaff = if (notes.all { staffForExercise(it, exercise.handMode) == StaffType.BASS })
-            StaffType.BASS else StaffType.TREBLE
-        Chord(
-            name = formatChordLabel(notes, exercise.musicalKey),
-            notes = notes,
-            startBeat = stepBeats[idx],
-            staff = chordStaff
-        )
-    }
+    val chords = buildMeasureChordLabels(
+        steps = exercise.steps,
+        stepBeats = stepBeats,
+        handMode = exercise.handMode,
+        musicalKey = exercise.musicalKey
+    )
 
     val pedalMarks = exercise.steps.flatMapIndexed { idx, step ->
         val beat = stepBeats[idx]
