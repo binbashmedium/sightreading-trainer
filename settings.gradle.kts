@@ -17,7 +17,6 @@ pluginManagement {
         id("org.jetbrains.kotlin.plugin.compose") version "2.1.21"
         id("com.google.dagger.hilt.android") version "2.57.1"
         id("com.google.devtools.ksp") version "2.1.21-2.0.2"
-        id("app.cash.paparazzi") version "2.0.0-alpha04" apply false
     }
 }
 
