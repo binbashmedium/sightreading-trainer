@@ -4,11 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
-    // Paparazzi is applied below conditionally so the plugin's task-level modifications
-    // (bytecode instrumentation, custom test reporter, preparePaparazziDebugResources dep)
-    // don't interfere with standard unit tests when running :app:test.
-    // Pass -PskipPaparazziPlugin=true to run unit tests without the plugin overhead.
-    // The screenshots job omits this flag and calls recordPaparazziDebug directly.
+    // Declared here with apply false so the plugin JAR is resolved onto the build classpath.
+    // The actual application is done conditionally below (after the android block) so the
+    // plugin's per-task machinery (bytecode instrumentation, custom test reporter,
+    // preparePaparazziDebugResources dependency) only activates when needed.
+    // Pass -PskipPaparazziPlugin=true to skip application entirely (unit-test CI step).
+    id("app.cash.paparazzi") apply false
 }
 
 android {
