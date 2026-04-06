@@ -4,12 +4,18 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
-    // Declared here with apply false so the plugin JAR is resolved onto the build classpath.
-    // The actual application is done conditionally below (after the android block) so the
-    // plugin's per-task machinery (bytecode instrumentation, custom test reporter,
-    // preparePaparazziDebugResources dependency) only activates when needed.
-    // Pass -PskipPaparazziPlugin=true to skip application entirely (unit-test CI step).
+    // Declared with apply false so the JAR is resolved onto the build classpath.
+    // Applied conditionally below (BEFORE android {}) so Paparazzi can hook into
+    // AGP variant creation in time. Pass -PskipPaparazziPlugin=true to skip it
+    // entirely during the unit-test CI step.
     id("app.cash.paparazzi") apply false
+}
+
+// Apply Paparazzi before android {} so it can register its variant callbacks and
+// task dependencies (preparePaparazziDebugResources, bytecode instrumentation) while
+// AGP is still configuring its build variants.
+if (project.findProperty("skipPaparazziPlugin") != "true") {
+    apply(plugin = "app.cash.paparazzi")
 }
 
 android {
@@ -54,9 +60,8 @@ android {
 
     sourceSets {
         // ScreenshotTest.kt imports Paparazzi types. When -PskipPaparazziPlugin=true
-        // the plugin is not applied and the Paparazzi JAR is not on the test classpath.
-        // Use kotlin.exclude() (not java.exclude()) so the Kotlin compiler skips this
-        // file, preventing "unresolved reference: Paparazzi" compilation errors.
+        // the plugin is not applied and Paparazzi is not on the test classpath.
+        // kotlin.exclude() targets Kotlin files specifically (java.exclude() does not).
         named("test") {
             if (project.findProperty("skipPaparazziPlugin") == "true") {
                 kotlin.exclude("**/ScreenshotTest.kt")
@@ -66,12 +71,9 @@ android {
 
     testOptions {
         unitTests {
-            // When running without the Paparazzi plugin (unit-test CI step), exclude
-            // ScreenshotTest from every test task. The kotlin.exclude above already
-            // prevents it from compiling, but this is a belt-and-suspenders guard.
-            // When the plugin IS applied (screenshots job) we must NOT exclude it,
-            // because recordPaparazziDebug is a Test task and unitTests.all applies
-            // to it — excluding ScreenshotTest there would leave it with zero tests.
+            // Exclude ScreenshotTest from execution only when the Paparazzi plugin is
+            // skipped. unitTests.all applies to ALL Test tasks — including Paparazzi's
+            // recordPaparazziDebug — so we must not exclude it unconditionally.
             all { testTask ->
                 if (project.findProperty("skipPaparazziPlugin") == "true") {
                     testTask.exclude("**/ScreenshotTest.class")
@@ -98,15 +100,6 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-}
-
-// Apply Paparazzi plugin (registers recordPaparazziDebug / verifyPaparazziDebug).
-// When -PskipPaparazziPlugin=true is passed (unit-test CI step) the plugin is not applied
-// so its bytecode instrumentation and custom test reporter don't interfere with :app:test.
-// ScreenshotTest.kt is excluded from the Kotlin compiler via kotlin.exclude() above, so
-// no Paparazzi types are needed on the classpath when running unit tests.
-if (project.findProperty("skipPaparazziPlugin") != "true") {
-    apply(plugin = "app.cash.paparazzi")
 }
 
 dependencies {
