@@ -1,5 +1,10 @@
 # TODO
 
+## In Progress
+
+- [x] **Google Play Release Bundle** — Dokumentation und Release-Workflow für ein signiertes Android App Bundle (`.aab`) ergänzt: `README.md` enthält `bundleRelease` inkl. Output-Pfad und Keystore-Umgebungsvariablen; `fastlane/Fastfile` enthält Lane `build_release_bundle`.
+- [x] **GitHub Actions Release Bundle** — Manueller Workflow `.github/workflows/android-release-bundle.yml` ergänzt (Restore von `KEYSTORE_BASE64` nach `/tmp/upload-keystore.jks`, `bundleRelease` mit Signing-Secrets, Upload von `app-release.aab` als Artifact) und README um Secret-/Setup-Anleitung erweitert.
+
 ## Done (recent)
 
 - [x] **Single-note run chord-name display fix** — `resolveDisplayChordNotes()` groups consecutive single-note steps into runs and resolves them to a detected chord when possible (e.g. C-E-G displays `CM`). 4 unit tests added: run grouping, passthrough, split boundaries, isolated-melody fallback.
