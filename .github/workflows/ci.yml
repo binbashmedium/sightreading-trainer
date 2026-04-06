@@ -54,8 +54,8 @@ jobs:
       - name: Run app unit tests
         # -PskipPaparazziPlugin=true (1) skips registering the Paparazzi plugin so its
         # bytecode instrumentation and custom reporter don't interfere with unit tests, and
-        # (2) causes build.gradle.kts to omit src/screenshotTest/kotlin from the test source
-        # set, so ScreenshotTest.kt is never compiled and no Paparazzi types are needed.
+        # (2) causes build.gradle.kts to kotlin.exclude ScreenshotTest.kt from compilation
+        # so no Paparazzi types are needed on the test classpath.
         run: ./gradlew :app:test -PskipPaparazziPlugin=true --no-daemon
 
       - name: Upload test results

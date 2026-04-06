@@ -53,13 +53,13 @@ android {
     }
 
     sourceSets {
-        // ScreenshotTest.kt lives in src/screenshotTest/kotlin and is only added to the
-        // test compilation classpath when the Paparazzi plugin is applied (screenshots CI
-        // step). When -PskipPaparazziPlugin=true (unit-test CI step) the directory is not
-        // included, so no Paparazzi types are needed on the classpath.
+        // ScreenshotTest.kt imports Paparazzi types. When -PskipPaparazziPlugin=true
+        // the plugin is not applied and the Paparazzi JAR is not on the test classpath.
+        // Use kotlin.exclude() (not java.exclude()) so the Kotlin compiler skips this
+        // file, preventing "unresolved reference: Paparazzi" compilation errors.
         named("test") {
-            if (project.findProperty("skipPaparazziPlugin") != "true") {
-                java.srcDir("src/screenshotTest/kotlin")
+            if (project.findProperty("skipPaparazziPlugin") == "true") {
+                kotlin.exclude("**/ScreenshotTest.kt")
             }
         }
     }
@@ -96,11 +96,10 @@ android {
 }
 
 // Apply Paparazzi plugin (registers recordPaparazziDebug / verifyPaparazziDebug).
-// When -PskipPaparazziPlugin=true is passed (e.g. in the unit-test CI step) the plugin
-// is not applied so its bytecode instrumentation and custom test reporter don't interfere
-// with :app:test. ScreenshotTest.kt also lives in a separate src/screenshotTest/kotlin
-// source directory that is only added to the test classpath when the plugin IS applied
-// (see sourceSets above), so no Paparazzi types are needed when running unit tests.
+// When -PskipPaparazziPlugin=true is passed (unit-test CI step) the plugin is not applied
+// so its bytecode instrumentation and custom test reporter don't interfere with :app:test.
+// ScreenshotTest.kt is excluded from the Kotlin compiler via kotlin.exclude() above, so
+// no Paparazzi types are needed on the classpath when running unit tests.
 if (project.findProperty("skipPaparazziPlugin") != "true") {
     apply(plugin = "app.cash.paparazzi")
 }
