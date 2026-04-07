@@ -42,8 +42,26 @@ jobs:
             echo "Missing required secret: KEYSTORE_BASE64" >&2
             exit 1
           fi
-          CLEANED_BASE64="$(printf '%s' "$KEYSTORE_BASE64" | tr -d '\r\n\t ')"
-          printf '%s' "$CLEANED_BASE64" | base64 --decode > /tmp/upload-keystore.jks
+          python - <<'PY'
+          import base64
+          import binascii
+          import os
+          import pathlib
+          import re
+          import sys
+
+          raw = os.environ["KEYSTORE_BASE64"]
+          cleaned = re.sub(r"\s+", "", raw)
+          try:
+              decoded = base64.b64decode(cleaned, validate=False)
+          except binascii.Error as exc:
+              print(f"Invalid KEYSTORE_BASE64: {exc}", file=sys.stderr)
+              sys.exit(1)
+          if not decoded:
+              print("Decoded keystore is empty", file=sys.stderr)
+              sys.exit(1)
+          pathlib.Path("/tmp/upload-keystore.jks").write_bytes(decoded)
+          PY
           keytool -list -keystore /tmp/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" >/dev/null
 
       - name: Build release app bundle

@@ -1,6 +1,7 @@
 # TODO
 
 ## In Progress
+- [x] **Base64-Decode robust gegen Garbage-Suffixe machen** — Keystore-Restore so angepasst, dass versehentliche Nicht-Base64-Zeichen (z. B. `%`) am Ende den Decode nicht mehr abbrechen lassen.
 - [x] **Temporär signierten Release-Bundle-Build im normalen CI aktivieren** — Keystore-Restore und Signed `bundleRelease` auch außerhalb des `release`-Events aktiviert, bis die Pipeline grün bestätigt ist; danach wieder auf nur `release` zurückbauen.
 - [x] **Fix KEYSTORE_BASE64 decode in CI/Release workflows** — Base64-Restore robust gegen Newlines/Whitespace gemacht und Release-Bundle-Pfad für PR-Checks abgesichert, während Upload weiterhin nur im `release`-Event läuft.
 - [x] **Komplette Multi-Source-Architektur** — Input-Pipeline für Generator und Noten-Datenbank finalisieren (Source-Selektion bis UI/Settings), Domain-konforme Datenbank-Modelle einführen und Tests für Selektion/Mapping erweitern.
