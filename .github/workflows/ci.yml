@@ -66,7 +66,7 @@ jobs:
 
   practice-screenshot:
     name: Capture Practice Screen screenshot (emulator)
-    needs: test
+    needs: build-debug
     runs-on: ubuntu-latest
     continue-on-error: true  # emulator flakiness must not block release
     steps:
@@ -100,7 +100,7 @@ jobs:
           disable-animations: true
           script: |
             ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.binbashmedium.sightreadingtrainer.ui.PracticeScreenshotTest --no-daemon
-            adb exec-out screencap -p > practice_screen.png
+            adb pull /sdcard/practice_screen.png practice_screen.png
 
       - name: Upload practice screenshot artifact
         uses: actions/upload-artifact@v4
