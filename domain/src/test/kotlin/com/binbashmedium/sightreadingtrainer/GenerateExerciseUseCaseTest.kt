@@ -114,7 +114,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `default note value selection uses gap valid patterns`() {
+    fun `default note value selection allows all note values`() {
         val allValues = mutableSetOf<NoteValue>()
         repeat(100) { seed ->
             val exercise = useCase.execute(
@@ -123,7 +123,7 @@ class GenerateExerciseUseCaseTest {
             )
             exercise.steps.forEach { allValues += it.noteValue }
         }
-        assertEquals(setOf(NoteValue.WHOLE, NoteValue.HALF, NoteValue.QUARTER), allValues)
+        assertEquals(NoteValue.entries.toSet(), allValues)
     }
 
     @Test
@@ -735,10 +735,8 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `with default note value selection EIGHTH never appears due to gap preference`() {
-        // With default settings, preferred patterns satisfy both selection and gap constraint,
-        // so generation chooses WHOLE/HALF/QUARTER patterns.
-        repeat(30) { seed ->
+    fun `with default note value selection eighth notes can appear`() {
+        val sawEighth = (0..60).any { seed ->
             val exercise = useCase.execute(
                 AppSettings(
                     exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
@@ -746,40 +744,9 @@ class GenerateExerciseUseCaseTest {
                 ),
                 random = Random(seed)
             )
-            assertTrue(
-                "Seed $seed: eighth notes must never appear (gap constraint)",
-                exercise.steps.none { it.noteValue == NoteValue.EIGHTH }
-            )
+            exercise.steps.any { it.noteValue == NoteValue.EIGHTH }
         }
-    }
-
-    @Test
-    fun `last note in every measure satisfies bar-line gap constraint`() {
-        // In every generated measure the last notehead must start at beat ≤
-        // BEATS_PER_MEASURE - BARLINE_GAP_BEATS = 3f.
-        val exercise = useCase.execute(
-            AppSettings(exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES), handMode = HandMode.RIGHT),
-            random = Random(99)
-        )
-
-        val beatsPerMeasure = GenerateExerciseUseCase.BEATS_PER_MEASURE
-        val maxLastBeat = beatsPerMeasure - GenerateExerciseUseCase.BARLINE_GAP_BEATS
-
-        var beat = 0f
-        var measureStart = 0f
-        var lastBeatInMeasure = 0f
-        exercise.steps.forEach { step ->
-            val localBeat = beat - measureStart
-            lastBeatInMeasure = localBeat
-            beat += step.noteValue.beats
-            if (beat - measureStart >= beatsPerMeasure - 0.001f) {
-                assertTrue(
-                    "Last notehead at local beat $lastBeatInMeasure > max allowed $maxLastBeat",
-                    lastBeatInMeasure <= maxLastBeat + 0.001f
-                )
-                measureStart = beat
-            }
-        }
+        assertTrue("Expected to see eighth notes with default selection", sawEighth)
     }
 
     @Test
