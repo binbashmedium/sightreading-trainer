@@ -338,6 +338,26 @@ class MeiConverterTest {
         assertTrue("Two simultaneous notes should form a chord", result.contains("<chord"))
     }
 
+    @Test
+    fun `consecutive eighth notes are wrapped in a beam`() {
+        val n1 = NoteEvent(midi = 60, startBeat = 0f, duration = 0.5f,
+            expected = true, state = NoteState.NONE, staff = StaffType.TREBLE)
+        val n2 = NoteEvent(midi = 62, startBeat = 1f, duration = 0.5f,
+            expected = true, state = NoteState.NONE, staff = StaffType.TREBLE)
+        val result = MeiConverter.renderLayer(listOf(n1, n2), 0f, -1f)
+        assertTrue("Consecutive eighths should be beamed", result.contains("<beam>"))
+    }
+
+    @Test
+    fun `rest gaps are split into valid subdivisions`() {
+        // startBeat=3 means qBeat=1.5, so leading rest must be 1.0 + 0.5 (not truncated to dur=4 only).
+        val note = NoteEvent(midi = 60, startBeat = 3f, duration = 0.5f,
+            expected = true, state = NoteState.NONE, staff = StaffType.TREBLE)
+        val result = MeiConverter.renderLayer(listOf(note), 0f, -1f)
+        assertTrue("Should contain a quarter rest", result.contains("<rest dur=\"4\"/>"))
+        assertTrue("Should contain an eighth rest", result.contains("<rest dur=\"8\"/>"))
+    }
+
     // ── convert (integration) ─────────────────────────────────────────────────
 
     @Test

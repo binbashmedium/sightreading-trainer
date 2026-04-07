@@ -208,6 +208,18 @@ $measuresXml    </section>
         if (byBeat.isEmpty()) return "<mRest/>"
 
         val sb = StringBuilder()
+        val beamedEighths = mutableListOf<String>()
+        fun flushBeam() {
+            if (beamedEighths.isEmpty()) return
+            if (beamedEighths.size >= 2) {
+                sb.append("<beam>\n")
+                sb.append(beamedEighths.joinToString("\n"))
+                sb.append("\n</beam>\n")
+            } else {
+                sb.append(beamedEighths.first()).append("\n")
+            }
+            beamedEighths.clear()
+        }
         var currentQBeat = 0f  // quarter-note beats from measure start
         // Tracks pitch classes that have been sharped ("s") or flatted ("f") within this measure.
         val withinMeasureAccidentals = mutableMapOf<Int, String>()   // pitchClass → "s" or "f"
@@ -219,21 +231,36 @@ $measuresXml    </section>
 
             // Fill gap before this chord with a rest
             val gap = qBeat - currentQBeat
-            if (gap > 0.01f) sb.append(rest(gap)).append("\n")
+            if (gap > 0.01f) {
+                flushBeam()
+                restsForDuration(gap).forEach { sb.append(it).append("\n") }
+            }
 
             // Prepend inline grace notes before the main chord when applicable.
             when (chordNotes.firstOrNull()?.ornament) {
                 // Acciaccatura: small note with slash, one semitone below main note.
-                OrnamentType.ACCIACCATURA -> sb.append(graceNoteElement(chordNotes.first().midi, "acc", -1)).append("\n")
+                OrnamentType.ACCIACCATURA -> {
+                    flushBeam()
+                    sb.append(graceNoteElement(chordNotes.first().midi, "acc", -1)).append("\n")
+                }
                 // Appoggiatura: small note without slash, one semitone above main note.
-                OrnamentType.APPOGGIATURA -> sb.append(graceNoteElement(chordNotes.first().midi, "unacc", +1)).append("\n")
+                OrnamentType.APPOGGIATURA -> {
+                    flushBeam()
+                    sb.append(graceNoteElement(chordNotes.first().midi, "unacc", +1)).append("\n")
+                }
                 else -> {}
             }
 
-            sb.append(
-                renderChord(chordNotes, duration, startBeat, isCurrent,
-                    musicalKey, keySigAlteredPitchClasses, withinMeasureAccidentals)
-            ).append("\n")
+            val chordXml = renderChord(
+                chordNotes, duration, startBeat, isCurrent,
+                musicalKey, keySigAlteredPitchClasses, withinMeasureAccidentals
+            )
+            if (abs(duration - 0.5f) < 0.01f) {
+                beamedEighths += chordXml
+            } else {
+                flushBeam()
+                sb.append(chordXml).append("\n")
+            }
 
             // Update within-measure accidental state.
             chordNotes.forEach { note ->
@@ -251,7 +278,10 @@ $measuresXml    </section>
 
         // Fill tail of measure with a rest
         val tail = 4f - currentQBeat
-        if (tail > 0.01f) sb.append(rest(tail)).append("\n")
+        flushBeam()
+        if (tail > 0.01f) {
+            restsForDuration(tail).forEach { sb.append(it).append("\n") }
+        }
 
         return sb.toString().trimEnd()
     }
@@ -302,6 +332,20 @@ $measuresXml    </section>
     }
 
     private fun rest(quarterBeats: Float): String = "<rest dur=\"${quarterBeatsToDur(quarterBeats)}\"/>"
+
+    private fun restsForDuration(quarterBeats: Float): List<String> {
+        val units = listOf(4f, 2f, 1f, 0.5f, 0.25f)
+        var remaining = quarterBeats
+        val parts = mutableListOf<String>()
+        for (unit in units) {
+            while (remaining + 0.0001f >= unit) {
+                parts += rest(unit)
+                remaining -= unit
+            }
+        }
+        if (parts.isEmpty()) parts += rest(0.5f)
+        return parts
+    }
 
     /**
      * Builds a MEI grace note element offset from [mainMidi] by [semitoneOffset].

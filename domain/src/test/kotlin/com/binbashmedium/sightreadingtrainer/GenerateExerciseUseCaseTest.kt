@@ -33,6 +33,31 @@ import kotlin.random.Random
 class GenerateExerciseUseCaseTest {
 
     private val useCase = GenerateExerciseUseCase()
+    private val nonArpeggioNonProgressionTypes = listOf(
+        ExerciseContentType.SINGLE_NOTES,
+        ExerciseContentType.OCTAVES,
+        ExerciseContentType.THIRDS,
+        ExerciseContentType.FIFTHS,
+        ExerciseContentType.SIXTHS,
+        ExerciseContentType.TRIADS,
+        ExerciseContentType.SEVENTHS,
+        ExerciseContentType.NINTHS,
+        ExerciseContentType.CLUSTERED_CHORDS
+    )
+
+    private fun matchesExpectedShape(contentType: ExerciseContentType, notes: List<Int>): Boolean = when (contentType) {
+        ExerciseContentType.SINGLE_NOTES -> notes.size == 1
+        ExerciseContentType.OCTAVES,
+        ExerciseContentType.THIRDS,
+        ExerciseContentType.FIFTHS,
+        ExerciseContentType.SIXTHS -> notes.size == 2
+        ExerciseContentType.TRIADS -> notes.size == 3
+        ExerciseContentType.SEVENTHS -> notes.size == 4
+        ExerciseContentType.NINTHS -> notes.size == 5
+        ExerciseContentType.CLUSTERED_CHORDS -> notes.size >= 3
+        ExerciseContentType.ARPEGGIOS,
+        ExerciseContentType.PROGRESSIONS -> true
+    }
 
     @Test
     fun `single notes right hand generate treble-range notes`() {
@@ -89,9 +114,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `whole half and quarter note values can appear in generated exercises`() {
-        // EIGHTH notes are excluded by the bar-line gap constraint (8×EIGHTH last note at beat 3.5
-        // exceeds maxLastBeat = BEATS_PER_MEASURE - BARLINE_GAP_BEATS = 4.0 - 1.0 = 3.0).
+    fun `default note value selection allows all note values`() {
         val allValues = mutableSetOf<NoteValue>()
         repeat(100) { seed ->
             val exercise = useCase.execute(
@@ -100,7 +123,118 @@ class GenerateExerciseUseCaseTest {
             )
             exercise.steps.forEach { allValues += it.noteValue }
         }
-        assertEquals(setOf(NoteValue.WHOLE, NoteValue.HALF, NoteValue.QUARTER), allValues)
+        assertEquals(NoteValue.entries.toSet(), allValues)
+    }
+
+    @Test
+    fun `selected single note value is always respected`() {
+        NoteValue.entries.forEachIndexed { seed, noteValue ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                    handMode = HandMode.RIGHT,
+                    selectedNoteValues = setOf(noteValue),
+                    selectedKeys = setOf(0)
+                ),
+                random = Random(seed)
+            )
+
+            assertTrue("Expected non-empty steps for $noteValue", exercise.steps.isNotEmpty())
+            assertTrue(
+                "Found non-$noteValue step when only $noteValue was selected",
+                exercise.steps.all { it.noteValue == noteValue }
+            )
+        }
+    }
+
+    @Test
+    fun `for each non arpeggio type and note value generation respects selected settings`() {
+        nonArpeggioNonProgressionTypes.forEach { contentType ->
+            NoteValue.entries.forEachIndexed { seed, noteValue ->
+                val exercise = useCase.execute(
+                    AppSettings(
+                        exerciseTypes = setOf(contentType),
+                        handMode = HandMode.RIGHT,
+                        selectedNoteValues = setOf(noteValue),
+                        selectedKeys = setOf(0)
+                    ),
+                    random = Random(seed + contentType.ordinal * 100)
+                )
+
+                assertTrue("Expected steps for $contentType with $noteValue", exercise.steps.isNotEmpty())
+                assertTrue(
+                    "Expected all steps to be tagged as $contentType",
+                    exercise.steps.all { it.contentType == contentType }
+                )
+                assertTrue(
+                    "Expected all note values to be $noteValue for $contentType",
+                    exercise.steps.all { it.noteValue == noteValue }
+                )
+                assertTrue(
+                    "Expected generated notes to match $contentType shape",
+                    exercise.steps.all { step -> matchesExpectedShape(contentType, step.notes) }
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `for arpeggios each selected note value is respected`() {
+        NoteValue.entries.forEachIndexed { seed, noteValue ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.ARPEGGIOS),
+                    handMode = HandMode.RIGHT,
+                    selectedNoteValues = setOf(noteValue),
+                    selectedKeys = setOf(0)
+                ),
+                random = Random(10_000 + seed)
+            )
+
+            assertTrue("Expected steps for ARPEGGIOS with $noteValue", exercise.steps.isNotEmpty())
+            assertTrue(
+                "Expected ARPEGGIOS content type only",
+                exercise.steps.all { it.contentType == ExerciseContentType.ARPEGGIOS }
+            )
+            assertTrue(
+                "Expected all note values to be $noteValue for ARPEGGIOS",
+                exercise.steps.all { it.noteValue == noteValue }
+            )
+            assertTrue(
+                "Arpeggio steps must remain single-note events",
+                exercise.steps.all { it.notes.size == 1 }
+            )
+        }
+    }
+
+    @Test
+    fun `for progressions each selected note value is respected`() {
+        NoteValue.entries.forEachIndexed { seed, noteValue ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                    handMode = HandMode.RIGHT,
+                    selectedNoteValues = setOf(noteValue),
+                    selectedProgressions = setOf(ChordProgression.I_IV_V_I),
+                    selectedKeys = setOf(0)
+                ),
+                random = Random(20_000 + seed)
+            )
+
+            assertTrue("Expected steps for PROGRESSIONS with $noteValue", exercise.steps.isNotEmpty())
+            assertTrue(
+                "Expected PROGRESSIONS content type only",
+                exercise.steps.all { it.contentType == ExerciseContentType.PROGRESSIONS }
+            )
+            assertTrue(
+                "Expected all note values to be $noteValue for PROGRESSIONS",
+                exercise.steps.all { it.noteValue == noteValue }
+            )
+            assertTrue(
+                "Progression-only mode should generate chord steps",
+                exercise.steps.all { it.notes.size >= 3 }
+            )
+        }
     }
 
     @Test
@@ -586,10 +720,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `selecting only EIGHTH falls back to gap-valid patterns excluding the eighth pattern`() {
-        // The 8×EIGHTH pattern violates the bar-line gap constraint (last note at beat 3.5 > 3.0),
-        // so when only EIGHTH is selected the generator falls back to gap-valid patterns
-        // (WHOLE, HALF×2, QUARTER×4).  No EIGHTH note values should appear.
+    fun `selecting only EIGHTH produces an exercise with only eighth notes`() {
         val exercise = useCase.execute(
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
@@ -600,13 +731,12 @@ class GenerateExerciseUseCaseTest {
         )
 
         assertTrue(exercise.steps.isNotEmpty())
-        assertTrue(exercise.steps.none { it.noteValue == NoteValue.EIGHTH })
+        assertTrue(exercise.steps.all { it.noteValue == NoteValue.EIGHTH })
     }
 
     @Test
-    fun `EIGHTH note value never appears in generated exercises due to gap constraint`() {
-        // Regardless of selection, the 8×EIGHTH pattern always fails the gap constraint.
-        repeat(30) { seed ->
+    fun `with default note value selection eighth notes can appear`() {
+        val sawEighth = (0..60).any { seed ->
             val exercise = useCase.execute(
                 AppSettings(
                     exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
@@ -614,40 +744,9 @@ class GenerateExerciseUseCaseTest {
                 ),
                 random = Random(seed)
             )
-            assertTrue(
-                "Seed $seed: eighth notes must never appear (gap constraint)",
-                exercise.steps.none { it.noteValue == NoteValue.EIGHTH }
-            )
+            exercise.steps.any { it.noteValue == NoteValue.EIGHTH }
         }
-    }
-
-    @Test
-    fun `last note in every measure satisfies bar-line gap constraint`() {
-        // In every generated measure the last notehead must start at beat ≤
-        // BEATS_PER_MEASURE - BARLINE_GAP_BEATS = 3f.
-        val exercise = useCase.execute(
-            AppSettings(exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES), handMode = HandMode.RIGHT),
-            random = Random(99)
-        )
-
-        val beatsPerMeasure = GenerateExerciseUseCase.BEATS_PER_MEASURE
-        val maxLastBeat = beatsPerMeasure - GenerateExerciseUseCase.BARLINE_GAP_BEATS
-
-        var beat = 0f
-        var measureStart = 0f
-        var lastBeatInMeasure = 0f
-        exercise.steps.forEach { step ->
-            val localBeat = beat - measureStart
-            lastBeatInMeasure = localBeat
-            beat += step.noteValue.beats
-            if (beat - measureStart >= beatsPerMeasure - 0.001f) {
-                assertTrue(
-                    "Last notehead at local beat $lastBeatInMeasure > max allowed $maxLastBeat",
-                    lastBeatInMeasure <= maxLastBeat + 0.001f
-                )
-                measureStart = beat
-            }
-        }
+        assertTrue("Expected to see eighth notes with default selection", sawEighth)
     }
 
     @Test
@@ -932,4 +1031,3 @@ class GenerateExerciseUseCaseTest {
         }
     }
 }
-

@@ -17,6 +17,7 @@ package com.binbashmedium.sightreadingtrainer
 import com.binbashmedium.sightreadingtrainer.core.midi.ChordDetector
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -26,6 +27,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ChordDetectorTest {
 
     @Test
