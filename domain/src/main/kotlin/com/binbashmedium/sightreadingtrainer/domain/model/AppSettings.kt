@@ -48,8 +48,15 @@ data class AppSettings(
     val trebleNoteRangeMax: Int = 84,
     /** Which ornament types (TRILL, MORDENT, TURN) may appear in generated exercises.
      *  Empty set means no ornaments are used. Notes are always evaluated on main pitch only. */
-    val selectedOrnaments: Set<OrnamentType> = emptySet()
+    val selectedOrnaments: Set<OrnamentType> = emptySet(),
+    /** Source of exercise material: generated or loaded from a database-backed library. */
+    val exerciseInputSource: ExerciseInputSource = ExerciseInputSource.GENERATED
 )
+
+enum class ExerciseInputSource {
+    GENERATED,
+    DATABASE
+}
 
 enum class HandMode { LEFT, RIGHT, BOTH }
 

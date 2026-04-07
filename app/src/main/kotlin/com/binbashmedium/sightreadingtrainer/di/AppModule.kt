@@ -14,6 +14,8 @@
 
 package com.binbashmedium.sightreadingtrainer.di
 
+import com.binbashmedium.sightreadingtrainer.data.ExerciseLibraryRepository
+import com.binbashmedium.sightreadingtrainer.data.InMemoryExerciseLibraryRepository
 import com.binbashmedium.sightreadingtrainer.domain.usecase.GenerateExerciseUseCase
 import com.binbashmedium.sightreadingtrainer.domain.usecase.MatchNotesUseCase
 import com.binbashmedium.sightreadingtrainer.domain.usecase.PracticeSessionUseCase
@@ -40,4 +42,10 @@ object AppModule {
     fun providePracticeSessionUseCase(
         matchNotesUseCase: MatchNotesUseCase
     ): PracticeSessionUseCase = PracticeSessionUseCase(matchNotesUseCase)
+
+    @Provides
+    @Singleton
+    fun provideExerciseLibraryRepository(
+        inMemoryExerciseLibraryRepository: InMemoryExerciseLibraryRepository
+    ): ExerciseLibraryRepository = inMemoryExerciseLibraryRepository
 }
