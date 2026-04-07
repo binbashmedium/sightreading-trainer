@@ -1,6 +1,11 @@
 # TODO
 
 ## In Progress
+- [x] **CI trigger wieder auf release-only zurückbauen** — Nach erfolgreicher Pipeline-Bestätigung den temporären Signed-Build auf Push/PR entfernt und wieder nur beim `release`-Event aktiviert.
+- [x] **Keystore-Alias im Workflow vor Gradle validieren** — CI prüft jetzt bereits im Restore-Schritt, ob `KEY_ALIAS` im Keystore existiert, damit `:app:signReleaseBundle` nicht erst spät fehlschlägt.
+- [x] **Base64-Decode robust gegen Garbage-Suffixe machen** — Keystore-Restore so angepasst, dass versehentliche Nicht-Base64-Zeichen (z. B. `%`) am Ende den Decode nicht mehr abbrechen lassen.
+- [x] **Temporär signierten Release-Bundle-Build im normalen CI aktivieren** — Zeitweise für Push/PR aktiviert und nach erfolgreicher Pipeline-Bestätigung wieder auf `release`-only zurückgestellt.
+- [x] **Fix KEYSTORE_BASE64 decode in CI/Release workflows** — Base64-Restore robust gegen Newlines/Whitespace gemacht und Release-Bundle-Pfad für PR-Checks abgesichert, während Upload weiterhin nur im `release`-Event läuft.
 - [x] **Komplette Multi-Source-Architektur** — Input-Pipeline für Generator und Noten-Datenbank finalisieren (Source-Selektion bis UI/Settings), Domain-konforme Datenbank-Modelle einführen und Tests für Selektion/Mapping erweitern.
 - [x] **ExerciseSource Architektur in Code** — Generator als austauschbare Quelle kapseln und Option für Datenbank-basierte Übungsquelle im Repository/Settings-Pfad ergänzen (inkl. Tests).
 - [x] **Architektur-Doku: alternative Input-Quellen** — Architekturfluss `Generator -> ChordDetector -> Anzeige` dokumentiert und um Vorschlag zur Erweiterung mit austauschbarer Input-Quelle (z. B. Notendatenbank) inkl. gängiger Notenformate ergänzt.
