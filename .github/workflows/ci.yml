@@ -183,9 +183,7 @@ jobs:
           script: |
             adb install -r apks/app-debug.apk
             adb install -r apks/app-debug-androidTest.apk
-            adb shell am instrument -w \
-              -e class com.binbashmedium.sightreadingtrainer.ui.PracticeScreenshotTest \
-              com.binbashmedium.sightreadingtrainer.test/androidx.test.runner.AndroidJUnitRunner
+            adb shell am instrument -w -e class com.binbashmedium.sightreadingtrainer.ui.PracticeScreenshotTest com.binbashmedium.sightreadingtrainer.test/androidx.test.runner.AndroidJUnitRunner
             adb pull /sdcard/practice_screen.png practice_screen.png
 
       - name: Upload practice screenshot
