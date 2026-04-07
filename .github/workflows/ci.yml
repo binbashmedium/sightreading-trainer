@@ -91,8 +91,8 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
 
-  release-apk:
-    name: Upload APK to release
+  release-bundle:
+    name: Upload AAB to release
     if: github.event_name == 'release'
     needs: test
     runs-on: ubuntu-latest
@@ -114,10 +114,25 @@ jobs:
       - name: Override Java home for Gradle
         run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Restore upload keystore from Base64 secret
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "Missing required secret: KEYSTORE_BASE64" >&2
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/upload-keystore.jks
 
-      - name: Upload APK to GitHub release
+      - name: Build release app bundle
+        env:
+          KEYSTORE_PATH: /tmp/upload-keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew :app:bundleRelease --no-daemon
+
+      - name: Upload AAB to GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: app/build/outputs/bundle/release/app-release.aab

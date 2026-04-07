@@ -1,7 +1,6 @@
 # TODO
 
 ## In Progress
-
 - [x] **Komplette Multi-Source-Architektur** — Input-Pipeline für Generator und Noten-Datenbank finalisieren (Source-Selektion bis UI/Settings), Domain-konforme Datenbank-Modelle einführen und Tests für Selektion/Mapping erweitern.
 - [x] **ExerciseSource Architektur in Code** — Generator als austauschbare Quelle kapseln und Option für Datenbank-basierte Übungsquelle im Repository/Settings-Pfad ergänzen (inkl. Tests).
 - [x] **Architektur-Doku: alternative Input-Quellen** — Architekturfluss `Generator -> ChordDetector -> Anzeige` dokumentiert und um Vorschlag zur Erweiterung mit austauschbarer Input-Quelle (z. B. Notendatenbank) inkl. gängiger Notenformate ergänzt.
@@ -10,6 +9,7 @@
 
 ## Done (recent)
 
+- [x] **Fix release artifact generation** — `release` GitHub event workflow job switched from `:app:assembleDebug` to signed `:app:bundleRelease` with keystore restore (`KEYSTORE_BASE64`) and env-based signing vars; release upload now attaches `app-release.aab` instead of debug APK.
 - [x] **Single-note run chord-name display fix** — `resolveDisplayChordNotes()` groups consecutive single-note steps into runs and resolves them to a detected chord when possible (e.g. C-E-G displays `CM`). 4 unit tests added: run grouping, passthrough, split boundaries, isolated-melody fallback.
 - [x] **Suspended chord label detection** — `CHORD_QUALITIES` extended with `sus2` and `sus4`; `CHORD_QUALITY_PRIORITY` map ensures `Gsus2` is preferred over `Dsus4` for D-G-A. Tests added.
 - [x] **Extended chord quality detection** — Added `5`, `aug`, `dim7`, `6`, `m6`, `add9`, `madd9`, `M11`/`11`/`m11`, `M13`/`13`/`m13`, `7b9`, `7#9`, `7#11`, `7b13` to `CHORD_QUALITIES`. Regression tests added.
