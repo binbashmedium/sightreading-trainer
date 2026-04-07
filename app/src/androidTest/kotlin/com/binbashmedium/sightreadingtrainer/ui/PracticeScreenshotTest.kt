@@ -100,8 +100,10 @@ class PracticeScreenshotTest {
             .onNodeWithText("New Exercise")
             .performClick()
 
-        // Allow the Grand Staff Canvas to complete its first render pass
-        Thread.sleep(4_000)
+        // Allow the Verovio WebView to complete its first render pass.
+        // The WebView loads the JS bundle and renders MEI asynchronously;
+        // 15 s gives it enough headroom even on a cold emulator.
+        Thread.sleep(15_000)
 
         // Capture the full screen while the app is still in the foreground.
         // Using executeShellCommand so the screenshot is taken synchronously
