@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **Fix outdated note-value tests after eighth-note selection behavior change** — align expectations so default generation stays gap-valid while explicit EIGHTH-only selection is honored.
 - [x] **Strengthen single-selection generation assertions** — verify that when exactly one note value and one content type are selected, generated steps also match the expected chord/note shape for that content type.
 - [x] **Fix eighth-note-only generation mismatch + add generator selection regression tests** — reproduce the eighth-only bug, ensure generated output always respects selected note/chord settings across generators, and add per-note-value plus per-chord×note-value unit tests (excluding arpeggios/progressions cross-matrix).
 - [x] **GitHub Actions Node 24 migration warnings beheben** — Workflows auf Node-24-kompatible Action-Versionen aktualisieren bzw. explizit Node 24 aktivieren, damit die CI-Warnung verschwindet.

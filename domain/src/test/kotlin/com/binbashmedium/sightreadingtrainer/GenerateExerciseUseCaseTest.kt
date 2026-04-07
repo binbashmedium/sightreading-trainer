@@ -114,7 +114,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `all note values can appear in generated exercises`() {
+    fun `default note value selection uses gap valid patterns`() {
         val allValues = mutableSetOf<NoteValue>()
         repeat(100) { seed ->
             val exercise = useCase.execute(
@@ -123,7 +123,7 @@ class GenerateExerciseUseCaseTest {
             )
             exercise.steps.forEach { allValues += it.noteValue }
         }
-        assertEquals(NoteValue.entries.toSet(), allValues)
+        assertEquals(setOf(NoteValue.WHOLE, NoteValue.HALF, NoteValue.QUARTER), allValues)
     }
 
     @Test
@@ -661,10 +661,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `selecting only EIGHTH falls back to gap-valid patterns excluding the eighth pattern`() {
-        // The 8×EIGHTH pattern violates the bar-line gap constraint (last note at beat 3.5 > 3.0),
-        // so when only EIGHTH is selected the generator falls back to gap-valid patterns
-        // (WHOLE, HALF×2, QUARTER×4).  No EIGHTH note values should appear.
+    fun `selecting only EIGHTH produces an exercise with only eighth notes`() {
         val exercise = useCase.execute(
             AppSettings(
                 exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
@@ -675,12 +672,13 @@ class GenerateExerciseUseCaseTest {
         )
 
         assertTrue(exercise.steps.isNotEmpty())
-        assertTrue(exercise.steps.none { it.noteValue == NoteValue.EIGHTH })
+        assertTrue(exercise.steps.all { it.noteValue == NoteValue.EIGHTH })
     }
 
     @Test
-    fun `EIGHTH note value never appears in generated exercises due to gap constraint`() {
-        // Regardless of selection, the 8×EIGHTH pattern always fails the gap constraint.
+    fun `with default note value selection EIGHTH never appears due to gap preference`() {
+        // With default settings, preferred patterns satisfy both selection and gap constraint,
+        // so generation chooses WHOLE/HALF/QUARTER patterns.
         repeat(30) { seed ->
             val exercise = useCase.execute(
                 AppSettings(
