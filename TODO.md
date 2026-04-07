@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **GitHub Actions Node 24 migration warnings beheben** — Workflows auf Node-24-kompatible Action-Versionen aktualisieren bzw. explizit Node 24 aktivieren, damit die CI-Warnung verschwindet.
 - [x] **CI compile regression after MIDI deprecation cleanup** — fixed AndroidMidiManager API 33+ callback registration to use the required transport + executor + callback signature so app debug/release Kotlin compilation can proceed.
 - [x] **Build warnings cleanup (MIDI deprecations)** — replaced deprecated `MidiManager.registerDeviceCallback(..., Handler)` and `MidiManager.devices` usage in `AndroidMidiManager` with API-level safe non-deprecated APIs and attempted build/tests/APK verification (blocked by missing Android SDK in CI container).
 - [x] **CI trigger wieder auf release-only zurückbauen** — Nach erfolgreicher Pipeline-Bestätigung den temporären Signed-Build auf Push/PR entfernt und wieder nur beim `release`-Event aktiviert.
