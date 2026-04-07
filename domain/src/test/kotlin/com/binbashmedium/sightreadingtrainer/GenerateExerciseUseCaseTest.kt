@@ -179,6 +179,65 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
+    fun `for arpeggios each selected note value is respected`() {
+        NoteValue.entries.forEachIndexed { seed, noteValue ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.ARPEGGIOS),
+                    handMode = HandMode.RIGHT,
+                    selectedNoteValues = setOf(noteValue),
+                    selectedKeys = setOf(0)
+                ),
+                random = Random(10_000 + seed)
+            )
+
+            assertTrue("Expected steps for ARPEGGIOS with $noteValue", exercise.steps.isNotEmpty())
+            assertTrue(
+                "Expected ARPEGGIOS content type only",
+                exercise.steps.all { it.contentType == ExerciseContentType.ARPEGGIOS }
+            )
+            assertTrue(
+                "Expected all note values to be $noteValue for ARPEGGIOS",
+                exercise.steps.all { it.noteValue == noteValue }
+            )
+            assertTrue(
+                "Arpeggio steps must remain single-note events",
+                exercise.steps.all { it.notes.size == 1 }
+            )
+        }
+    }
+
+    @Test
+    fun `for progressions each selected note value is respected`() {
+        NoteValue.entries.forEachIndexed { seed, noteValue ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                    handMode = HandMode.RIGHT,
+                    selectedNoteValues = setOf(noteValue),
+                    selectedProgressions = setOf(ChordProgression.I_IV_V_I),
+                    selectedKeys = setOf(0)
+                ),
+                random = Random(20_000 + seed)
+            )
+
+            assertTrue("Expected steps for PROGRESSIONS with $noteValue", exercise.steps.isNotEmpty())
+            assertTrue(
+                "Expected PROGRESSIONS content type only",
+                exercise.steps.all { it.contentType == ExerciseContentType.PROGRESSIONS }
+            )
+            assertTrue(
+                "Expected all note values to be $noteValue for PROGRESSIONS",
+                exercise.steps.all { it.noteValue == noteValue }
+            )
+            assertTrue(
+                "Progression-only mode should generate chord steps",
+                exercise.steps.all { it.notes.size >= 3 }
+            )
+        }
+    }
+
+    @Test
     fun `each measure contains only one uniform note value pattern`() {
         val exercise = useCase.execute(
             AppSettings(exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES), handMode = HandMode.RIGHT),
