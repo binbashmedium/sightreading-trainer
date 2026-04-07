@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **Fix MEI rhythmic grouping/beaming output** — ensure consecutive eighth notes are rendered as grouped/beamed values and quarter-note spacing isn't fragmented by unnecessary subdivisions/rest insertions.
 - [x] **Remove obsolete barline-gap generation constraint + fix coroutine opt-in warnings** — allow eighth-note measure patterns per settings/default and annotate coroutine tests with required `@OptIn(ExperimentalCoroutinesApi::class)`.
 - [x] **Add arpeggios/progressions selection regression tests** — verify note-value selection is also honored for ARPEGGIOS and PROGRESSIONS generation paths.
 - [x] **Fix outdated note-value tests after eighth-note selection behavior change** — align expectations so default generation stays gap-valid while explicit EIGHTH-only selection is honored.
