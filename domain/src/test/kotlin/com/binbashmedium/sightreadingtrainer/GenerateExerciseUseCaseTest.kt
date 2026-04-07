@@ -17,11 +17,13 @@ package com.binbashmedium.sightreadingtrainer
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseMode
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
+import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
 import com.binbashmedium.sightreadingtrainer.domain.usecase.GenerateExerciseUseCase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -212,7 +214,7 @@ class GenerateExerciseUseCaseTest {
         NoteValue.entries.forEachIndexed { seed, noteValue ->
             val exercise = useCase.execute(
                 AppSettings(
-                    exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                    exerciseMode = ExerciseMode.PROGRESSIONS,
                     handMode = HandMode.RIGHT,
                     selectedNoteValues = setOf(noteValue),
                     selectedProgressions = setOf(ChordProgression.I_IV_V_I),
@@ -499,28 +501,27 @@ class GenerateExerciseUseCaseTest {
 
     // ── Progressions ──────────────────────────────────────────────────────────
     @Test
-    fun `progressions type generates triads with three notes per chord`() {
+    fun `progressions mode generates triads with three notes per chord by default`() {
         val exercise = useCase.execute(
             AppSettings(
-                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                exerciseMode = ExerciseMode.PROGRESSIONS,
                 handMode = HandMode.RIGHT,
                 selectedKeys = setOf(0),
-                selectedProgressions = setOf(ChordProgression.I_IV_V_I)
+                selectedProgressions = setOf(ChordProgression.I_IV_V_I),
+                progressionExerciseTypes = setOf(ProgressionExerciseType.TRIADS)
             ),
             random = Random(1)
         )
 
         assertTrue(exercise.steps.isNotEmpty())
-        exercise.steps.forEach { step ->
-            assertEquals(3, step.notes.size)
-        }
+        exercise.steps.forEach { step -> assertEquals(3, step.notes.size) }
     }
 
     @Test
-    fun `progressions type tags all steps with PROGRESSIONS content type`() {
+    fun `progressions mode tags all steps with PROGRESSIONS content type`() {
         val exercise = useCase.execute(
             AppSettings(
-                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                exerciseMode = ExerciseMode.PROGRESSIONS,
                 handMode = HandMode.RIGHT,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_V_VI_IV)
@@ -538,7 +539,7 @@ class GenerateExerciseUseCaseTest {
         (1..40).forEach { seed ->
             val exercise = useCase.execute(
                 AppSettings(
-                    exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                    exerciseMode = ExerciseMode.PROGRESSIONS,
                     handMode = HandMode.RIGHT,
                     selectedKeys = setOf(0),
                     selectedProgressions = setOf(ChordProgression.I_IV_V_I, ChordProgression.II_V_I)
@@ -546,22 +547,20 @@ class GenerateExerciseUseCaseTest {
                 forcedKey = 0,
                 random = Random(seed)
             )
-            // Exercise is now always 16 measures; first step reflects which progression was chosen.
             assertTrue(exercise.steps.isNotEmpty())
             firstChords += exercise.steps.first().notes
         }
 
-        // I-IV-V-I: first chord = I = C major triad = [60, 64, 67]
         assertTrue(firstChords.any { it == listOf(60, 64, 67) })
-        // II-V-I: first chord = ii = D minor triad = [62, 65, 69]
         assertTrue(firstChords.any { it == listOf(62, 65, 69) })
     }
 
     @Test
-    fun `progressions plus single notes can still include additional non progression material`() {
+    fun `progression mode ignores classic exercise types and keeps progression material only`() {
         val exercise = useCase.execute(
             AppSettings(
-                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.SINGLE_NOTES),
+                exerciseMode = ExerciseMode.PROGRESSIONS,
+                exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES, ExerciseContentType.TRIADS),
                 handMode = HandMode.RIGHT,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_IV_V_I)
@@ -570,15 +569,15 @@ class GenerateExerciseUseCaseTest {
             random = Random(7)
         )
 
-        assertTrue(exercise.steps.any { it.contentType == ExerciseContentType.PROGRESSIONS })
-        assertTrue(exercise.steps.any { it.contentType == ExerciseContentType.SINGLE_NOTES })
+        assertTrue(exercise.steps.isNotEmpty())
+        assertTrue(exercise.steps.all { it.contentType == ExerciseContentType.PROGRESSIONS })
     }
 
     @Test
     fun `progressions with BOTH hand distribute notes across both hands`() {
         val exercise = useCase.execute(
             AppSettings(
-                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS),
+                exerciseMode = ExerciseMode.PROGRESSIONS,
                 handMode = HandMode.BOTH,
                 selectedKeys = setOf(0),
                 selectedProgressions = setOf(ChordProgression.I_IV_V_I)
@@ -587,7 +586,6 @@ class GenerateExerciseUseCaseTest {
             random = Random(3)
         )
 
-        // Exercise is now always 16 measures; verify all steps span both staves.
         assertTrue(exercise.steps.isNotEmpty())
         exercise.steps.forEach { step ->
             assertTrue(step.notes.any { it < 60 })
@@ -596,13 +594,14 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `progressions can generate sevenths when sevenths type is active`() {
+    fun `progressions can generate sevenths when sevenths mode option is active`() {
         val exercise = useCase.execute(
             AppSettings(
-                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.SEVENTHS),
+                exerciseMode = ExerciseMode.PROGRESSIONS,
                 handMode = HandMode.RIGHT,
                 selectedKeys = setOf(0),
-                selectedProgressions = setOf(ChordProgression.I_IV_V_I)
+                selectedProgressions = setOf(ChordProgression.I_IV_V_I),
+                progressionExerciseTypes = setOf(ProgressionExerciseType.SEVENTHS)
             ),
             forcedKey = 0,
             random = Random(4)
@@ -613,13 +612,14 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `progressions can generate ninths when ninths type is active`() {
+    fun `progressions can generate ninths when ninths mode option is active`() {
         val exercise = useCase.execute(
             AppSettings(
-                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.NINTHS),
+                exerciseMode = ExerciseMode.PROGRESSIONS,
                 handMode = HandMode.RIGHT,
                 selectedKeys = setOf(0),
-                selectedProgressions = setOf(ChordProgression.I_IV_V_I)
+                selectedProgressions = setOf(ChordProgression.I_IV_V_I),
+                progressionExerciseTypes = setOf(ProgressionExerciseType.NINTHS)
             ),
             forcedKey = 0,
             random = Random(5)
@@ -630,13 +630,14 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `progressions can generate suspended voicings when clustered chords type is active`() {
+    fun `progression mode defaults to triads when no explicit voicing option is selected`() {
         val exercise = useCase.execute(
             AppSettings(
-                exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.CLUSTERED_CHORDS),
+                exerciseMode = ExerciseMode.PROGRESSIONS,
                 handMode = HandMode.RIGHT,
                 selectedKeys = setOf(0),
-                selectedProgressions = setOf(ChordProgression.I_IV_V_I)
+                selectedProgressions = setOf(ChordProgression.I_IV_V_I),
+                progressionExerciseTypes = emptySet()
             ),
             forcedKey = 0,
             random = Random(6)
@@ -644,23 +645,16 @@ class GenerateExerciseUseCaseTest {
 
         assertTrue(exercise.steps.isNotEmpty())
         assertTrue(exercise.steps.all { it.notes.size == 3 })
-        assertTrue(
-            exercise.steps.all { step ->
-                val sorted = step.notes.sorted()
-                val root = sorted.first()
-                val middleInterval = sorted[1] - root
-                middleInterval !in setOf(3, 4)
-            }
-        )
     }
 
     @Test
     fun `progressions with arpeggios enabled can mix chord blocks and arpeggios`() {
         val settings = AppSettings(
-            exerciseTypes = setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.ARPEGGIOS, ExerciseContentType.TRIADS),
+            exerciseMode = ExerciseMode.PROGRESSIONS,
             handMode = HandMode.RIGHT,
             selectedKeys = setOf(0),
-            selectedProgressions = setOf(ChordProgression.I_IV_V_I)
+            selectedProgressions = setOf(ChordProgression.I_IV_V_I),
+            progressionExerciseTypes = setOf(ProgressionExerciseType.TRIADS, ProgressionExerciseType.ARPEGGIOS)
         )
 
         val mixed = (1..60)

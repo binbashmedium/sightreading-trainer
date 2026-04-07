@@ -7,7 +7,8 @@ data class AppSettings(
     val midiDeviceName: String = "",
     val timingToleranceMs: Int = 200,
     val chordWindowMs: Int = 50,
-    val exerciseTimeSec: Int = 60,
+    val exerciseTimeMin: Int = 1,
+    val exerciseMode: ExerciseMode = ExerciseMode.CLASSIC,
     val exerciseTypes: Set<ExerciseContentType> = setOf(ExerciseContentType.SINGLE_NOTES),
     val handMode: HandMode = HandMode.RIGHT,
     val noteAccidentalsEnabled: Boolean = false,
@@ -24,6 +25,8 @@ data class AppSettings(
     val selectedKeys: Set<Int> = setOf(0),
     /** Active chord progressions used when PROGRESSIONS type is selected. */
     val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I),
+    /** Mode-2 voicing options used for progression generation. */
+    val progressionExerciseTypes: Set<ProgressionExerciseType> = setOf(ProgressionExerciseType.TRIADS),
     val selectedNoteValues: Set<NoteValue> = NoteValue.entries.toSet(),
     val chordNamesEnabled: Boolean = false,
     val bassNoteRangeMin: Int = 28,
@@ -35,6 +38,7 @@ data class AppSettings(
 )
 
 enum class HandMode { LEFT, RIGHT, BOTH }
+enum class ExerciseMode { CLASSIC, PROGRESSIONS }
 enum class ExerciseContentType {
     SINGLE_NOTES,
     OCTAVES,
@@ -45,9 +49,9 @@ enum class ExerciseContentType {
     TRIADS,
     SEVENTHS,
     NINTHS,
-    CLUSTERED_CHORDS,
-    PROGRESSIONS
+    CLUSTERED_CHORDS
 }
+enum class ProgressionExerciseType { TRIADS, SEVENTHS, NINTHS, ARPEGGIOS }
 ```
 
 ## Persistence
@@ -73,12 +77,13 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 ### Exercise generation
 `GenerateExerciseUseCase` uses:
 - a multi-select pool of exercise content types (`exerciseTypes`)
-- `exerciseTimeSec`
+- `exerciseTimeMin`
 - `handMode`
 - `noteAccidentalsEnabled`
 - `pedalEventsEnabled`
 - `selectedKeys` (0-11 pool; one key is chosen per exercise)
-- `selectedProgressions` (used when `PROGRESSIONS` type is active)
+- `selectedProgressions` (used when `exerciseMode = PROGRESSIONS`)
+- `progressionExerciseTypes` (`TRIADS`/`SEVENTHS`/`NINTHS`/`ARPEGGIOS` mode-2 options)
 - `selectedNoteValues` (which note durations may appear in measures)
 - `bassNoteRangeMin`/`bassNoteRangeMax` (MIDI 28–72 clamp for bass-staff notes)
 - `trebleNoteRangeMin`/`trebleNoteRangeMax` (MIDI 48–93 clamp for treble-staff notes)
@@ -87,9 +92,11 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 ## SettingsScreen UI
 
 The screen includes:
-- exercise-type multi-select chips
+- exercise-mode chips (`Mode 1` classic types, `Mode 2` progressions)
+- exercise-type multi-select chips for Mode 1 (`single notes` → `clustered chords`)
+- progression-voicing chips for Mode 2 (`triads`, `sevenths`, `ninths`, `arpeggios`)
 - exercise-time slider
-- chord-progression multi-select chips (shown only when PROGRESSIONS type is active)
+- chord-progression multi-select chips (shown only in Mode 2)
 - multi-select key chips
 - hand-mode chips
 - generated note-accidental toggle

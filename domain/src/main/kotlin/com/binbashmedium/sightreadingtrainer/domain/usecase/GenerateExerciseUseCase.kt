@@ -19,11 +19,13 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.Exercise
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseMode
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
+import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
 import kotlin.random.Random
 
 class GenerateExerciseUseCase {
@@ -31,9 +33,7 @@ class GenerateExerciseUseCase {
     private enum class ProgressionChordStyle {
         TRIAD,
         SEVENTH,
-        NINTH,
-        SUS2,
-        SUS4
+        NINTH
     }
 
     companion object {
@@ -96,20 +96,12 @@ class GenerateExerciseUseCase {
         val rightRoot = 60 + generatedKey
         val leftRoot = 48 + generatedKey
         val selectedTypes = settings.exerciseTypes.ifEmpty { setOf(ExerciseContentType.SINGLE_NOTES) }
-        val progressionModifierTypes = setOf(
-            ExerciseContentType.ARPEGGIOS,
-            ExerciseContentType.TRIADS,
-            ExerciseContentType.SEVENTHS,
-            ExerciseContentType.NINTHS,
-            ExerciseContentType.CLUSTERED_CHORDS
-        )
 
         // Progression steps are ordered (not shuffled) and built separately.
         val progressionSteps = buildProgressionSteps(settings, generatedKey, rightRoot, leftRoot, random)
 
-        // In progression mode, chord-shape types act as progression modifiers rather than separate material.
-        val nonProgressionTypes = if (ExerciseContentType.PROGRESSIONS in selectedTypes) {
-            selectedTypes - ExerciseContentType.PROGRESSIONS - progressionModifierTypes
+        val nonProgressionTypes = if (settings.exerciseMode == ExerciseMode.PROGRESSIONS) {
+            emptySet()
         } else {
             selectedTypes - ExerciseContentType.PROGRESSIONS
         }
@@ -202,12 +194,12 @@ class GenerateExerciseUseCase {
         leftRoot: Int,
         random: Random
     ): List<ExerciseStep> {
-        if (ExerciseContentType.PROGRESSIONS !in settings.exerciseTypes) return emptyList()
+        if (settings.exerciseMode != ExerciseMode.PROGRESSIONS) return emptyList()
 
         val selectedProgs = settings.selectedProgressions.ifEmpty { setOf(ChordProgression.I_IV_V_I) }
         val progression = selectedProgs.toList().random(random)
-        val chordStyles = progressionStylesForSettings(settings)
-        val arpeggiosEnabled = ExerciseContentType.ARPEGGIOS in settings.exerciseTypes
+        val chordStyles = progressionStylesForSettings(settings.progressionExerciseTypes)
+        val arpeggiosEnabled = ProgressionExerciseType.ARPEGGIOS in settings.progressionExerciseTypes
 
         val steps = progression.chords.flatMap { triadOffsets ->
             val style = chordStyles.random(random)
@@ -235,29 +227,17 @@ class GenerateExerciseUseCase {
         } else steps
     }
 
-    private fun progressionStylesForSettings(settings: AppSettings): List<ProgressionChordStyle> {
+    private fun progressionStylesForSettings(types: Set<ProgressionExerciseType>): List<ProgressionChordStyle> {
         val styles = mutableListOf<ProgressionChordStyle>()
-        val hasExplicitChordType = settings.exerciseTypes.any {
-            it == ExerciseContentType.TRIADS ||
-                it == ExerciseContentType.SEVENTHS ||
-                it == ExerciseContentType.NINTHS ||
-                it == ExerciseContentType.CLUSTERED_CHORDS
-        }
-
-        if (ExerciseContentType.TRIADS in settings.exerciseTypes || !hasExplicitChordType) {
+        if (ProgressionExerciseType.TRIADS in types) {
             styles += ProgressionChordStyle.TRIAD
         }
-        if (ExerciseContentType.SEVENTHS in settings.exerciseTypes) {
+        if (ProgressionExerciseType.SEVENTHS in types) {
             styles += ProgressionChordStyle.SEVENTH
         }
-        if (ExerciseContentType.NINTHS in settings.exerciseTypes) {
+        if (ProgressionExerciseType.NINTHS in types) {
             styles += ProgressionChordStyle.NINTH
         }
-        if (ExerciseContentType.CLUSTERED_CHORDS in settings.exerciseTypes) {
-            styles += ProgressionChordStyle.SUS2
-            styles += ProgressionChordStyle.SUS4
-        }
-
         return if (styles.isNotEmpty()) styles else listOf(ProgressionChordStyle.TRIAD)
     }
 
@@ -268,8 +248,6 @@ class GenerateExerciseUseCase {
         ProgressionChordStyle.TRIAD -> diatonicStackOffsets(rootOffset, tones = 3)
         ProgressionChordStyle.SEVENTH -> diatonicStackOffsets(rootOffset, tones = 4)
         ProgressionChordStyle.NINTH -> diatonicStackOffsets(rootOffset, tones = 5)
-        ProgressionChordStyle.SUS2 -> diatonicSuspendedOffsets(rootOffset, useFourth = false)
-        ProgressionChordStyle.SUS4 -> diatonicSuspendedOffsets(rootOffset, useFourth = true)
     }
 
     private fun diatonicStackOffsets(rootOffset: Int, tones: Int): List<Int> {
@@ -281,24 +259,6 @@ class GenerateExerciseUseCase {
             val scaleIndex = rootScaleIndex + toneIndex * 2
             val octaveShift = scaleIndex / SCALE_7.size
             SCALE_7[scaleIndex % SCALE_7.size] + octaveShift * 12
-        }
-    }
-
-    private fun diatonicSuspendedOffsets(rootOffset: Int, useFourth: Boolean): List<Int> {
-        val rootPitchClass = ((rootOffset % 12) + 12) % 12
-        val rootScaleIndex = SCALE_7.indexOf(rootPitchClass)
-        if (rootScaleIndex < 0) return listOf(rootOffset, rootOffset + if (useFourth) 5 else 2, rootOffset + 7)
-
-        fun scaleOffset(step: Int): Int {
-            val scaleIndex = rootScaleIndex + step
-            val octaveShift = scaleIndex / SCALE_7.size
-            return SCALE_7[scaleIndex % SCALE_7.size] + octaveShift * 12
-        }
-
-        return if (useFourth) {
-            listOf(scaleOffset(0), scaleOffset(3), scaleOffset(4))
-        } else {
-            listOf(scaleOffset(0), scaleOffset(1), scaleOffset(4))
         }
     }
 

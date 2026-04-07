@@ -25,9 +25,11 @@ import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseInputSource
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseMode
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
+import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -46,6 +48,8 @@ class SettingsDataStore @Inject constructor(
         val CHORD_WINDOW = intPreferencesKey("chord_window_ms")
         val EXERCISE_TIME_MIN = intPreferencesKey("exercise_time_min")
         val EXERCISE_TYPES = stringPreferencesKey("exercise_types")
+        val EXERCISE_MODE = stringPreferencesKey("exercise_mode")
+        val PROGRESSION_EXERCISE_TYPES = stringPreferencesKey("progression_exercise_types")
         val HAND_MODE = stringPreferencesKey("hand_mode")
         val NOTE_ACCIDENTALS_ENABLED = booleanPreferencesKey("note_accidentals_enabled")
         val PEDAL_EVENTS_ENABLED = booleanPreferencesKey("pedal_events_enabled")
@@ -71,15 +75,17 @@ class SettingsDataStore @Inject constructor(
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
+        val parsedExerciseTypes = parseExerciseTypes(
+            prefs[Keys.EXERCISE_TYPES],
+            prefs[intPreferencesKey("difficulty")] ?: 1
+        )
         AppSettings(
             midiDeviceName = prefs[Keys.MIDI_DEVICE] ?: "",
             timingToleranceMs = prefs[Keys.TIMING_TOLERANCE] ?: 200,
             chordWindowMs = prefs[Keys.CHORD_WINDOW] ?: 50,
             exerciseTimeMin = (prefs[Keys.EXERCISE_TIME_MIN] ?: 1).coerceIn(1, 10),
-            exerciseTypes = parseExerciseTypes(
-                prefs[Keys.EXERCISE_TYPES],
-                prefs[intPreferencesKey("difficulty")] ?: 1
-            ),
+            exerciseMode = parseExerciseMode(prefs[Keys.EXERCISE_MODE], parsedExerciseTypes),
+            exerciseTypes = parsedExerciseTypes - ExerciseContentType.PROGRESSIONS,
             handMode = HandMode.valueOf(prefs[Keys.HAND_MODE] ?: HandMode.RIGHT.name),
             noteAccidentalsEnabled = prefs[Keys.NOTE_ACCIDENTALS_ENABLED] ?: false,
             pedalEventsEnabled = prefs[Keys.PEDAL_EVENTS_ENABLED] ?: false,
@@ -96,6 +102,10 @@ class SettingsDataStore @Inject constructor(
                 prefs[Keys.MUSICAL_KEY] ?: 0
             ),
             selectedProgressions = parseProgressions(prefs[Keys.SELECTED_PROGRESSIONS]),
+            progressionExerciseTypes = parseProgressionExerciseTypes(
+                prefs[Keys.PROGRESSION_EXERCISE_TYPES],
+                parsedExerciseTypes
+            ),
             selectedNoteValues = parseNoteValues(prefs[Keys.SELECTED_NOTE_VALUES]),
             chordNamesEnabled = prefs[Keys.CHORD_NAMES_ENABLED] ?: false,
             bassNoteRangeMin = (prefs[Keys.BASS_NOTE_RANGE_MIN] ?: 28).coerceIn(28, 72),
@@ -114,6 +124,10 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.CHORD_WINDOW] = settings.chordWindowMs
             prefs[Keys.EXERCISE_TIME_MIN] = settings.exerciseTimeMin
             prefs[Keys.EXERCISE_TYPES] = settings.exerciseTypes.sortedBy { it.ordinal }.joinToString(",") { it.name }
+            prefs[Keys.EXERCISE_MODE] = settings.exerciseMode.name
+            prefs[Keys.PROGRESSION_EXERCISE_TYPES] = settings.progressionExerciseTypes
+                .sortedBy { it.ordinal }
+                .joinToString(",") { it.name }
             prefs[Keys.HAND_MODE] = settings.handMode.name
             prefs[Keys.NOTE_ACCIDENTALS_ENABLED] = settings.noteAccidentalsEnabled
             prefs[Keys.PEDAL_EVENTS_ENABLED] = settings.pedalEventsEnabled
@@ -230,3 +244,36 @@ internal fun parseSelectedOrnaments(raw: String?): Set<OrnamentType> =
 
 internal fun parseExerciseInputSource(raw: String?): ExerciseInputSource =
     ExerciseInputSource.entries.firstOrNull { it.name == raw?.trim() } ?: ExerciseInputSource.GENERATED
+
+internal fun parseExerciseMode(
+    raw: String?,
+    parsedExerciseTypes: Set<ExerciseContentType>
+): ExerciseMode {
+    val explicit = ExerciseMode.entries.firstOrNull { it.name == raw?.trim() }
+    if (explicit != null) return explicit
+    return if (ExerciseContentType.PROGRESSIONS in parsedExerciseTypes) {
+        ExerciseMode.PROGRESSIONS
+    } else {
+        ExerciseMode.CLASSIC
+    }
+}
+
+internal fun parseProgressionExerciseTypes(
+    raw: String?,
+    parsedExerciseTypes: Set<ExerciseContentType>
+): Set<ProgressionExerciseType> {
+    val parsed = raw
+        ?.split(",")
+        ?.mapNotNull { name -> ProgressionExerciseType.entries.find { it.name == name.trim() } }
+        ?.toSet()
+        .orEmpty()
+    if (parsed.isNotEmpty()) return parsed
+
+    val migrated = buildSet {
+        if (ExerciseContentType.TRIADS in parsedExerciseTypes) add(ProgressionExerciseType.TRIADS)
+        if (ExerciseContentType.SEVENTHS in parsedExerciseTypes) add(ProgressionExerciseType.SEVENTHS)
+        if (ExerciseContentType.NINTHS in parsedExerciseTypes) add(ProgressionExerciseType.NINTHS)
+        if (ExerciseContentType.ARPEGGIOS in parsedExerciseTypes) add(ProgressionExerciseType.ARPEGGIOS)
+    }
+    return if (migrated.isNotEmpty()) migrated else setOf(ProgressionExerciseType.TRIADS)
+}

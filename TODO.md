@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **Split progression generation into dedicated mode + fix progression-shape coupling bug** — keep classic exercise types (single notes → clustered chords) as mode 1, treat progressions as mode 2 with persistent selected progression patterns and optional triad/7th/9th/arpeggio voicing modifiers; add regression/unit tests for the new behavior.
 - [x] **Fix MEI rhythmic grouping/beaming output** — ensure consecutive eighth notes are rendered as grouped/beamed values and quarter-note spacing isn't fragmented by unnecessary subdivisions/rest insertions.
 - [x] **Remove obsolete barline-gap generation constraint + fix coroutine opt-in warnings** — allow eighth-note measure patterns per settings/default and annotate coroutine tests with required `@OptIn(ExperimentalCoroutinesApi::class)`.
 - [x] **Add arpeggios/progressions selection regression tests** — verify note-value selection is also honored for ARPEGGIOS and PROGRESSIONS generation paths.

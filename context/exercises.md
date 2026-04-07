@@ -17,7 +17,7 @@ data class Exercise(
 
 ## GenerateExerciseUseCase (`domain/usecase/GenerateExerciseUseCase.kt`)
 
-Creates an `Exercise` from current `AppSettings` using selected exercise content types, `handMode`, a selected-key pool, and `DEFAULT_EXERCISE_MEASURES = 16`.
+Creates an `Exercise` from current `AppSettings` using `exerciseMode`, selected content/voicing types, `handMode`, a selected-key pool, and `DEFAULT_EXERCISE_MEASURES = 16`.
 
 The generator chooses one key from the selected key pool (or an externally forced key for in-session rollover), transposes the material by that key, then builds `DEFAULT_EXERCISE_MEASURES = 16` measures. Each measure is assigned a random uniform note-value pattern (WHOLE, 2×HALF, 4×QUARTER, 8×EIGHTH) via `applyMeasurePatterns()`. A raw material pool of up to `MATERIAL_POOL_SIZE = 128` steps is generated first (enough for worst-case 16 measures × 8 eighths).
 Each generated step is tagged with its source exercise type (`ExerciseStep.contentType`) so runtime statistics can be grouped the same way as settings.
@@ -25,9 +25,9 @@ Each generated step is tagged with its source exercise type (`ExerciseStep.conte
 Exercises now use timed steps that can carry note groups, explicit note accidentals, and optional sustain-pedal actions per beat.
 When note accidentals are disabled, generated notes are constrained to the current key's major scale, preventing out-of-scale labels (for example `Bb` in C major without an accidental).
 
-### Exercise type pool
+### Exercise mode pool
 
-The generator builds each exercise from a selected pool of content types, for example:
+**Mode 1 (Classic):** uses `exerciseTypes` and mixes selected material:
 - single notes
 - octaves
 - thirds
@@ -38,9 +38,13 @@ The generator builds each exercise from a selected pool of content types, for ex
 - ninths
 - clustered chords
 
-Chord-based material may also be emitted as arpeggio patterns instead of only stacked simultaneous notes.
+**Mode 2 (Progressions):** ignores classic type mixing and generates only ordered progression steps from `selectedProgressions`, with voicing modifiers from `progressionExerciseTypes`:
+- TRIADS
+- SEVENTHS
+- NINTHS
+- ARPEGGIOS (can split chords into single-note runs)
 
-If multiple types are selected, the generated exercise mixes them together. For example, selecting single notes and triads produces an exercise that contains both.
+In Mode 2, selected progression names are always preserved; only voicing style changes.
 
 ### Hand-mode behavior
 
