@@ -1,6 +1,8 @@
 # TODO
 
 ## In Progress
+- [x] **Temporär signierten Release-Bundle-Build im normalen CI aktivieren** — Keystore-Restore und Signed `bundleRelease` auch außerhalb des `release`-Events aktiviert, bis die Pipeline grün bestätigt ist; danach wieder auf nur `release` zurückbauen.
+- [x] **Fix KEYSTORE_BASE64 decode in CI/Release workflows** — Base64-Restore robust gegen Newlines/Whitespace gemacht und Release-Bundle-Pfad für PR-Checks abgesichert, während Upload weiterhin nur im `release`-Event läuft.
 - [x] **Komplette Multi-Source-Architektur** — Input-Pipeline für Generator und Noten-Datenbank finalisieren (Source-Selektion bis UI/Settings), Domain-konforme Datenbank-Modelle einführen und Tests für Selektion/Mapping erweitern.
 - [x] **ExerciseSource Architektur in Code** — Generator als austauschbare Quelle kapseln und Option für Datenbank-basierte Übungsquelle im Repository/Settings-Pfad ergänzen (inkl. Tests).
 - [x] **Architektur-Doku: alternative Input-Quellen** — Architekturfluss `Generator -> ChordDetector -> Anzeige` dokumentiert und um Vorschlag zur Erweiterung mit austauschbarer Input-Quelle (z. B. Notendatenbank) inkl. gängiger Notenformate ergänzt.

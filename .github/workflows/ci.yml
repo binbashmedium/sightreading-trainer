@@ -92,8 +92,8 @@ jobs:
           retention-days: 14
 
   release-bundle:
-    name: Upload AAB to release
-    if: github.event_name == 'release'
+    name: Build release AAB (upload on release)
+    if: github.event_name == 'release' || github.event_name == 'pull_request' || github.event_name == 'push'
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -122,7 +122,9 @@ jobs:
             echo "Missing required secret: KEYSTORE_BASE64" >&2
             exit 1
           fi
-          echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/upload-keystore.jks
+          CLEANED_BASE64="$(printf '%s' "$KEYSTORE_BASE64" | tr -d '\r\n\t ')"
+          printf '%s' "$CLEANED_BASE64" | base64 --decode > /tmp/upload-keystore.jks
+          keytool -list -keystore /tmp/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" >/dev/null
 
       - name: Build release app bundle
         env:
@@ -133,6 +135,7 @@ jobs:
         run: ./gradlew :app:bundleRelease --no-daemon
 
       - name: Upload AAB to GitHub release
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/bundle/release/app-release.aab

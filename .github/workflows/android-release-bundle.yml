@@ -42,7 +42,9 @@ jobs:
             echo "Missing required secret: KEYSTORE_BASE64" >&2
             exit 1
           fi
-          echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/upload-keystore.jks
+          CLEANED_BASE64="$(printf '%s' "$KEYSTORE_BASE64" | tr -d '\r\n\t ')"
+          printf '%s' "$CLEANED_BASE64" | base64 --decode > /tmp/upload-keystore.jks
+          keytool -list -keystore /tmp/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" >/dev/null
 
       - name: Build release app bundle
         env:
