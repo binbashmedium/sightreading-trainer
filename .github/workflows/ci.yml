@@ -147,8 +147,8 @@ jobs:
           path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           retention-days: 14
 
-  release-apk:
-    name: Upload APK to release
+  release-bundle:
+    name: Build release AAB (upload on release)
     if: github.event_name == 'release'
     needs: [test, practice-screenshot]
     runs-on: ubuntu-latest
@@ -170,20 +170,61 @@ jobs:
       - name: Override Java home for Gradle
         run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Restore upload keystore from Base64 secret
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "Missing required secret: KEYSTORE_BASE64" >&2
+            exit 1
+          fi
+          if [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "Missing required secret: KEYSTORE_PASSWORD" >&2
+            exit 1
+          fi
+          if [ -z "$KEY_ALIAS" ]; then
+            echo "Missing required secret: KEY_ALIAS" >&2
+            exit 1
+          fi
+          python - <<'PY'
+          import base64
+          import binascii
+          import os
+          import pathlib
+          import re
+          import sys
 
-      - name: Download practice screenshot (emulator)
-        continue-on-error: true  # practice-screenshot may have failed
-        uses: actions/download-artifact@v4
-        with:
-          name: practice-screenshot
-          path: release-screenshots/practice/
+          raw = os.environ["KEYSTORE_BASE64"]
+          cleaned = re.sub(r"\s+", "", raw)
+          try:
+              decoded = base64.b64decode(cleaned, validate=False)
+          except binascii.Error as exc:
+              print(f"Invalid KEYSTORE_BASE64: {exc}", file=sys.stderr)
+              sys.exit(1)
+          if not decoded:
+              print("Decoded keystore is empty", file=sys.stderr)
+              sys.exit(1)
+          pathlib.Path("/tmp/upload-keystore.jks").write_bytes(decoded)
+          PY
+          keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" >/dev/null
+          if ! keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            echo "Key alias '$KEY_ALIAS' not found in keystore. Available aliases:" >&2
+            keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" >&2
+            exit 1
+          fi
 
-      - name: Upload APK and screenshots to GitHub release
+      - name: Build release app bundle
+        env:
+          KEYSTORE_PATH: /tmp/upload-keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew :app:bundleRelease --no-daemon
+
+      - name: Upload AAB to GitHub release
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          fail_on_unmatched_files: false
-          files: |
-            app/build/outputs/apk/debug/app-debug.apk
-            release-screenshots/practice/practice_screen.png
+          files: app/build/outputs/bundle/release/app-release.aab

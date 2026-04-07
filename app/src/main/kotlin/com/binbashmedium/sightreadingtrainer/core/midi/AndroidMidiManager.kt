@@ -15,6 +15,7 @@
 package com.binbashmedium.sightreadingtrainer.core.midi
 
 import android.content.Context
+import android.os.Build
 import android.media.midi.MidiDevice
 import android.media.midi.MidiDeviceInfo
 import android.media.midi.MidiManager
@@ -97,7 +98,7 @@ class AndroidMidiManager @Inject constructor(
 
     init {
         refreshAvailableDeviceNames()
-        midiManager.registerDeviceCallback(deviceCallback, null)
+        registerDeviceCallback()
     }
 
     /** Returns the names of all currently attached MIDI devices. */
@@ -151,11 +152,33 @@ class AndroidMidiManager @Inject constructor(
         }
     }
 
+
+    private fun registerDeviceCallback() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            midiManager.registerDeviceCallback(
+                MidiManager.TRANSPORT_MIDI_BYTE_STREAM,
+                context.mainExecutor,
+                deviceCallback
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            midiManager.registerDeviceCallback(deviceCallback, null)
+        }
+    }
+
+    private fun getConnectedDevices(): List<MidiDeviceInfo> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            midiManager.getDevicesForTransport(MidiManager.TRANSPORT_MIDI_BYTE_STREAM).toList()
+        } else {
+            @Suppress("DEPRECATION")
+            midiManager.devices.toList()
+        }
+
     private fun handleDeviceTopologyChanged() {
         refreshAvailableDeviceNames()
         val shouldReconnect = synchronized(this) {
             val currentId = connectedDeviceId
-            if (currentId != null && midiManager.devices.none { it.id == currentId }) {
+            if (currentId != null && getConnectedDevices().none { it.id == currentId }) {
                 closeConnectionLocked()
             }
             outputPort == null
@@ -166,13 +189,13 @@ class AndroidMidiManager @Inject constructor(
     }
 
     private fun refreshAvailableDeviceNames() {
-        val names = midiManager.devices
+        val names = getConnectedDevices()
             .map { it.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unknown" }
         _availableDeviceNames.value = names
     }
 
     private fun resolveTargetDeviceInfo(): MidiDeviceInfo? {
-        val devices = midiManager.devices
+        val devices = getConnectedDevices()
         val desired = desiredDeviceName
         return if (desired.isNullOrBlank()) {
             devices.firstOrNull()
