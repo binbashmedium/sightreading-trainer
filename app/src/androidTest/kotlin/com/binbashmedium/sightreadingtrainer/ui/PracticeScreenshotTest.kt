@@ -96,22 +96,29 @@ class PracticeScreenshotTest {
         }
 
         // Regenerate the exercise so it uses the max config written above.
+        // Reset the render signal BEFORE triggering the new exercise so we don't
+        // accidentally read a stale 'true' from any earlier render.
+        VerovioRenderSignal.rendered = false
         composeTestRule
             .onNodeWithText("New Exercise")
             .performClick()
 
-        // Allow the Verovio WebView to complete its first render pass.
-        // The WebView loads the JS bundle and renders MEI asynchronously;
-        // 15 s gives it enough headroom even on a cold emulator.
-        Thread.sleep(15_000)
+        // Wait until staff.html calls Android.onRendered() — i.e., the Verovio SVG is actually
+        // in the DOM. On a cold emulator the 6.7 MB WASM can take 30–60 s to JIT-compile, so
+        // a fixed sleep is unreliable. Allow up to 120 s before giving up.
+        val deadline = System.currentTimeMillis() + 120_000L
+        while (!VerovioRenderSignal.rendered && System.currentTimeMillis() < deadline) {
+            Thread.sleep(2_000)
+        }
+
+        // Extra half-second for the SVG layout/paint to propagate to the display.
+        Thread.sleep(500)
 
         // Capture the full screen while the app is still in the foreground.
-        // Using executeShellCommand so the screenshot is taken synchronously
-        // before the test runner can navigate away.
         val device = UiDevice.getInstance(instrumentation)
         device.executeShellCommand("screencap -p /sdcard/practice_screen.png")
 
-        // Brief pause to ensure the screencap command completes before the test ends
+        // Brief pause to ensure the screencap file is fully written before the test exits.
         Thread.sleep(500)
     }
 }
