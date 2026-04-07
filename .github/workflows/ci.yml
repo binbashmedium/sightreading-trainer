@@ -144,8 +144,8 @@ jobs:
 # Stage 2 – parallel (both jobs start as soon as build finishes)
 # ─────────────────────────────────────────────────────────────────────────────
 
-  practice-screenshot:
-    name: Capture Practice Screen screenshot (emulator)
+  screenshots:
+    name: Capture all-screen screenshots (emulator)
     needs: build
     runs-on: ubuntu-latest
     continue-on-error: true  # emulator flakiness must not block the release
@@ -169,7 +169,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run practice screenshot test on emulator
+      - name: Run all-screen screenshot test on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           # API 34 ships with a modern Chromium-based WebView that has a full
@@ -183,19 +183,24 @@ jobs:
           script: |
             adb install -r apks/app-debug.apk
             adb install -r apks/app-debug-androidTest.apk
-            adb shell am instrument -w -e class com.binbashmedium.sightreadingtrainer.ui.PracticeScreenshotTest com.binbashmedium.sightreadingtrainer.test/androidx.test.runner.AndroidJUnitRunner
-            adb pull /sdcard/practice_screen.png practice_screen.png
+            adb shell am instrument -w -e class com.binbashmedium.sightreadingtrainer.ui.ScreenshotCaptureTest com.binbashmedium.sightreadingtrainer.test/androidx.test.runner.AndroidJUnitRunner
+            mkdir -p screenshots
+            adb pull /sdcard/screenshot_main.png screenshots/screenshot_main.png || true
+            adb pull /sdcard/screenshot_settings.png screenshots/screenshot_settings.png || true
+            adb pull /sdcard/screenshot_statistics.png screenshots/screenshot_statistics.png || true
+            adb pull /sdcard/screenshot_help.png screenshots/screenshot_help.png || true
+            adb pull /sdcard/screenshot_practice.png screenshots/screenshot_practice.png || true
 
-      - name: Upload practice screenshot
+      - name: Upload screenshots artifact
         uses: actions/upload-artifact@v4
         with:
-          name: practice-screenshot
-          path: practice_screen.png
+          name: app-screenshots
+          path: screenshots/
           retention-days: 14
 
   publish-release:
     name: Publish release to GitHub
-    needs: build
+    needs: [build, screenshots]
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
@@ -207,7 +212,16 @@ jobs:
           name: app-release-aab
           path: release
 
-      - name: Upload AAB to GitHub release
+      - name: Download screenshots
+        uses: actions/download-artifact@v4
+        with:
+          name: app-screenshots
+          path: release/screenshots
+        continue-on-error: true  # screenshots job is best-effort
+
+      - name: Upload AAB and screenshots to GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/app-release.aab
+          files: |
+            release/app-release.aab
+            release/screenshots/*.png
