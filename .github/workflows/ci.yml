@@ -99,9 +99,7 @@ jobs:
           profile: pixel_5
           disable-animations: true
           script: |
-            ./gradlew :app:connectedDebugAndroidTest \
-              -Pandroid.testInstrumentationRunnerArguments.class=com.binbashmedium.sightreadingtrainer.ui.PracticeScreenshotTest \
-              --no-daemon
+            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.binbashmedium.sightreadingtrainer.ui.PracticeScreenshotTest --no-daemon
             adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/practice_screen.png ./practice_screen.png
 
       - name: Upload practice screenshot artifact
