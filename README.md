@@ -12,6 +12,58 @@ An Android app that helps pianists and keyboard players build fluent music sight
 - Session statistics screen
 - Auto-reconnect for USB and Bluetooth MIDI devices
 
+## Architecture (Generator → Chord Detection → Display)
+
+Current runtime flow:
+
+1. **Exercise generation** (`GenerateExerciseUseCase`) creates an `Exercise` (list of `ExerciseStep`s with MIDI notes, rhythm values, pedal and ornaments).
+2. **PracticeViewModel** starts the generated exercise through `PracticeSessionUseCase`.
+3. **Android MIDI input** is captured by `AndroidMidiManager` as `NoteEvent` / pedal events.
+4. **ChordDetector** groups near-simultaneous note-on events inside a time window into one `PerformanceInput`.
+5. **PracticeSessionUseCase** compares the grouped player input to the expected current `ExerciseStep`.
+6. **PracticeScreen / VerovioStaffView** render notation and feedback colors from mapped UI state.
+
+In short: **generated target notes** + **detected played chord input** -> **matching** -> **visual feedback**.
+
+### Extending architecture for non-generator note input (e.g., note database)
+
+To support alternative sources (database/import) without coupling UI/domain to one source, introduce a small abstraction:
+
+- `ExerciseSource` interface (example):  
+  `fun load(settings: AppSettings, forcedKey: Int? = null): Exercise`
+- Implementations:
+  - `GeneratedExerciseSource` (current behavior using `GenerateExerciseUseCase`)
+  - `DatabaseExerciseSource` (reads from `ExerciseLibraryRepository` and maps storage models to domain)
+  - later: `FileImportExerciseSource` (MusicXML/MIDI from file)
+
+Then keep the rest unchanged:
+
+- `PracticeViewModel` requests an `Exercise` from `ExerciseSource`.
+- `ChordDetector`, `PracticeSessionUseCase`, and rendering pipeline continue to operate on the same domain model (`ExerciseStep` with MIDI note lists).
+
+This keeps one stable **canonical internal format** while allowing multiple upstream providers.
+
+Implemented in code:
+
+- `AppSettings.exerciseInputSource` selects `GENERATED` or `DATABASE`.
+- `SettingsScreen` exposes source selection, persisted by `SettingsDataStore`.
+- `ExerciseRepository` routes to `GeneratedExerciseSource` or `DatabaseExerciseSource` with generated fallback.
+- `PracticeViewModel` remains unchanged and still consumes `ExerciseRepository.generateExercise(...)`.
+
+### Recommended external score formats
+
+For importing from a note database, common formats are:
+
+- **MusicXML / compressed MXL** (best for notation semantics: measures, voices, articulations, ties, key/time signatures).
+- **MIDI (.mid)** (best for timing/performance events; weaker notation semantics than MusicXML).
+- **MEI** (rich scholarly notation format; useful if your tooling already uses MEI).
+
+Practical recommendation for this app:
+
+- Use **MusicXML** as primary exchange format for database storage/import.
+- Convert imported data into internal `ExerciseStep` objects (`notes: List<Int>`, `noteValue`, pedal, ornaments).
+- Optionally support **MIDI** as secondary import path by quantizing to note values and mapping simultaneous note-ons to chords.
+
 ## Requirements
 
 - Android 10 (API 29) or later

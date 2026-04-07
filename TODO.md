@@ -2,6 +2,9 @@
 
 ## In Progress
 
+- [x] **Komplette Multi-Source-Architektur** — Input-Pipeline für Generator und Noten-Datenbank finalisieren (Source-Selektion bis UI/Settings), Domain-konforme Datenbank-Modelle einführen und Tests für Selektion/Mapping erweitern.
+- [x] **ExerciseSource Architektur in Code** — Generator als austauschbare Quelle kapseln und Option für Datenbank-basierte Übungsquelle im Repository/Settings-Pfad ergänzen (inkl. Tests).
+- [x] **Architektur-Doku: alternative Input-Quellen** — Architekturfluss `Generator -> ChordDetector -> Anzeige` dokumentiert und um Vorschlag zur Erweiterung mit austauschbarer Input-Quelle (z. B. Notendatenbank) inkl. gängiger Notenformate ergänzt.
 - [x] **Google Play Release Bundle** — Dokumentation und Release-Workflow für ein signiertes Android App Bundle (`.aab`) ergänzt: `README.md` enthält `bundleRelease` inkl. Output-Pfad und Keystore-Umgebungsvariablen; `fastlane/Fastfile` enthält Lane `build_release_bundle`.
 - [x] **GitHub Actions Release Bundle** — Manueller Workflow `.github/workflows/android-release-bundle.yml` ergänzt (Restore von `KEYSTORE_BASE64` nach `/tmp/upload-keystore.jks`, `bundleRelease` mit Signing-Secrets, Upload von `app-release.aab` als Artifact) und README um Secret-/Setup-Anleitung erweitert.
 

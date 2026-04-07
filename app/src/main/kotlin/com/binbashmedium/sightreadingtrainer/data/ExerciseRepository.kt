@@ -16,14 +16,25 @@ package com.binbashmedium.sightreadingtrainer.data
 
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.Exercise
-import com.binbashmedium.sightreadingtrainer.domain.usecase.GenerateExerciseUseCase
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseInputSource
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ExerciseRepository @Inject constructor(
-    private val generateExerciseUseCase: GenerateExerciseUseCase
+    generatedExerciseSource: GeneratedExerciseSource,
+    databaseExerciseSource: DatabaseExerciseSource
 ) {
-    fun generateExercise(settings: AppSettings, forcedKey: Int? = null): Exercise =
-        generateExerciseUseCase.execute(settings, forcedKey)
+    private val sourcesByType: Map<ExerciseInputSource, ExerciseSource> =
+        listOf(generatedExerciseSource, databaseExerciseSource).associateBy { it.sourceType }
+
+    fun generateExercise(settings: AppSettings, forcedKey: Int? = null): Exercise {
+        val selectedSource = sourcesByType[settings.exerciseInputSource]
+            ?: sourcesByType.getValue(ExerciseInputSource.GENERATED)
+        val selectedResult = selectedSource.load(settings, forcedKey)
+        if (selectedResult.steps.isNotEmpty() || settings.exerciseInputSource == ExerciseInputSource.GENERATED) {
+            return selectedResult
+        }
+        return sourcesByType.getValue(ExerciseInputSource.GENERATED).load(settings, forcedKey)
+    }
 }

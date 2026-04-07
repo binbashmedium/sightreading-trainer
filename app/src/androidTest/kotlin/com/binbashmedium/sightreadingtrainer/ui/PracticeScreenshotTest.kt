@@ -27,6 +27,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseInputSource
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import dagger.hilt.android.EntryPointAccessors
@@ -69,6 +70,7 @@ class PracticeScreenshotTest {
 
         val maxConfig = AppSettings(
             exerciseTypes = ExerciseContentType.entries.toSet(),
+            exerciseInputSource = ExerciseInputSource.GENERATED,
             handMode = HandMode.BOTH,
             noteAccidentalsEnabled = true,
             pedalEventsEnabled = true,
