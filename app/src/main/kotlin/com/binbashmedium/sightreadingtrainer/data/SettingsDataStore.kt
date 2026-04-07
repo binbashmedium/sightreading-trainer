@@ -24,6 +24,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseInputSource
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
@@ -66,6 +67,7 @@ class SettingsDataStore @Inject constructor(
         val TREBLE_NOTE_RANGE_MIN = intPreferencesKey("treble_note_range_min")
         val TREBLE_NOTE_RANGE_MAX = intPreferencesKey("treble_note_range_max")
         val SELECTED_ORNAMENTS = stringPreferencesKey("selected_ornaments")
+        val EXERCISE_INPUT_SOURCE = stringPreferencesKey("exercise_input_source")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -100,7 +102,8 @@ class SettingsDataStore @Inject constructor(
             bassNoteRangeMax = (prefs[Keys.BASS_NOTE_RANGE_MAX] ?: 60).coerceIn(28, 72),
             trebleNoteRangeMin = (prefs[Keys.TREBLE_NOTE_RANGE_MIN] ?: 60).coerceIn(48, 93),
             trebleNoteRangeMax = (prefs[Keys.TREBLE_NOTE_RANGE_MAX] ?: 84).coerceIn(48, 93),
-            selectedOrnaments = parseSelectedOrnaments(prefs[Keys.SELECTED_ORNAMENTS])
+            selectedOrnaments = parseSelectedOrnaments(prefs[Keys.SELECTED_ORNAMENTS]),
+            exerciseInputSource = parseExerciseInputSource(prefs[Keys.EXERCISE_INPUT_SOURCE])
         )
     }
 
@@ -135,6 +138,7 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.TREBLE_NOTE_RANGE_MAX] = settings.trebleNoteRangeMax
             prefs[Keys.SELECTED_ORNAMENTS] = settings.selectedOrnaments
                 .sortedBy { it.ordinal }.joinToString(",") { it.name }
+            prefs[Keys.EXERCISE_INPUT_SOURCE] = settings.exerciseInputSource.name
         }
     }
 
@@ -223,3 +227,6 @@ internal fun parseSelectedOrnaments(raw: String?): Set<OrnamentType> =
         ?.mapNotNull { name -> OrnamentType.entries.find { it.name == name.trim() && it != OrnamentType.NONE } }
         ?.toSet()
         .orEmpty()
+
+internal fun parseExerciseInputSource(raw: String?): ExerciseInputSource =
+    ExerciseInputSource.entries.firstOrNull { it.name == raw?.trim() } ?: ExerciseInputSource.GENERATED

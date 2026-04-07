@@ -31,6 +31,7 @@ import com.binbashmedium.sightreadingtrainer.R
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseInputSource
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
@@ -72,6 +73,19 @@ fun SettingsScreen(
                         viewModel.updateSettings(settings.copy(exerciseTypes = updatedTypes))
                     },
                     label = { Text(type.name.replace('_', ' ')) }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("Exercise Input Source")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ExerciseInputSource.entries.forEach { source ->
+                FilterChip(
+                    selected = settings.exerciseInputSource == source,
+                    onClick = { viewModel.updateSettings(settings.copy(exerciseInputSource = source)) },
+                    label = { Text(source.name.lowercase().replaceFirstChar { it.uppercase() }) }
                 )
             }
         }
