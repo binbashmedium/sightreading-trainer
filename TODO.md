@@ -1,6 +1,7 @@
 # TODO
 
 ## In Progress
+- [x] **CI compile regression after MIDI deprecation cleanup** — fixed AndroidMidiManager API 33+ callback registration to use the required transport + executor + callback signature so app debug/release Kotlin compilation can proceed.
 - [x] **Build warnings cleanup (MIDI deprecations)** — replaced deprecated `MidiManager.registerDeviceCallback(..., Handler)` and `MidiManager.devices` usage in `AndroidMidiManager` with API-level safe non-deprecated APIs and attempted build/tests/APK verification (blocked by missing Android SDK in CI container).
 - [x] **Komplette Multi-Source-Architektur** — Input-Pipeline für Generator und Noten-Datenbank finalisieren (Source-Selektion bis UI/Settings), Domain-konforme Datenbank-Modelle einführen und Tests für Selektion/Mapping erweitern.
 - [x] **ExerciseSource Architektur in Code** — Generator als austauschbare Quelle kapseln und Option für Datenbank-basierte Übungsquelle im Repository/Settings-Pfad ergänzen (inkl. Tests).

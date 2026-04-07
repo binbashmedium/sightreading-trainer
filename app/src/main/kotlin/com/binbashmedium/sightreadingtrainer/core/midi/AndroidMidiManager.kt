@@ -155,7 +155,11 @@ class AndroidMidiManager @Inject constructor(
 
     private fun registerDeviceCallback() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            midiManager.registerDeviceCallback(context.mainExecutor, deviceCallback)
+            midiManager.registerDeviceCallback(
+                MidiManager.TRANSPORT_MIDI_BYTE_STREAM,
+                context.mainExecutor,
+                deviceCallback
+            )
         } else {
             @Suppress("DEPRECATION")
             midiManager.registerDeviceCallback(deviceCallback, null)
