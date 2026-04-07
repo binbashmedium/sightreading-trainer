@@ -33,6 +33,31 @@ import kotlin.random.Random
 class GenerateExerciseUseCaseTest {
 
     private val useCase = GenerateExerciseUseCase()
+    private val nonArpeggioNonProgressionTypes = listOf(
+        ExerciseContentType.SINGLE_NOTES,
+        ExerciseContentType.OCTAVES,
+        ExerciseContentType.THIRDS,
+        ExerciseContentType.FIFTHS,
+        ExerciseContentType.SIXTHS,
+        ExerciseContentType.TRIADS,
+        ExerciseContentType.SEVENTHS,
+        ExerciseContentType.NINTHS,
+        ExerciseContentType.CLUSTERED_CHORDS
+    )
+
+    private fun matchesExpectedShape(contentType: ExerciseContentType, notes: List<Int>): Boolean = when (contentType) {
+        ExerciseContentType.SINGLE_NOTES -> notes.size == 1
+        ExerciseContentType.OCTAVES,
+        ExerciseContentType.THIRDS,
+        ExerciseContentType.FIFTHS,
+        ExerciseContentType.SIXTHS -> notes.size == 2
+        ExerciseContentType.TRIADS -> notes.size == 3
+        ExerciseContentType.SEVENTHS -> notes.size == 4
+        ExerciseContentType.NINTHS -> notes.size == 5
+        ExerciseContentType.CLUSTERED_CHORDS -> notes.size >= 3
+        ExerciseContentType.ARPEGGIOS,
+        ExerciseContentType.PROGRESSIONS -> true
+    }
 
     @Test
     fun `single notes right hand generate treble-range notes`() {
@@ -89,9 +114,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `whole half and quarter note values can appear in generated exercises`() {
-        // EIGHTH notes are excluded by the bar-line gap constraint (8×EIGHTH last note at beat 3.5
-        // exceeds maxLastBeat = BEATS_PER_MEASURE - BARLINE_GAP_BEATS = 4.0 - 1.0 = 3.0).
+    fun `all note values can appear in generated exercises`() {
         val allValues = mutableSetOf<NoteValue>()
         repeat(100) { seed ->
             val exercise = useCase.execute(
@@ -100,7 +123,59 @@ class GenerateExerciseUseCaseTest {
             )
             exercise.steps.forEach { allValues += it.noteValue }
         }
-        assertEquals(setOf(NoteValue.WHOLE, NoteValue.HALF, NoteValue.QUARTER), allValues)
+        assertEquals(NoteValue.entries.toSet(), allValues)
+    }
+
+    @Test
+    fun `selected single note value is always respected`() {
+        NoteValue.entries.forEachIndexed { seed, noteValue ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES),
+                    handMode = HandMode.RIGHT,
+                    selectedNoteValues = setOf(noteValue),
+                    selectedKeys = setOf(0)
+                ),
+                random = Random(seed)
+            )
+
+            assertTrue("Expected non-empty steps for $noteValue", exercise.steps.isNotEmpty())
+            assertTrue(
+                "Found non-$noteValue step when only $noteValue was selected",
+                exercise.steps.all { it.noteValue == noteValue }
+            )
+        }
+    }
+
+    @Test
+    fun `for each non arpeggio type and note value generation respects selected settings`() {
+        nonArpeggioNonProgressionTypes.forEach { contentType ->
+            NoteValue.entries.forEachIndexed { seed, noteValue ->
+                val exercise = useCase.execute(
+                    AppSettings(
+                        exerciseTypes = setOf(contentType),
+                        handMode = HandMode.RIGHT,
+                        selectedNoteValues = setOf(noteValue),
+                        selectedKeys = setOf(0)
+                    ),
+                    random = Random(seed + contentType.ordinal * 100)
+                )
+
+                assertTrue("Expected steps for $contentType with $noteValue", exercise.steps.isNotEmpty())
+                assertTrue(
+                    "Expected all steps to be tagged as $contentType",
+                    exercise.steps.all { it.contentType == contentType }
+                )
+                assertTrue(
+                    "Expected all note values to be $noteValue for $contentType",
+                    exercise.steps.all { it.noteValue == noteValue }
+                )
+                assertTrue(
+                    "Expected generated notes to match $contentType shape",
+                    exercise.steps.all { step -> matchesExpectedShape(contentType, step.notes) }
+                )
+            }
+        }
     }
 
     @Test
@@ -932,4 +1007,3 @@ class GenerateExerciseUseCaseTest {
         }
     }
 }
-

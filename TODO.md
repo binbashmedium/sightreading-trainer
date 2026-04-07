@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- [x] **Strengthen single-selection generation assertions** — verify that when exactly one note value and one content type are selected, generated steps also match the expected chord/note shape for that content type.
+- [x] **Fix eighth-note-only generation mismatch + add generator selection regression tests** — reproduce the eighth-only bug, ensure generated output always respects selected note/chord settings across generators, and add per-note-value plus per-chord×note-value unit tests (excluding arpeggios/progressions cross-matrix).
 - [x] **GitHub Actions Node 24 migration warnings beheben** — Workflows auf Node-24-kompatible Action-Versionen aktualisieren bzw. explizit Node 24 aktivieren, damit die CI-Warnung verschwindet.
 - [x] **CI compile regression after MIDI deprecation cleanup** — fixed AndroidMidiManager API 33+ callback registration to use the required transport + executor + callback signature so app debug/release Kotlin compilation can proceed.
 - [x] **Build warnings cleanup (MIDI deprecations)** — replaced deprecated `MidiManager.registerDeviceCallback(..., Handler)` and `MidiManager.devices` usage in `AndroidMidiManager` with API-level safe non-deprecated APIs and attempted build/tests/APK verification (blocked by missing Android SDK in CI container).
