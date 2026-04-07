@@ -1,6 +1,7 @@
 # TODO
 
 ## In Progress
+- [x] **Keystore-Alias im Workflow vor Gradle validieren** — CI prüft jetzt bereits im Restore-Schritt, ob `KEY_ALIAS` im Keystore existiert, damit `:app:signReleaseBundle` nicht erst spät fehlschlägt.
 - [x] **Base64-Decode robust gegen Garbage-Suffixe machen** — Keystore-Restore so angepasst, dass versehentliche Nicht-Base64-Zeichen (z. B. `%`) am Ende den Decode nicht mehr abbrechen lassen.
 - [x] **Temporär signierten Release-Bundle-Build im normalen CI aktivieren** — Keystore-Restore und Signed `bundleRelease` auch außerhalb des `release`-Events aktiviert, bis die Pipeline grün bestätigt ist; danach wieder auf nur `release` zurückbauen.
 - [x] **Fix KEYSTORE_BASE64 decode in CI/Release workflows** — Base64-Restore robust gegen Newlines/Whitespace gemacht und Release-Bundle-Pfad für PR-Checks abgesichert, während Upload weiterhin nur im `release`-Event läuft.

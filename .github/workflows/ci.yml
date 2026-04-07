@@ -117,9 +117,19 @@ jobs:
       - name: Restore upload keystore from Base64 secret
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
             echo "Missing required secret: KEYSTORE_BASE64" >&2
+            exit 1
+          fi
+          if [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "Missing required secret: KEYSTORE_PASSWORD" >&2
+            exit 1
+          fi
+          if [ -z "$KEY_ALIAS" ]; then
+            echo "Missing required secret: KEY_ALIAS" >&2
             exit 1
           fi
           python - <<'PY'
@@ -142,7 +152,12 @@ jobs:
               sys.exit(1)
           pathlib.Path("/tmp/upload-keystore.jks").write_bytes(decoded)
           PY
-          keytool -list -keystore /tmp/upload-keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" >/dev/null
+          keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" >/dev/null
+          if ! keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            echo "Key alias '$KEY_ALIAS' not found in keystore. Available aliases:" >&2
+            keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" >&2
+            exit 1
+          fi
 
       - name: Build release app bundle
         env:
