@@ -93,7 +93,7 @@ jobs:
 
   release-bundle:
     name: Build release AAB (upload on release)
-    if: github.event_name == 'release' || github.event_name == 'pull_request' || github.event_name == 'push'
+    if: github.event_name == 'release'
     needs: test
     runs-on: ubuntu-latest
     permissions:
