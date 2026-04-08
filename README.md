@@ -69,6 +69,26 @@ Practical recommendation for this app:
 - Android 10 (API 29) or later
 - A USB or Bluetooth MIDI keyboard (optional for exploring the app)
 
+## Local Android environment setup
+
+If you want to reproduce instrumentation/screenshot checks locally, ensure your Android SDK is configured before running Gradle.
+
+```bash
+export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
+export ANDROID_HOME="$ANDROID_SDK_ROOT"
+yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses
+"$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+  "platform-tools" \
+  "platforms;android-35" \
+  "build-tools;35.0.0"
+```
+
+Quick verification:
+
+```bash
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
+```
+
 ## License
 
 Copyright 2026 BinBashMedium

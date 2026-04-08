@@ -2,6 +2,9 @@
 
 ## In Progress
 
+- [x] **CodeQL-Workflow mit manueller Build-Phase ergänzen** — separaten `.github/workflows/codeql.yml` mit `github/codeql-action/*@v4`, manueller Kotlin-Kompilation und SARIF-Artifact-Upload hinzugefügt (Auto-Upload deaktiviert).
+- [x] **Lokales Android-SDK Setup in README dokumentieren** — `ANDROID_SDK_ROOT`/`ANDROID_HOME`, `sdkmanager` Pakete und lokaler Build-Check ergänzt.
+- [x] **Screenshot-Instrumentation gegen Emulator-Flakiness härten** — `ScreenshotCaptureTest` um Verovio-Warte-Logik und ANR-Dialog-Dismissal mit UIAutomator ergänzt.
 - [x] **Release-Screenshot-Upload auf Emulator-Screenshots umstellen** — `validation/screenshots20` gelöscht; Release-Upload nutzt jetzt `fastlane/metadata/android/*/images/phoneScreenshots/*.png` (Emulator-/Screengrab-Screenshots) statt Validation-Bildern.
 - [x] **Release-Workflow: Screenshots als Artifact mit hochladen** — Screenshot-Upload bleibt aktiv und hängt jetzt Emulator-/Fastlane-Screenshots zusätzlich zur `app-release.aab` an Release/Artifacts an.
 - [x] **CI-fail in GrandStaffModelsTest reproduzieren und beheben** — failing Root×Inversion-Matrix lokal mit `:app:test` verifiziert, Ursache isoliert und Testkriterien für mehrdeutige Akkordmengen korrigiert.
