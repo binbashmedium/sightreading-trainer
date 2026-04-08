@@ -689,7 +689,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `progression arpeggios stay inside current progression chord per step`() {
+    fun `progression arpeggios keep label roots in progression order and unlabeled tones inside last labeled chord`() {
         val exercise = useCase.execute(
             AppSettings(
                 exerciseMode = ExerciseMode.PROGRESSIONS,
@@ -709,8 +709,20 @@ class GenerateExerciseUseCaseTest {
             setOf(60, 64, 67)  // I
         )
 
-        exercise.steps.forEachIndexed { stepIndex, step ->
-            val expected = expectedChordSets[stepIndex % expectedChordSets.size]
+        val labeled = exercise.steps.filter { it.progressionLabelNotes != null }
+        assertTrue(labeled.isNotEmpty())
+        labeled.forEachIndexed { index, step ->
+            val expected = expectedChordSets[index % expectedChordSets.size]
+            assertTrue(step.progressionLabelNotes.orEmpty().all { it in expected })
+        }
+
+        var lastLabeledChord: Set<Int>? = null
+        exercise.steps.forEach { step ->
+            if (step.progressionLabelNotes != null) {
+                lastLabeledChord = step.progressionLabelNotes!!.toSet()
+                return@forEach
+            }
+            val expected = lastLabeledChord ?: return@forEach
             assertTrue(step.notes.all { it in expected })
         }
     }

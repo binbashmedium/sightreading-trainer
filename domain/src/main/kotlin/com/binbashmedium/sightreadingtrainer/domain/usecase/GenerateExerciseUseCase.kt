@@ -228,19 +228,34 @@ class GenerateExerciseUseCase {
         }
 
         val result = mutableListOf<ExerciseStep>()
-        noteValues.forEachIndexed { stepIndex, noteValue ->
-            val sourceChord = progressionSteps[stepIndex % progressionSteps.size]
-            val rendered = if (arpeggiosEnabled && random.nextBoolean()) {
-                singleArpeggiatedChordTone(sourceChord.notes, stepIndex, random)
+        var progressionIndex = 0
+        var noteCursor = 0
+        while (noteCursor < noteValues.size) {
+            val sourceChord = progressionSteps[progressionIndex % progressionSteps.size]
+            progressionIndex++
+
+            val renderedSteps = if (arpeggiosEnabled && random.nextBoolean()) {
+                arpeggiatedChordSequence(sourceChord.notes, random)
             } else {
-                sourceChord.notes
+                listOf(sourceChord.notes)
             }
-            result += sourceChord.copy(
-                notes = rendered,
-                noteAccidentals = List(rendered.size) { NoteAccidental.NONE },
-                progressionLabelNotes = sourceChord.progressionLabelNotes ?: sourceChord.notes,
-                noteValue = noteValue
-            )
+
+            renderedSteps.forEachIndexed { renderedIndex, renderedNotes ->
+                if (noteCursor >= noteValues.size) return@forEachIndexed
+                val noteValue = noteValues[noteCursor]
+                val labelNotes = if (renderedIndex == 0) {
+                    sourceChord.progressionLabelNotes ?: sourceChord.notes
+                } else {
+                    null
+                }
+                result += sourceChord.copy(
+                    notes = renderedNotes,
+                    noteAccidentals = List(renderedNotes.size) { NoteAccidental.NONE },
+                    progressionLabelNotes = labelNotes,
+                    noteValue = noteValue
+                )
+                noteCursor++
+            }
         }
         return result
     }
@@ -352,15 +367,14 @@ class GenerateExerciseUseCase {
         return (leftNotes + rightNotes).sorted()
     }
 
-    private fun singleArpeggiatedChordTone(notes: List<Int>, stepIndex: Int, random: Random): List<Int> {
+    private fun arpeggiatedChordSequence(notes: List<Int>, random: Random): List<List<Int>> {
         val sortedNotes = notes.sorted()
-        if (sortedNotes.size <= 1) return sortedNotes
+        if (sortedNotes.size <= 1) return listOf(sortedNotes)
 
         val contour = ARPEGGIO_CONTOURS.random(random)
         val filtered = contour.filter { it < sortedNotes.size }
         val effectiveIndices = if (filtered.isNotEmpty()) filtered else sortedNotes.indices.toList()
-        val noteIndex = effectiveIndices[stepIndex % effectiveIndices.size]
-        return listOf(sortedNotes[noteIndex])
+        return effectiveIndices.map { noteIndex -> listOf(sortedNotes[noteIndex]) }
     }
 
     /** Builds shuffled material for all non-progression types (existing logic). */

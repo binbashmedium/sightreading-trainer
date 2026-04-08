@@ -718,7 +718,7 @@ fun buildMeasureChordLabels(
     if (steps.isEmpty() || stepBeats.isEmpty()) return emptyList()
     if (steps.any { it.progressionLabelNotes != null }) {
         return steps.mapIndexedNotNull { index, step ->
-            val labelNotes = step.progressionLabelNotes ?: step.notes
+            val labelNotes = step.progressionLabelNotes ?: return@mapIndexedNotNull null
             if (labelNotes.isEmpty()) return@mapIndexedNotNull null
             val detected = detectChord(labelNotes)
                 ?: detectChordSuperset(labelNotes)
