@@ -2,6 +2,10 @@
 
 ## In Progress
 
+- [x] **Kover Coverage für Multi-Module einrichten** — Gradle-Konfiguration für `:domain` und `:app` so ergänzen, dass XML- und HTML-Coverage-Reports erzeugt werden.
+- [x] **CI um Coverage-Tasks und Artifact-Upload erweitern** — bestehenden CI-Workflow minimal-invasiv anpassen, Coverage in den Testlauf integrieren und Reports als Artifact hochladen.
+- [ ] **Lokale Validierung inkl. Tests, Coverage und APK-Build durchführen** — `:domain:test` läuft erfolgreich; `./gradlew test`, `./gradlew koverXmlReport koverHtmlReport` und `./gradlew assembleDebug` sind in dieser Umgebung ohne Android SDK (`ANDROID_HOME`/`sdk.dir`) blockiert.
+
 - [x] **Release-Screenshot-Upload auf Emulator-Screenshots umstellen** — `validation/screenshots20` gelöscht; Release-Upload nutzt jetzt `fastlane/metadata/android/*/images/phoneScreenshots/*.png` (Emulator-/Screengrab-Screenshots) statt Validation-Bildern.
 - [x] **Release-Workflow: Screenshots als Artifact mit hochladen** — Screenshot-Upload bleibt aktiv und hängt jetzt Emulator-/Fastlane-Screenshots zusätzlich zur `app-release.aab` an Release/Artifacts an.
 - [x] **CI-fail in GrandStaffModelsTest reproduzieren und beheben** — failing Root×Inversion-Matrix lokal mit `:app:test` verifiziert, Ursache isoliert und Testkriterien für mehrdeutige Akkordmengen korrigiert.
