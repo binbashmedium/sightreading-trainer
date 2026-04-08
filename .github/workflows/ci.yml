@@ -174,4 +174,6 @@ jobs:
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/bundle/release/app-release.aab
+          files: |
+            app/build/outputs/bundle/release/app-release.aab
+            fastlane/metadata/android/*/images/phoneScreenshots/*.png
