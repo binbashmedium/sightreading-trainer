@@ -2,6 +2,13 @@
 
 ## In Progress
 
+- [x] **CodeQL/Default-Setup Konflikt entschärfen** — SARIF-Upload im Advanced-Workflow deaktiviert; SARIF wird als Artifact bereitgestellt, um Fehler bei aktivem Default Setup zu vermeiden.
+- [x] **CodeQL Action auf v4 aktualisieren** — alle `github/codeql-action/*@v3` Vorkommen auf `@v4` angehoben (Deprecation-Warnung adressiert).
+- [x] **System-ANR-Dialoge aus Screenshots fernhalten** — Screenshot-Test erweitert: erkannte „isn't responding“-Dialoge werden vor jedem Capture automatisch mit „Wait"/Fallback behandelt.
+- [x] **Lokale Verifikation Practice-Screenshot mit Noten** — Testlogik weiter geschärft: explizit auf Verovio-Render-Signal warten, um leeren Staff im Screenshot zu vermeiden; lokaler Emulator-Run vorbereitet.
+- [x] **Practice-Screenshot mit sichtbaren Noten erzwingen** — Screenshot-Test angepasst: „New Exercise“ wird aktiv ausgelöst, auf Ende des Loading-Overlays gewartet und erst dann capturiert.
+- [x] **Lokales Android-SDK für Screenshot-Checks einrichten** — Android SDK lokal installiert und Build/AndroidTest-APK erfolgreich gebaut; benötigte Env-Variablen/Packages dokumentiert.
+- [ ] **Follow-up: CodeQL autobuild + screenshot refresh from Claude export** — reproduce requested branch changes, run local checks, refresh screenshots, and verify merge-from-main state.
 - [x] **CI compile regression after MIDI deprecation cleanup** — fixed AndroidMidiManager API 33+ callback registration to use the required transport + executor + callback signature so app debug/release Kotlin compilation can proceed.
 - [x] **Build warnings cleanup (MIDI deprecations)** — replaced deprecated `MidiManager.registerDeviceCallback(..., Handler)` and `MidiManager.devices` usage in `AndroidMidiManager` with API-level safe non-deprecated APIs and attempted build/tests/APK verification (blocked by missing Android SDK in CI container).
 - [x] **CI trigger wieder auf release-only zurückbauen** — Nach erfolgreicher Pipeline-Bestätigung den temporären Signed-Build auf Push/PR entfernt und wieder nur beim `release`-Event aktiviert.

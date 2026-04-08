@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import com.binbashmedium.sightreadingtrainer.MainActivity
 import com.binbashmedium.sightreadingtrainer.di.SettingsDataStoreEntryPoint
@@ -108,6 +109,7 @@ class ScreenshotCaptureTest {
     fun screenshot01_main() {
         waitFor("Start Practice")
         Thread.sleep(500)
+        dismissSystemAnrDialogs()
         captureScreen("screenshot_main.png")
     }
 
@@ -117,6 +119,7 @@ class ScreenshotCaptureTest {
         composeTestRule.onNodeWithText("Settings").performClick()
         waitFor("Back")                     // Settings screen ready
         Thread.sleep(500)
+        dismissSystemAnrDialogs()
         captureScreen("screenshot_settings.png")
     }
 
@@ -126,6 +129,7 @@ class ScreenshotCaptureTest {
         composeTestRule.onNodeWithText("Statistics").performClick()
         waitFor("Back")                     // Statistics screen ready
         Thread.sleep(500)
+        dismissSystemAnrDialogs()
         captureScreen("screenshot_statistics.png")
     }
 
@@ -135,6 +139,7 @@ class ScreenshotCaptureTest {
         composeTestRule.onNodeWithText("Help").performClick()
         waitFor("Back")                     // Help screen ready
         Thread.sleep(500)
+        dismissSystemAnrDialogs()
         captureScreen("screenshot_help.png")
     }
 
@@ -149,15 +154,20 @@ class ScreenshotCaptureTest {
             waitFor("Start Practice")
             composeTestRule.onNodeWithText("Start Practice").performClick()
 
-            // Wait for the practice header to appear ("New Exercise" button)
+            // Wait for practice controls and trigger a real exercise render
+            // so the screenshot actually contains notes on the staff.
             waitFor("New Exercise", timeoutMs = 20_000)
 
-            // Brief pause for GPU compositing to settle, then capture the
-            // initial practice state (empty staff + "New Exercise" button).
-            // We intentionally do NOT click "New Exercise" here: triggering a
-            // full exercise render would start WASM execution which is likely to
-            // OOM on the 2-core CI emulator even in landscape mode.
-            Thread.sleep(2_000)
+            // Force a fresh render cycle and wait for Verovio JS bridge signal.
+            VerovioRenderSignal.rendered = false
+            composeTestRule.onNodeWithText("New Exercise").performClick()
+
+            // Loading overlay may or may not become visible depending on timing,
+            // but render completion must be observed before capture.
+            waitUntilGone("Loading exercise…", timeoutMs = 45_000)
+            waitForVerovioRender(timeoutMs = 45_000)
+            Thread.sleep(1_500)
+            dismissSystemAnrDialogs()
             captureScreen("screenshot_practice.png")
         } finally {
             device.setOrientationNatural()
@@ -170,6 +180,39 @@ class ScreenshotCaptureTest {
         composeTestRule.waitUntil(timeoutMillis = timeoutMs) {
             composeTestRule.onAllNodesWithText(text)
                 .fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun waitUntilGone(text: String, timeoutMs: Long = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = timeoutMs) {
+            composeTestRule.onAllNodesWithText(text)
+                .fetchSemanticsNodes().isEmpty()
+        }
+    }
+
+    private fun waitForVerovioRender(timeoutMs: Long = 20_000) {
+        composeTestRule.waitUntil(timeoutMillis = timeoutMs) {
+            VerovioRenderSignal.rendered
+        }
+    }
+
+    private fun dismissSystemAnrDialogs(maxAttempts: Int = 6) {
+        repeat(maxAttempts) {
+            val anrTitle = device.findObject(By.textContains("isn't responding"))
+                ?: return
+
+            // Prefer "Wait" to keep the foreground app alive.
+            val waitButton = device.findObject(By.text("Wait"))
+            if (waitButton != null) {
+                waitButton.click()
+            } else {
+                val closeButton = device.findObject(By.text("Close app"))
+                if (closeButton != null) {
+                    closeButton.click()
+                }
+            }
+            device.waitForIdle()
+            Thread.sleep(600)
         }
     }
 

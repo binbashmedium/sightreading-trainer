@@ -151,3 +151,34 @@ base64 -w 0 upload-keystore.jks
 Den ausgegebenen String vollständig als Secret `KEYSTORE_BASE64` in GitHub eintragen.
 
 > Wichtig: Der Keystore darf **niemals** ins Repository committed werden.
+
+## Local Android environment setup (for screenshot/instrumentation checks)
+
+If you want to run the screenshot instrumentation flow locally (similar to CI), set up an Android SDK and export these variables:
+
+```bash
+export ANDROID_SDK_ROOT=/path/to/android-sdk
+export ANDROID_HOME=$ANDROID_SDK_ROOT
+export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator:$PATH
+echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+```
+
+Install required SDK components:
+
+```bash
+yes | sdkmanager --licenses
+sdkmanager \
+  "platform-tools" \
+  "platforms;android-34" \
+  "build-tools;34.0.0" \
+  "emulator" \
+  "system-images;android-34;google_apis;x86_64"
+```
+
+Then at minimum verify test APK buildability:
+
+```bash
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
+```
+
+Note: running emulator-based screenshot tests reliably usually requires hardware acceleration (KVM on Linux).
