@@ -598,6 +598,16 @@ class MeiConverterTest {
     }
 
     @Test
+    fun `harm renders roman numeral on second line when present`() {
+        val chord = Chord(name = "CM (I)", notes = listOf(60, 64, 67), startBeat = 0f)
+        val mei = MeiConverter.convert(
+            gameStateWithChords(listOf(chord)), 0f, BEATS_PER_MEASURE_UNITS,
+            showChordNames = true
+        )
+        assertTrue("Roman numeral should be placed on a new line", mei.contains("CM&#10;(I)"))
+    }
+
+    @Test
     fun `chord outside beat range not emitted as harm`() {
         val chord = Chord(name = "CM", notes = listOf(60, 64, 67), startBeat = 40f)
         val mei = MeiConverter.convert(

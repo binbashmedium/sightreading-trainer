@@ -135,6 +135,7 @@ $measuresXml    </section>
                 .replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
+                .replace(" (", "&#10;(")
             "        <harm tstamp=\"$tstamp\" staff=\"1\">$escapedName</harm>\n"
         }
 
