@@ -7,6 +7,11 @@ subprojects {
     apply(plugin = "org.jetbrains.kotlinx.kover")
 }
 
+dependencies {
+    kover(project(":domain"))
+    kover(project(":app"))
+}
+
 kover {
     reports {
         total {

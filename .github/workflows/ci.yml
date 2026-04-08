@@ -55,7 +55,7 @@ jobs:
         run: ./gradlew :app:test --no-daemon
 
       - name: Generate coverage reports (XML + HTML)
-        run: ./gradlew koverXmlReport koverHtmlReport --no-daemon
+        run: ./gradlew :domain:test :app:test koverXmlReport koverHtmlReport --no-daemon
 
       - name: Upload test results
         if: always()
