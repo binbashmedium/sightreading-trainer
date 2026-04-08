@@ -15,19 +15,18 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
 import com.binbashmedium.sightreadingtrainer.MainActivity
 import com.binbashmedium.sightreadingtrainer.di.SettingsDataStoreEntryPoint
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
-import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseInputSource
+import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import dagger.hilt.android.EntryPointAccessors
@@ -40,9 +39,10 @@ import java.io.File
 /**
  * Instrumented screenshot test that captures every screen of the app.
  *
- * Uses UiDevice.takeScreenshot() (PixelCopy API) instead of `adb screencap`
- * so hardware-accelerated WebView surfaces (Verovio WASM rendering) are
- * included correctly in the captured image.
+ * Uses UiDevice (UiAutomator) for all navigation — more reliable than
+ * Compose test's waitUntil across navigation transitions — and
+ * UiDevice.takeScreenshot() (PixelCopy API) for captures so that
+ * hardware-accelerated WebView surfaces (Verovio WASM) are included.
  *
  * Screens captured:
  *   1. MainScreen              → /sdcard/screenshot_main.png
@@ -50,17 +50,15 @@ import java.io.File
  *   3. StatisticsScreen        → /sdcard/screenshot_statistics.png
  *   4. HelpScreen              → /sdcard/screenshot_help.png
  *   5. PracticeScreen (staff)  → /sdcard/screenshot_practice.png
- *
- * CI pulls these files via:
- *   adb pull /sdcard/screenshot_main.png
- *   adb pull /sdcard/screenshot_settings.png
- *   ... etc.
  */
 @RunWith(AndroidJUnit4::class)
 class ScreenshotCaptureTest {
 
+    /** Only used to launch MainActivity; all interactions go through UiDevice. */
     @get:Rule
     val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    private val NAV_TIMEOUT_MS = 20_000L
 
     @Test
     fun captureAllScreens() {
@@ -68,8 +66,8 @@ class ScreenshotCaptureTest {
         val appContext = instrumentation.targetContext.applicationContext
         val device = UiDevice.getInstance(instrumentation)
 
-        // Write maximum configuration to DataStore so the practice screen
-        // renders with the most complex exercise content.
+        // Configure DataStore with max settings so practice renders
+        // the most complex exercise content.
         val settingsDataStore = EntryPointAccessors.fromApplication(
             appContext,
             SettingsDataStoreEntryPoint::class.java
@@ -90,70 +88,47 @@ class ScreenshotCaptureTest {
         runBlocking { settingsDataStore.updateSettings(maxConfig) }
 
         // ── 1. MainScreen ────────────────────────────────────────────────────
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Start Practice")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        Thread.sleep(300)
-        takeScreenshot(device, "/sdcard/screenshot_main.png")
+        device.wait(Until.hasObject(By.text("Start Practice")), NAV_TIMEOUT_MS)
+        Thread.sleep(500)
+        device.takeScreenshot(File("/sdcard/screenshot_main.png"), 1.0f, 100)
 
         // ── 2. SettingsScreen ────────────────────────────────────────────────
-        composeTestRule.onNodeWithText("Settings").performClick()
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Back")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        Thread.sleep(300)
-        takeScreenshot(device, "/sdcard/screenshot_settings.png")
-        composeTestRule.onNodeWithText("Back").performClick()
+        device.findObject(By.text("Settings")).click()
+        device.wait(Until.hasObject(By.text("Back")), NAV_TIMEOUT_MS)
+        Thread.sleep(500)
+        device.takeScreenshot(File("/sdcard/screenshot_settings.png"), 1.0f, 100)
+        // Use system back — more reliable than finding the "Back" button node
+        device.pressBack()
 
         // ── 3. StatisticsScreen ──────────────────────────────────────────────
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Start Practice")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText("Statistics").performClick()
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Back")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        Thread.sleep(300)
-        takeScreenshot(device, "/sdcard/screenshot_statistics.png")
-        composeTestRule.onNodeWithText("Back").performClick()
+        device.wait(Until.hasObject(By.text("Statistics")), NAV_TIMEOUT_MS)
+        device.findObject(By.text("Statistics")).click()
+        device.wait(Until.hasObject(By.text("Back")), NAV_TIMEOUT_MS)
+        Thread.sleep(500)
+        device.takeScreenshot(File("/sdcard/screenshot_statistics.png"), 1.0f, 100)
+        device.pressBack()
 
         // ── 4. HelpScreen ────────────────────────────────────────────────────
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Start Practice")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText("Help").performClick()
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Back")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        Thread.sleep(300)
-        takeScreenshot(device, "/sdcard/screenshot_help.png")
-        composeTestRule.onNodeWithText("Back").performClick()
+        device.wait(Until.hasObject(By.text("Help")), NAV_TIMEOUT_MS)
+        device.findObject(By.text("Help")).click()
+        device.wait(Until.hasObject(By.text("Back")), NAV_TIMEOUT_MS)
+        Thread.sleep(500)
+        device.takeScreenshot(File("/sdcard/screenshot_help.png"), 1.0f, 100)
+        device.pressBack()
 
         // ── 5. PracticeScreen ────────────────────────────────────────────────
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Start Practice")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText("Start Practice").performClick()
+        device.wait(Until.hasObject(By.text("Start Practice")), NAV_TIMEOUT_MS)
+        device.findObject(By.text("Start Practice")).click()
 
-        // Wait for practice screen to be ready
-        composeTestRule.waitUntil(timeoutMillis = 20_000) {
-            composeTestRule.onAllNodesWithText("New Exercise")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
+        // Wait for practice screen header ("New Exercise" button)
+        device.wait(Until.hasObject(By.text("New Exercise")), NAV_TIMEOUT_MS)
 
-        // Reset render signal before triggering new exercise
+        // Reset render signal then trigger exercise generation
         VerovioRenderSignal.rendered = false
-        composeTestRule.onNodeWithText("New Exercise").performClick()
+        device.findObject(By.text("New Exercise")).click()
 
-        // Wait for Verovio WASM to JIT-compile and render the SVG.
-        // On a cold emulator the 6.7 MB WASM can take 30–60 s; allow up to 120 s.
+        // Wait for Verovio WASM to JIT-compile and render SVG.
+        // On a cold emulator the 6.7 MB WASM can take 30–60 s; allow 120 s.
         val deadline = System.currentTimeMillis() + 120_000L
         while (!VerovioRenderSignal.rendered && System.currentTimeMillis() < deadline) {
             Thread.sleep(2_000)
@@ -161,19 +136,9 @@ class ScreenshotCaptureTest {
 
         // Extra half-second for SVG layout/paint to propagate to display.
         Thread.sleep(500)
+        device.takeScreenshot(File("/sdcard/screenshot_practice.png"), 1.0f, 100)
 
-        takeScreenshot(device, "/sdcard/screenshot_practice.png")
-
-        // Brief pause to ensure all files are fully written before test exits.
+        // Ensure all files are flushed before test exits.
         Thread.sleep(500)
-    }
-
-    /**
-     * Captures the current screen using UiDevice.takeScreenshot() which uses
-     * the PixelCopy API — correctly capturing hardware-accelerated surfaces
-     * (including WebView GPU compositing layers used by Verovio).
-     */
-    private fun takeScreenshot(device: UiDevice, path: String) {
-        device.takeScreenshot(File(path), 1.0f, 100)
     }
 }
