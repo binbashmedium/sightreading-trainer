@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **Lokale Verifikation Practice-Screenshot mit Noten** — Testlogik weiter geschärft: explizit auf Verovio-Render-Signal warten, um leeren Staff im Screenshot zu vermeiden; lokaler Emulator-Run vorbereitet.
 - [x] **Practice-Screenshot mit sichtbaren Noten erzwingen** — Screenshot-Test angepasst: „New Exercise“ wird aktiv ausgelöst, auf Ende des Loading-Overlays gewartet und erst dann capturiert.
 - [x] **Lokales Android-SDK für Screenshot-Checks einrichten** — Android SDK lokal installiert und Build/AndroidTest-APK erfolgreich gebaut; benötigte Env-Variablen/Packages dokumentiert.
 - [ ] **Follow-up: CodeQL autobuild + screenshot refresh from Claude export** — reproduce requested branch changes, run local checks, refresh screenshots, and verify merge-from-main state.

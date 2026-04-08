@@ -152,12 +152,16 @@ class ScreenshotCaptureTest {
             // Wait for practice controls and trigger a real exercise render
             // so the screenshot actually contains notes on the staff.
             waitFor("New Exercise", timeoutMs = 20_000)
+
+            // Force a fresh render cycle and wait for Verovio JS bridge signal.
+            VerovioRenderSignal.rendered = false
             composeTestRule.onNodeWithText("New Exercise").performClick()
 
-            // If loading appears, wait for it to disappear before capture.
-            // This increases the chance that Verovio has finished painting.
+            // Loading overlay may or may not become visible depending on timing,
+            // but render completion must be observed before capture.
             waitUntilGone("Loading exercise…", timeoutMs = 45_000)
-            Thread.sleep(3_000)
+            waitForVerovioRender(timeoutMs = 45_000)
+            Thread.sleep(1_500)
             captureScreen("screenshot_practice.png")
         } finally {
             device.setOrientationNatural()
@@ -177,6 +181,12 @@ class ScreenshotCaptureTest {
         composeTestRule.waitUntil(timeoutMillis = timeoutMs) {
             composeTestRule.onAllNodesWithText(text)
                 .fetchSemanticsNodes().isEmpty()
+        }
+    }
+
+    private fun waitForVerovioRender(timeoutMs: Long = 20_000) {
+        composeTestRule.waitUntil(timeoutMillis = timeoutMs) {
+            VerovioRenderSignal.rendered
         }
     }
 
