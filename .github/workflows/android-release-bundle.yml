@@ -90,10 +90,38 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" bundleRelease --no-daemon
 
+      - name: Build debug APK for emulator screenshots
+        run: ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" :app:assembleDebug --no-daemon
+
+      - name: Generate emulator screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            set -euo pipefail
+            adb wait-for-device
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell monkey -p com.binbashmedium.sightreadingtrainer -c android.intent.category.LAUNCHER 1
+            sleep 10
+            mkdir -p fastlane/metadata/android/en-US/images/phoneScreenshots
+            mkdir -p fastlane/metadata/android/de-DE/images/phoneScreenshots
+            adb exec-out screencap -p > fastlane/metadata/android/en-US/images/phoneScreenshots/01-main.png
+            cp fastlane/metadata/android/en-US/images/phoneScreenshots/01-main.png fastlane/metadata/android/de-DE/images/phoneScreenshots/01-main.png
+
       - name: Upload release AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload release screenshots artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-screenshots
+          path: fastlane/metadata/android/*/images/phoneScreenshots/*.png
           if-no-files-found: error
           retention-days: 14

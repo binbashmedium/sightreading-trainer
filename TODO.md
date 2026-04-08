@@ -2,6 +2,9 @@
 
 ## In Progress
 
+- [x] **CI: Emulator-Screenshot-Job wiederherstellen/ergänzen** — In beiden Release-Workflows Schritte ergänzt: `:app:assembleDebug`, Emulator-Start via `reactivecircus/android-emulator-runner`, Screenshot-Erzeugung (`adb screencap`) nach `fastlane/metadata/android/*/images/phoneScreenshots/`.
+- [x] **Release-Screenshot-Upload auf Emulator-Screenshots umstellen** — `validation/screenshots20` gelöscht; Release-Upload nutzt jetzt `fastlane/metadata/android/*/images/phoneScreenshots/*.png` (Emulator-/Screengrab-Screenshots) statt Validation-Bildern.
+- [x] **Release-Workflow: Screenshots als Artifact mit hochladen** — Screenshot-Upload bleibt aktiv und hängt jetzt Emulator-/Fastlane-Screenshots zusätzlich zur `app-release.aab` an Release/Artifacts an.
 - [x] **CI-fail in GrandStaffModelsTest reproduzieren und beheben** — failing Root×Inversion-Matrix lokal mit `:app:test` verifiziert, Ursache isoliert und Testkriterien für mehrdeutige Akkordmengen korrigiert.
 - [x] **Inversion-Slash-Notation für Chord Labels ergänzen** — Bei erkannten Umkehrungen den Bass-Ton als Slash (`Chord/Bass`) in kurzer und langer Akkordbezeichnung ausgegeben und mit Tests abgesichert.
 - [x] **ChordDetection erweitern + Inversions-Matrix testen** — Akkord-Erkennung um zusätzliche Qualitäten (inkl. sus/add/altered/extended Varianten) erweitert und eine große Root×Inversion-Testmatrix mit erwarteten Akkordnamen ergänzt.
