@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- [x] **Lokales Android-SDK für Screenshot-Checks einrichten** — Android SDK lokal installiert und Build/AndroidTest-APK erfolgreich gebaut; benötigte Env-Variablen/Packages dokumentiert.
+- [ ] **Follow-up: CodeQL autobuild + screenshot refresh from Claude export** — reproduce requested branch changes, run local checks, refresh screenshots, and verify merge-from-main state.
 - [x] **CI compile regression after MIDI deprecation cleanup** — fixed AndroidMidiManager API 33+ callback registration to use the required transport + executor + callback signature so app debug/release Kotlin compilation can proceed.
 - [x] **Build warnings cleanup (MIDI deprecations)** — replaced deprecated `MidiManager.registerDeviceCallback(..., Handler)` and `MidiManager.devices` usage in `AndroidMidiManager` with API-level safe non-deprecated APIs and attempted build/tests/APK verification (blocked by missing Android SDK in CI container).
 - [x] **CI trigger wieder auf release-only zurückbauen** — Nach erfolgreicher Pipeline-Bestätigung den temporären Signed-Build auf Push/PR entfernt und wieder nur beim `release`-Event aktiviert.
