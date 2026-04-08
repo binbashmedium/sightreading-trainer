@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **CI-fail in GrandStaffModelsTest reproduzieren und beheben** — failing Root×Inversion-Matrix lokal mit `:app:test` verifiziert, Ursache isoliert und Testkriterien für mehrdeutige Akkordmengen korrigiert.
 - [x] **Inversion-Slash-Notation für Chord Labels ergänzen** — Bei erkannten Umkehrungen den Bass-Ton als Slash (`Chord/Bass`) in kurzer und langer Akkordbezeichnung ausgegeben und mit Tests abgesichert.
 - [x] **ChordDetection erweitern + Inversions-Matrix testen** — Akkord-Erkennung um zusätzliche Qualitäten (inkl. sus/add/altered/extended Varianten) erweitert und eine große Root×Inversion-Testmatrix mit erwarteten Akkordnamen ergänzt.
 - [x] **Render Roman numeral on second line in chord labels** — when chord labels include functional text in parentheses (e.g. `CM (I)`), render the parenthesized part below the chord name in Verovio harm labels.
