@@ -15,11 +15,12 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.test.ext.junit4.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.Until
 import com.binbashmedium.sightreadingtrainer.MainActivity
 import com.binbashmedium.sightreadingtrainer.di.SettingsDataStoreEntryPoint
 import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
@@ -31,114 +32,165 @@ import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * Instrumented screenshot test that captures every screen of the app.
+ * Five independent instrumented screenshot tests — one per screen.
  *
- * Uses UiDevice (UiAutomator) for all navigation — more reliable than
- * Compose test's waitUntil across navigation transitions — and
- * UiDevice.takeScreenshot() (PixelCopy API) for captures so that
- * hardware-accelerated WebView surfaces (Verovio WASM) are included.
+ * Design rationale
+ * ────────────────
+ * Previous single-method approaches failed for two separate reasons:
  *
- * Screens captured:
- *   1. MainScreen              → /sdcard/screenshot_main.png
- *   2. SettingsScreen          → /sdcard/screenshot_settings.png
- *   3. StatisticsScreen        → /sdcard/screenshot_statistics.png
- *   4. HelpScreen              → /sdcard/screenshot_help.png
- *   5. PracticeScreen (staff)  → /sdcard/screenshot_practice.png
+ *  1. `device.takeScreenshot(File("/sdcard/..."))` silently returns false on
+ *     API 34 — the app UID cannot write to /sdcard/ root under scoped storage.
+ *     Fix: use `uiAutomation.takeScreenshot()` (PixelCopy — also captures
+ *     WebView GPU surfaces) and write to `getExternalFilesDir()` which the app
+ *     can always write to without any extra permission.
+ *
+ *  2. Back navigation (`device.pressBack()` or clicking "Back") combined with
+ *     subsequent waitUntil / device.wait timed out on API 34 due to the
+ *     predictive-back animation leaving the accessibility tree in a partial
+ *     state.  Fix: split into five independent tests so no back navigation is
+ *     ever needed — each test starts fresh from MainActivity.
+ *
+ * Screenshot paths (pulled by CI):
+ *   /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_*.png
  */
 @RunWith(AndroidJUnit4::class)
 class ScreenshotCaptureTest {
 
-    /** Only used to launch MainActivity; all interactions go through UiDevice. */
     @get:Rule
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
-    private val NAV_TIMEOUT_MS = 20_000L
+    private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
+    private val device get() = UiDevice.getInstance(instrumentation)
+    private val appContext get() = instrumentation.targetContext.applicationContext
+
+    // ── DataStore setup ──────────────────────────────────────────────────────
+
+    /**
+     * Write max configuration before every test so all screens reflect the
+     * richest possible settings (all exercise types, all keys, both hands,
+     * all ornaments, pedal, chord names).  DataStore is file-backed and
+     * persists across the test methods in this run.
+     */
+    @Before
+    fun writeMaxConfig() {
+        val settingsDataStore = EntryPointAccessors
+            .fromApplication(appContext, SettingsDataStoreEntryPoint::class.java)
+            .settingsDataStore()
+        runBlocking {
+            settingsDataStore.updateSettings(
+                AppSettings(
+                    exerciseTypes       = ExerciseContentType.entries.toSet(),
+                    exerciseInputSource = ExerciseInputSource.GENERATED,
+                    handMode            = HandMode.BOTH,
+                    noteAccidentalsEnabled = true,
+                    pedalEventsEnabled     = true,
+                    chordNamesEnabled      = true,
+                    selectedKeys           = (0..11).toSet(),
+                    selectedProgressions   = ChordProgression.entries.toSet(),
+                    selectedNoteValues     = NoteValue.entries.toSet(),
+                    selectedOrnaments      = OrnamentType.entries
+                        .filter { it != OrnamentType.NONE }.toSet()
+                )
+            )
+        }
+    }
+
+    // ── Test methods (one per screen, alphabetical = execution order) ────────
 
     @Test
-    fun captureAllScreens() {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val appContext = instrumentation.targetContext.applicationContext
-        val device = UiDevice.getInstance(instrumentation)
-
-        // Configure DataStore with max settings so practice renders
-        // the most complex exercise content.
-        val settingsDataStore = EntryPointAccessors.fromApplication(
-            appContext,
-            SettingsDataStoreEntryPoint::class.java
-        ).settingsDataStore()
-
-        val maxConfig = AppSettings(
-            exerciseTypes = ExerciseContentType.entries.toSet(),
-            exerciseInputSource = ExerciseInputSource.GENERATED,
-            handMode = HandMode.BOTH,
-            noteAccidentalsEnabled = true,
-            pedalEventsEnabled = true,
-            chordNamesEnabled = true,
-            selectedKeys = (0..11).toSet(),
-            selectedProgressions = ChordProgression.entries.toSet(),
-            selectedNoteValues = NoteValue.entries.toSet(),
-            selectedOrnaments = OrnamentType.entries.filter { it != OrnamentType.NONE }.toSet()
-        )
-        runBlocking { settingsDataStore.updateSettings(maxConfig) }
-
-        // ── 1. MainScreen ────────────────────────────────────────────────────
-        device.wait(Until.hasObject(By.text("Start Practice")), NAV_TIMEOUT_MS)
+    fun screenshot01_main() {
+        waitFor("Start Practice")
         Thread.sleep(500)
-        device.takeScreenshot(File("/sdcard/screenshot_main.png"), 1.0f, 100)
+        captureScreen("screenshot_main.png")
+    }
 
-        // ── 2. SettingsScreen ────────────────────────────────────────────────
-        device.findObject(By.text("Settings")).click()
-        device.wait(Until.hasObject(By.text("Back")), NAV_TIMEOUT_MS)
+    @Test
+    fun screenshot02_settings() {
+        waitFor("Start Practice")           // confirm we're on MainScreen
+        composeTestRule.onNodeWithText("Settings").performClick()
+        waitFor("Back")                     // Settings screen ready
         Thread.sleep(500)
-        device.takeScreenshot(File("/sdcard/screenshot_settings.png"), 1.0f, 100)
-        // Use system back — more reliable than finding the "Back" button node
-        device.pressBack()
+        captureScreen("screenshot_settings.png")
+    }
 
-        // ── 3. StatisticsScreen ──────────────────────────────────────────────
-        device.wait(Until.hasObject(By.text("Statistics")), NAV_TIMEOUT_MS)
-        device.findObject(By.text("Statistics")).click()
-        device.wait(Until.hasObject(By.text("Back")), NAV_TIMEOUT_MS)
+    @Test
+    fun screenshot03_statistics() {
+        waitFor("Statistics")               // button on MainScreen
+        composeTestRule.onNodeWithText("Statistics").performClick()
+        waitFor("Back")                     // Statistics screen ready
         Thread.sleep(500)
-        device.takeScreenshot(File("/sdcard/screenshot_statistics.png"), 1.0f, 100)
-        device.pressBack()
+        captureScreen("screenshot_statistics.png")
+    }
 
-        // ── 4. HelpScreen ────────────────────────────────────────────────────
-        device.wait(Until.hasObject(By.text("Help")), NAV_TIMEOUT_MS)
-        device.findObject(By.text("Help")).click()
-        device.wait(Until.hasObject(By.text("Back")), NAV_TIMEOUT_MS)
+    @Test
+    fun screenshot04_help() {
+        waitFor("Help")                     // button on MainScreen
+        composeTestRule.onNodeWithText("Help").performClick()
+        waitFor("Back")                     // Help screen ready
         Thread.sleep(500)
-        device.takeScreenshot(File("/sdcard/screenshot_help.png"), 1.0f, 100)
-        device.pressBack()
+        captureScreen("screenshot_help.png")
+    }
 
-        // ── 5. PracticeScreen ────────────────────────────────────────────────
-        device.wait(Until.hasObject(By.text("Start Practice")), NAV_TIMEOUT_MS)
-        device.findObject(By.text("Start Practice")).click()
+    @Test
+    fun screenshot05_practice() {
+        waitFor("Start Practice")
+        composeTestRule.onNodeWithText("Start Practice").performClick()
 
-        // Wait for practice screen header ("New Exercise" button)
-        device.wait(Until.hasObject(By.text("New Exercise")), NAV_TIMEOUT_MS)
+        // Wait for the practice header to appear ("New Exercise" button)
+        waitFor("New Exercise", timeoutMs = 20_000)
 
         // Reset render signal then trigger exercise generation
         VerovioRenderSignal.rendered = false
-        device.findObject(By.text("New Exercise")).click()
+        composeTestRule.onNodeWithText("New Exercise").performClick()
 
-        // Wait for Verovio WASM to JIT-compile and render SVG.
-        // On a cold emulator the 6.7 MB WASM can take 30–60 s; allow 120 s.
+        // Wait for Verovio WASM to JIT-compile and render the SVG.
+        // The 6.7 MB WASM bundle can take 30–60 s on a cold emulator; allow 120 s.
         val deadline = System.currentTimeMillis() + 120_000L
         while (!VerovioRenderSignal.rendered && System.currentTimeMillis() < deadline) {
             Thread.sleep(2_000)
         }
-
-        // Extra half-second for SVG layout/paint to propagate to display.
+        // Extra half-second for GPU compositing to settle
         Thread.sleep(500)
-        device.takeScreenshot(File("/sdcard/screenshot_practice.png"), 1.0f, 100)
+        captureScreen("screenshot_practice.png")
+    }
 
-        // Ensure all files are flushed before test exits.
-        Thread.sleep(500)
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private fun waitFor(text: String, timeoutMs: Long = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = timeoutMs) {
+            composeTestRule.onAllNodesWithText(text)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    /**
+     * Captures the full screen using UiAutomation.takeScreenshot() (PixelCopy),
+     * which correctly captures hardware-accelerated surfaces including the
+     * Verovio WebView GPU layer.
+     *
+     * Writes to getExternalFilesDir() which the app UID can always write to on
+     * API 29+ without WRITE_EXTERNAL_STORAGE — unlike /sdcard/ root which is
+     * blocked by scoped storage enforcement on API 34.
+     *
+     * Pull path in CI:
+     *   /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/<name>
+     */
+    private fun captureScreen(name: String) {
+        val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: return
+        try {
+            val dir = appContext.getExternalFilesDir(null) ?: return
+            File(dir, name).outputStream().use { out ->
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+            }
+        } finally {
+            bitmap.recycle()
+        }
     }
 }

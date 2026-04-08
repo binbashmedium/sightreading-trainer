@@ -185,11 +185,12 @@ jobs:
             adb install -r apks/app-debug-androidTest.apk
             adb shell am instrument -w -e class com.binbashmedium.sightreadingtrainer.ui.ScreenshotCaptureTest com.binbashmedium.sightreadingtrainer.test/androidx.test.runner.AndroidJUnitRunner
             mkdir -p screenshots
-            adb pull /sdcard/screenshot_main.png screenshots/screenshot_main.png || true
-            adb pull /sdcard/screenshot_settings.png screenshots/screenshot_settings.png || true
-            adb pull /sdcard/screenshot_statistics.png screenshots/screenshot_statistics.png || true
-            adb pull /sdcard/screenshot_help.png screenshots/screenshot_help.png || true
-            adb pull /sdcard/screenshot_practice.png screenshots/screenshot_practice.png || true
+            FDIR=/sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files
+            adb pull "$FDIR/screenshot_main.png"       screenshots/screenshot_main.png       || true
+            adb pull "$FDIR/screenshot_settings.png"   screenshots/screenshot_settings.png   || true
+            adb pull "$FDIR/screenshot_statistics.png" screenshots/screenshot_statistics.png || true
+            adb pull "$FDIR/screenshot_help.png"       screenshots/screenshot_help.png       || true
+            adb pull "$FDIR/screenshot_practice.png"   screenshots/screenshot_practice.png   || true
 
       - name: Upload screenshots artifact
         uses: actions/upload-artifact@v4
