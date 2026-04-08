@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **System-ANR-Dialoge aus Screenshots fernhalten** — Screenshot-Test erweitert: erkannte „isn't responding“-Dialoge werden vor jedem Capture automatisch mit „Wait"/Fallback behandelt.
 - [x] **Lokale Verifikation Practice-Screenshot mit Noten** — Testlogik weiter geschärft: explizit auf Verovio-Render-Signal warten, um leeren Staff im Screenshot zu vermeiden; lokaler Emulator-Run vorbereitet.
 - [x] **Practice-Screenshot mit sichtbaren Noten erzwingen** — Screenshot-Test angepasst: „New Exercise“ wird aktiv ausgelöst, auf Ende des Loading-Overlays gewartet und erst dann capturiert.
 - [x] **Lokales Android-SDK für Screenshot-Checks einrichten** — Android SDK lokal installiert und Build/AndroidTest-APK erfolgreich gebaut; benötigte Env-Variablen/Packages dokumentiert.
