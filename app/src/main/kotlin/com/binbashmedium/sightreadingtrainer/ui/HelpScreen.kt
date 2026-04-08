@@ -29,6 +29,11 @@ import androidx.navigation.NavController
 
 @Composable
 fun HelpScreen(navController: NavController) {
+    HelpScreenContent(onBack = { navController.popBackStack() })
+}
+
+@Composable
+internal fun HelpScreenContent(onBack: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -366,7 +371,7 @@ fun HelpScreen(navController: NavController) {
         Spacer(Modifier.height(24.dp))
 
         OutlinedButton(
-            onClick = { navController.popBackStack() },
+            onClick = onBack,
             modifier = Modifier.fillMaxWidth()
         ) { Text("Back") }
 
