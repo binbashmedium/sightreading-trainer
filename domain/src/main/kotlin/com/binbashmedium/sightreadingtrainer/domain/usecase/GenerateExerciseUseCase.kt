@@ -105,7 +105,7 @@ class GenerateExerciseUseCase {
         // Progression steps are ordered (not shuffled) and built separately.
         val progressionPlan = buildProgressionPlan(settings, generatedKey, rightRoot, leftRoot, random)
         val progressionSteps = progressionPlan?.let { plan ->
-            applyProgressionMeasurePatterns(
+            applyProgressionStepPatterns(
                 progressionSteps = plan.chordSteps,
                 numMeasures = DEFAULT_EXERCISE_MEASURES,
                 selectedNoteValues = settings.selectedNoteValues.ifEmpty { NoteValue.entries.toSet() },
@@ -202,12 +202,12 @@ class GenerateExerciseUseCase {
 
     /**
      * Progression-mode rendering:
-     * - One harmonic source chord per measure, in selected progression order.
-     * - Measure pattern controls rhythmic subdivision only.
-     * - Optional arpeggio mode turns the single chord into per-step single notes
-     *   but never changes the harmonic measure order.
+     * - Harmonic source advances chord-wise in selected progression order.
+     * - Note-value patterns only define the rhythmic grid (whole/half/quarter/eighth slots).
+     * - Optional arpeggio mode transforms the current chord step note-shape, but does
+     *   not alter progression order.
      */
-    private fun applyProgressionMeasurePatterns(
+    private fun applyProgressionStepPatterns(
         progressionSteps: List<ExerciseStep>,
         numMeasures: Int,
         selectedNoteValues: Set<NoteValue>,
@@ -221,24 +221,25 @@ class GenerateExerciseUseCase {
         }
         val effectivePatterns = if (selectedOnlyPatterns.isNotEmpty()) selectedOnlyPatterns else MEASURE_PATTERNS
 
-        val result = mutableListOf<ExerciseStep>()
-        repeat(numMeasures) { measureIndex ->
-            val sourceChord = progressionSteps[measureIndex % progressionSteps.size]
-            val pattern = effectivePatterns.random(random)
-            val renderedNotes = if (arpeggiosEnabled && random.nextBoolean()) {
-                arpeggiatedNotesForPattern(sourceChord.notes, pattern.size, random)
-            } else {
-                List(pattern.size) { sourceChord.notes }
+        val noteValues = buildList {
+            repeat(numMeasures) {
+                addAll(effectivePatterns.random(random))
             }
+        }
 
-            pattern.forEachIndexed { index, noteValue ->
-                val rendered = renderedNotes[index]
-                result += sourceChord.copy(
-                    notes = rendered,
-                    noteAccidentals = List(rendered.size) { NoteAccidental.NONE },
-                    noteValue = noteValue
-                )
+        val result = mutableListOf<ExerciseStep>()
+        noteValues.forEachIndexed { stepIndex, noteValue ->
+            val sourceChord = progressionSteps[stepIndex % progressionSteps.size]
+            val rendered = if (arpeggiosEnabled && random.nextBoolean()) {
+                singleArpeggiatedChordTone(sourceChord.notes, stepIndex, random)
+            } else {
+                sourceChord.notes
             }
+            result += sourceChord.copy(
+                notes = rendered,
+                noteAccidentals = List(rendered.size) { NoteAccidental.NONE },
+                noteValue = noteValue
+            )
         }
         return result
     }
@@ -349,17 +350,15 @@ class GenerateExerciseUseCase {
         return (leftNotes + rightNotes).sorted()
     }
 
-    private fun arpeggiatedNotesForPattern(notes: List<Int>, stepCount: Int, random: Random): List<List<Int>> {
+    private fun singleArpeggiatedChordTone(notes: List<Int>, stepIndex: Int, random: Random): List<Int> {
         val sortedNotes = notes.sorted()
-        if (sortedNotes.size <= 1) return List(stepCount) { sortedNotes }
+        if (sortedNotes.size <= 1) return sortedNotes
 
         val contour = ARPEGGIO_CONTOURS.random(random)
         val filtered = contour.filter { it < sortedNotes.size }
         val effectiveIndices = if (filtered.isNotEmpty()) filtered else sortedNotes.indices.toList()
-        return List(stepCount) { idx ->
-            val noteIndex = effectiveIndices[idx % effectiveIndices.size]
-            listOf(sortedNotes[noteIndex])
-        }
+        val noteIndex = effectiveIndices[stepIndex % effectiveIndices.size]
+        return listOf(sortedNotes[noteIndex])
     }
 
     /** Builds shuffled material for all non-progression types (existing logic). */

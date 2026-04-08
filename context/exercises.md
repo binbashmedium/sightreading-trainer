@@ -44,7 +44,7 @@ When note accidentals are disabled, generated notes are constrained to the curre
 - NINTHS
 - ARPEGGIOS (can split chords into single-note runs)
 
-In Mode 2, selected progression names and measure order are preserved strictly (one harmonic source chord per measure, repeating progression cycle in order); note-value patterns only change rhythmic subdivision inside that measure.
+In Mode 2, selected progression names and chord order are preserved strictly (every generated chord step advances through the selected progression cycle in order); note-value patterns only change rhythmic duration and spacing of those ordered chord steps.
 
 ### Hand-mode behavior
 

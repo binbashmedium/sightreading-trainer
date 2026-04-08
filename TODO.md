@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **Switch progression sequencing from measure-wise to chord-wise order** — advance through selected progression on every generated chord step regardless of whole/half/quarter/eighth subdivision, while keeping voicing/arpeggio options confined to the current progression chord.
 - [x] **Fix progression-mode chord order stability across measures** — ensure progression mode advances strictly in selected progression order per measure (even with mixed note values/arpeggios) so rendered harmony never jumps outside the chosen progression.
 - [x] **Split progression generation into dedicated mode + fix progression-shape coupling bug** — keep classic exercise types (single notes → clustered chords) as mode 1, treat progressions as mode 2 with persistent selected progression patterns and optional triad/7th/9th/arpeggio voicing modifiers; add regression/unit tests for the new behavior.
 - [x] **Fix MEI rhythmic grouping/beaming output** — ensure consecutive eighth notes are rendered as grouped/beamed values and quarter-note spacing isn't fragmented by unnecessary subdivisions/rest insertions.

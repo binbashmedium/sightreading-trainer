@@ -556,7 +556,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `progression mode keeps selected progression order measure by measure`() {
+    fun `progression mode keeps selected progression order chord by chord`() {
         val exercise = useCase.execute(
             AppSettings(
                 exerciseMode = ExerciseMode.PROGRESSIONS,
@@ -570,19 +570,10 @@ class GenerateExerciseUseCaseTest {
             random = Random(11)
         )
 
-        val measureRoots = exercise.steps
-            .chunked(4)
-            .map { measure -> measure.first().notes.minOrNull() ?: -1 }
-
         val expectedCycle = listOf(62, 67, 60) // ii - V - I in C
-        measureRoots.forEachIndexed { index, root ->
+        val stepRoots = exercise.steps.map { step -> step.notes.minOrNull() ?: -1 }
+        stepRoots.forEachIndexed { index, root ->
             assertEquals(expectedCycle[index % expectedCycle.size], root)
-        }
-
-        // Each quarter-note step inside a measure must keep the same harmonic source chord.
-        exercise.steps.chunked(4).forEach { measure ->
-            val firstChord = measure.first().notes
-            assertTrue(measure.all { it.notes == firstChord })
         }
     }
 
@@ -698,7 +689,7 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
-    fun `progression arpeggios stay inside current progression chord per measure`() {
+    fun `progression arpeggios stay inside current progression chord per step`() {
         val exercise = useCase.execute(
             AppSettings(
                 exerciseMode = ExerciseMode.PROGRESSIONS,
@@ -718,11 +709,9 @@ class GenerateExerciseUseCaseTest {
             setOf(60, 64, 67)  // I
         )
 
-        exercise.steps.chunked(4).forEachIndexed { measureIndex, measure ->
-            val expected = expectedChordSets[measureIndex % expectedChordSets.size]
-            measure.forEach { step ->
-                assertTrue(step.notes.all { it in expected })
-            }
+        exercise.steps.forEachIndexed { stepIndex, step ->
+            val expected = expectedChordSets[stepIndex % expectedChordSets.size]
+            assertTrue(step.notes.all { it in expected })
         }
     }
 
