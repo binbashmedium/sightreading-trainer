@@ -28,12 +28,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 1 – build
-#   • Run all unit tests
-#   • Compile debug APK + debug test APK (used by the emulator job)
-#   • On release: also compile the signed release AAB
-# ─────────────────────────────────────────────────────────────────────────────
 jobs:
   build:
     name: Build & Test
@@ -54,9 +48,11 @@ jobs:
       - name: Override Java home for Gradle
         run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
 
-      # ── Unit tests ──────────────────────────────────────────────────────────
       - name: Run unit tests (domain + app)
         run: ./gradlew :domain:test :app:test --no-daemon
+
+      - name: Generate coverage reports (XML + HTML)
+        run: ./gradlew :domain:test :app:test koverXmlReport koverHtmlReport --no-daemon
 
       - name: Upload test results
         if: always()
@@ -68,7 +64,16 @@ jobs:
             app/build/reports/tests/
           retention-days: 14
 
-      # ── Debug APKs ──────────────────────────────────────────────────────────
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            build/reports/kover/report.xml
+            build/reports/kover/html/
+          retention-days: 14
+
       - name: Build debug APK + test APK
         run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
 
@@ -86,7 +91,6 @@ jobs:
           path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           retention-days: 14
 
-      # ── Release AAB (only when a GitHub release is published) ───────────────
       - name: Restore upload keystore from Base64 secret
         if: github.event_name == 'release'
         env:
@@ -140,15 +144,11 @@ jobs:
           path: app/build/outputs/bundle/release/app-release.aab
           retention-days: 14
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 2 – parallel (both jobs start as soon as build finishes)
-# ─────────────────────────────────────────────────────────────────────────────
-
   screenshots:
     name: Capture all-screen screenshots (emulator)
     needs: build
     runs-on: ubuntu-latest
-    continue-on-error: true  # emulator flakiness must not block the release
+    continue-on-error: true
     steps:
       - name: Download app APK
         uses: actions/download-artifact@v4
@@ -172,9 +172,6 @@ jobs:
       - name: Run all-screen screenshot test on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          # API 34 ships with a modern Chromium-based WebView that has a full
-          # V8 JIT compiler — required for the Verovio 6.7 MB WASM bundle.
-          # API 29 AOSP WebView lacks a JIT and silently stalls on WASM init.
           api-level: 34
           arch: x86_64
           target: google_apis
@@ -185,8 +182,6 @@ jobs:
             adb install -r apks/app-debug-androidTest.apk
             adb shell am instrument -w -e class com.binbashmedium.sightreadingtrainer.ui.ScreenshotCaptureTest com.binbashmedium.sightreadingtrainer.test/androidx.test.runner.AndroidJUnitRunner
             mkdir -p screenshots
-            # Hardcode full paths — android-emulator-runner runs each line in a
-            # separate /usr/bin/sh -c call, so shell variables don't persist.
             adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_main.png       screenshots/screenshot_main.png       || true
             adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_settings.png   screenshots/screenshot_settings.png   || true
             adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_statistics.png screenshots/screenshot_statistics.png || true
@@ -219,7 +214,7 @@ jobs:
         with:
           name: app-screenshots
           path: release/screenshots
-        continue-on-error: true  # screenshots job is best-effort
+        continue-on-error: true
 
       - name: Upload AAB and screenshots to GitHub release
         uses: softprops/action-gh-release@v2

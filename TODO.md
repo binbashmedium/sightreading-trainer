@@ -2,13 +2,32 @@
 
 ## In Progress
 
-- [x] **CodeQL/Default-Setup Konflikt entschärfen** — SARIF-Upload im Advanced-Workflow deaktiviert; SARIF wird als Artifact bereitgestellt, um Fehler bei aktivem Default Setup zu vermeiden.
-- [x] **CodeQL Action auf v4 aktualisieren** — alle `github/codeql-action/*@v3` Vorkommen auf `@v4` angehoben (Deprecation-Warnung adressiert).
-- [x] **System-ANR-Dialoge aus Screenshots fernhalten** — Screenshot-Test erweitert: erkannte „isn't responding“-Dialoge werden vor jedem Capture automatisch mit „Wait"/Fallback behandelt.
-- [x] **Lokale Verifikation Practice-Screenshot mit Noten** — Testlogik weiter geschärft: explizit auf Verovio-Render-Signal warten, um leeren Staff im Screenshot zu vermeiden; lokaler Emulator-Run vorbereitet.
-- [x] **Practice-Screenshot mit sichtbaren Noten erzwingen** — Screenshot-Test angepasst: „New Exercise“ wird aktiv ausgelöst, auf Ende des Loading-Overlays gewartet und erst dann capturiert.
-- [x] **Lokales Android-SDK für Screenshot-Checks einrichten** — Android SDK lokal installiert und Build/AndroidTest-APK erfolgreich gebaut; benötigte Env-Variablen/Packages dokumentiert.
-- [ ] **Follow-up: CodeQL autobuild + screenshot refresh from Claude export** — reproduce requested branch changes, run local checks, refresh screenshots, and verify merge-from-main state.
+- [x] **Kover-Report mit 0 Coverage beheben** — Root-Projekt aggregiert nun explizit `:domain` und `:app` über Kover-Dependencies, damit die Gesamt-Reports nicht mehr nur das leere Root-Projekt abdecken.
+- [x] **CI-Coverage-Ausführung auf korrekte Aggregation ausrichten** — Coverage-Step führt Tests und Kover-Reports in einem gemeinsamen Gradle-Aufruf aus, damit instrumentierte Ausführung + Report-Erzeugung konsistent zusammenlaufen.
+- [ ] **Validierung der Kover-Tasks und Build-Tasks durchführen** — `:domain:test` + `:domain:koverXmlReport` erfolgreich (nicht-leerer XML-Report verifiziert); Gesamt-`test`, Root-Kover-Reports und `assembleDebug` bleiben ohne Android SDK (`ANDROID_HOME`/`sdk.dir`) in dieser Umgebung blockiert.
+
+- [x] **Kover Coverage für Multi-Module einrichten** — Gradle-Konfiguration für `:domain` und `:app` so ergänzen, dass XML- und HTML-Coverage-Reports erzeugt werden.
+- [x] **CI um Coverage-Tasks und Artifact-Upload erweitern** — bestehenden CI-Workflow minimal-invasiv anpassen, Coverage in den Testlauf integrieren und Reports als Artifact hochladen.
+- [ ] **Lokale Validierung inkl. Tests, Coverage und APK-Build durchführen** — `:domain:test` läuft erfolgreich; `./gradlew test`, `./gradlew koverXmlReport koverHtmlReport` und `./gradlew assembleDebug` sind in dieser Umgebung ohne Android SDK (`ANDROID_HOME`/`sdk.dir`) blockiert.
+
+- [x] **Release-Screenshot-Upload auf Emulator-Screenshots umstellen** — `validation/screenshots20` gelöscht; Release-Upload nutzt jetzt `fastlane/metadata/android/*/images/phoneScreenshots/*.png` (Emulator-/Screengrab-Screenshots) statt Validation-Bildern.
+- [x] **Release-Workflow: Screenshots als Artifact mit hochladen** — Screenshot-Upload bleibt aktiv und hängt jetzt Emulator-/Fastlane-Screenshots zusätzlich zur `app-release.aab` an Release/Artifacts an.
+- [x] **CI-fail in GrandStaffModelsTest reproduzieren und beheben** — failing Root×Inversion-Matrix lokal mit `:app:test` verifiziert, Ursache isoliert und Testkriterien für mehrdeutige Akkordmengen korrigiert.
+- [x] **Inversion-Slash-Notation für Chord Labels ergänzen** — Bei erkannten Umkehrungen den Bass-Ton als Slash (`Chord/Bass`) in kurzer und langer Akkordbezeichnung ausgegeben und mit Tests abgesichert.
+- [x] **ChordDetection erweitern + Inversions-Matrix testen** — Akkord-Erkennung um zusätzliche Qualitäten (inkl. sus/add/altered/extended Varianten) erweitert und eine große Root×Inversion-Testmatrix mit erwarteten Akkordnamen ergänzt.
+- [x] **Render Roman numeral on second line in chord labels** — when chord labels include functional text in parentheses (e.g. `CM (I)`), render the parenthesized part below the chord name in Verovio harm labels.
+- [x] **Progression-mode arpeggio event semantics cleanup** — choose progression per exercise, choose random voicing (triad/7th/9th) per progression step, apply 50/50 arpeggiation to that chosen chord as a full event, and avoid misleading chord labels on intermediate arpeggio tones.
+- [x] **Fix progression-mode chord labels to follow progression source chords** — render chord names from progression harmonic source (triad/7th/9th) instead of measure-level superset aggregation that can mislabel chords as 9/11 extensions.
+- [x] **Switch progression sequencing from measure-wise to chord-wise order** — advance through selected progression on every generated chord step regardless of whole/half/quarter/eighth subdivision, while keeping voicing/arpeggio options confined to the current progression chord.
+- [x] **Fix progression-mode chord order stability across measures** — ensure progression mode advances strictly in selected progression order per measure (even with mixed note values/arpeggios) so rendered harmony never jumps outside the chosen progression.
+- [x] **Split progression generation into dedicated mode + fix progression-shape coupling bug** — keep classic exercise types (single notes → clustered chords) as mode 1, treat progressions as mode 2 with persistent selected progression patterns and optional triad/7th/9th/arpeggio voicing modifiers; add regression/unit tests for the new behavior.
+- [x] **Fix MEI rhythmic grouping/beaming output** — ensure consecutive eighth notes are rendered as grouped/beamed values and quarter-note spacing isn't fragmented by unnecessary subdivisions/rest insertions.
+- [x] **Remove obsolete barline-gap generation constraint + fix coroutine opt-in warnings** — allow eighth-note measure patterns per settings/default and annotate coroutine tests with required `@OptIn(ExperimentalCoroutinesApi::class)`.
+- [x] **Add arpeggios/progressions selection regression tests** — verify note-value selection is also honored for ARPEGGIOS and PROGRESSIONS generation paths.
+- [x] **Fix outdated note-value tests after eighth-note selection behavior change** — align expectations so default generation stays gap-valid while explicit EIGHTH-only selection is honored.
+- [x] **Strengthen single-selection generation assertions** — verify that when exactly one note value and one content type are selected, generated steps also match the expected chord/note shape for that content type.
+- [x] **Fix eighth-note-only generation mismatch + add generator selection regression tests** — reproduce the eighth-only bug, ensure generated output always respects selected note/chord settings across generators, and add per-note-value plus per-chord×note-value unit tests (excluding arpeggios/progressions cross-matrix).
+- [x] **GitHub Actions Node 24 migration warnings beheben** — Workflows auf Node-24-kompatible Action-Versionen aktualisieren bzw. explizit Node 24 aktivieren, damit die CI-Warnung verschwindet.
 - [x] **CI compile regression after MIDI deprecation cleanup** — fixed AndroidMidiManager API 33+ callback registration to use the required transport + executor + callback signature so app debug/release Kotlin compilation can proceed.
 - [x] **Build warnings cleanup (MIDI deprecations)** — replaced deprecated `MidiManager.registerDeviceCallback(..., Handler)` and `MidiManager.devices` usage in `AndroidMidiManager` with API-level safe non-deprecated APIs and attempted build/tests/APK verification (blocked by missing Android SDK in CI container).
 - [x] **CI trigger wieder auf release-only zurückbauen** — Nach erfolgreicher Pipeline-Bestätigung den temporären Signed-Build auf Push/PR entfernt und wieder nur beim `release`-Event aktiviert.
@@ -49,14 +68,6 @@
       
 
 ## Done (recent)
-
-- [x] **PracticeScreen emulator screenshot (max config)** — `PracticeScreenshotTest.kt` rewritten: pre-configures max `AppSettings` (all 11 `ExerciseContentType`s, all 12 keys, `HandMode.BOTH`, pedal + chord names + ornaments enabled) via `EntryPointAccessors` accessing the Hilt singleton `SettingsDataStore` before clicking "New Exercise"; captures screen with `device.executeShellCommand("screencap -p /sdcard/practice_screen.png")` while app is still in the foreground; `SettingsDataStoreEntryPoint` `@EntryPoint` interface added to `di/` package. CI pipeline reordered: `practice-screenshot` now `needs: build-debug` (was `needs: test`) so the APK is already built; CI pulls screenshot via `adb pull /sdcard/practice_screen.png`.
-
-- [x] **Paparazzi screenshot tests + release export** — Added `app.cash.paparazzi:1.3.5` plugin; extracted stateless `*Content` composables from `MainScreen`, `SettingsScreen`, `StatisticsScreen`, `HelpScreen`; `ScreenshotTest.kt` covers 8 scenarios (default + populated variants) for all four menu screens; CI `screenshots` job runs `recordPaparazziDebug` on every push/PR and uploads images as artifact; `release-apk` job also generates and attaches `screenshots.zip` to every GitHub release.
-
-- [x] **Fix CodeQL autobuild failure** — Added `.github/workflows/codeql.yml` with `build-mode: manual` using `./gradlew :domain:compileKotlin :app:compileDebugKotlin`; removed `dist/` folder (APKs) and `mocks/` folder (reference images/PDF) from the repository; updated `.gitignore` to exclude both directories.
-
-- [x] **Fix CI pipeline (Paparazzi AGP incompatibility)** — Paparazzi 2.0.0-alpha04 requires AGP 8.13.2 and Gradle 8.13+; upgraded Gradle wrapper from 8.10.2 → 8.13 and AGP from 8.8.0 → 8.13.2 in `settings.gradle.kts`; this fixes the plugin configuration failure that was causing all `:app:*` tasks (unit tests + CodeQL build) to fail.
 
 - [x] **Thin cursor line + pedal mark rendering** — `staff.html`: cursor `stroke-width` changed from fixed 30 to proportional (0.5% of viewBox width, min 2) for a slim line at any screen size. `MeiConverter`: pedal marks now converted to MEI `<pedal tstamp="..." staff="2" dir="down/up" [color="..."]/>` control events; `Locale.US` used for tstamp formatting to avoid locale-dependent decimal separators. 7 new `MeiConverterTest` pedal tests added (141 total pass).
 
