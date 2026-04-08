@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **CodeQL/Default-Setup Konflikt entschärfen** — SARIF-Upload im Advanced-Workflow deaktiviert; SARIF wird als Artifact bereitgestellt, um Fehler bei aktivem Default Setup zu vermeiden.
 - [x] **CodeQL Action auf v4 aktualisieren** — alle `github/codeql-action/*@v3` Vorkommen auf `@v4` angehoben (Deprecation-Warnung adressiert).
 - [x] **System-ANR-Dialoge aus Screenshots fernhalten** — Screenshot-Test erweitert: erkannte „isn't responding“-Dialoge werden vor jedem Capture automatisch mit „Wait"/Fallback behandelt.
 - [x] **Lokale Verifikation Practice-Screenshot mit Noten** — Testlogik weiter geschärft: explizit auf Verovio-Render-Signal warten, um leeren Staff im Screenshot zu vermeiden; lokaler Emulator-Run vorbereitet.
