@@ -107,7 +107,7 @@ jobs:
           if [ -z "$KEY_ALIAS" ]; then
             echo "Missing required secret: KEY_ALIAS" >&2; exit 1
           fi
-          python - <<'PY'
+          python - <<'PY2'
           import base64, binascii, os, pathlib, re, sys
           raw = os.environ["KEYSTORE_BASE64"]
           cleaned = re.sub(r"\s+", "", raw)
@@ -118,7 +118,7 @@ jobs:
           if not decoded:
               print("Decoded keystore is empty", file=sys.stderr); sys.exit(1)
           pathlib.Path("/tmp/upload-keystore.jks").write_bytes(decoded)
-          PY
+          PY2
           keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" >/dev/null
           if ! keytool -list -keystore /tmp/upload-keystore.jks \
                -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
