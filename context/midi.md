@@ -77,6 +77,9 @@ The detection now covers a broad set of triad/extended/altered qualities, includ
 
 Detection is pitch-class-set based (root + quality from modulo-12 classes), so enharmonic/add-tone aliases that share the same set (e.g. `add2`/`add9`) use one canonical label in output.
 
+When a detected chord is in inversion (lowest played pitch class differs from detected root),
+the rendered chord label now uses slash-bass notation, e.g. `CM/E`, `G7/F`, `Dm/A`.
+
 ## Staff Split Mapping (UI)
 
 Grand staff rendering uses pitch split at middle C:

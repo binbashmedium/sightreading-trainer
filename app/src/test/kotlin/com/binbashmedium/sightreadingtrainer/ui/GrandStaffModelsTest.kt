@@ -137,6 +137,7 @@ class GrandStaffModelsTest {
         assertEquals("C11", formatChordLabelShort(listOf(60, 64, 67, 70, 74, 77)))
         assertEquals("C13", formatChordLabelShort(listOf(60, 64, 67, 70, 74, 81)))
         assertEquals("C7b9", formatChordLabelShort(listOf(60, 64, 67, 70, 73)))
+        assertEquals("CM/E", formatChordLabelShort(listOf(64, 67, 72)))
     }
 
     @Test
@@ -190,8 +191,15 @@ class GrandStaffModelsTest {
                 val notes = chordCase.intervals.map { 60 + root + it }
                 inversions(notes).forEachIndexed { inversion, inversionNotes ->
                     val label = formatChordLabelShort(inversionNotes)
+                    val bassPitchClass = inversionNotes.minOrNull()?.mod(12) ?: root
+                    val bassName = KEY_NAMES[bassPitchClass]
                     val matchedQuality = chordCase.acceptableQualities.firstOrNull { suffix ->
-                        label == "$rootName$suffix"
+                        val expected = if (bassPitchClass == root) {
+                            "$rootName$suffix"
+                        } else {
+                            "$rootName$suffix/$bassName"
+                        }
+                        label == expected
                     }
                     assertTrue(
                         "Expected ${chordCase.quality} for root $rootName in inversion $inversion " +
@@ -402,9 +410,9 @@ class GrandStaffModelsTest {
         assertEquals("C4", formatChordLabel(listOf(60), 0))
         assertEquals("C4 - E4", formatChordLabel(listOf(60, 64), 0))
         assertEquals("CM (I)", formatChordLabel(listOf(60, 64, 67), 0))
-        assertEquals("CM (I)", formatChordLabel(listOf(64, 67, 72), 0))
+        assertEquals("CM/E (I)", formatChordLabel(listOf(64, 67, 72), 0))
         assertEquals("CM7 (Imaj7)", formatChordLabel(listOf(60, 64, 67, 71), 0))
-        assertEquals("CM7 (Imaj7)", formatChordLabel(listOf(64, 67, 71, 72), 0))
+        assertEquals("CM7/E (Imaj7)", formatChordLabel(listOf(64, 67, 71, 72), 0))
         assertEquals("CM9 (Imaj9)", formatChordLabel(listOf(60, 64, 67, 71, 74), 0))
         assertEquals("G9 (V9)", formatChordLabel(listOf(67, 71, 74, 77, 81), 0))
     }

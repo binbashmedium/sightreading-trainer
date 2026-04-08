@@ -566,12 +566,19 @@ private data class DetectedChord(
 fun formatChordLabel(notes: List<Int>, musicalKey: Int): String {
     if (notes.isEmpty()) return "?"
     if (notes.size == 1) return noteName(notes.first())
+    val bassPitchClass = notes.minOrNull()?.let { ((it % 12) + 12) % 12 }
     if (notes.size == 2) {
         val dyad = detectChord(notes)
         if (dyad?.quality == "5") {
             val rootName = pitchClassNameForKey(dyad.rootPitchClass, musicalKey)
             val roman = romanNumeralForChord(dyad.rootPitchClass, dyad.quality, musicalKey)
-            return if (roman != null) "$rootName${dyad.quality} ($roman)" else "$rootName${dyad.quality}"
+            val chordLabel = appendSlashBassIfInversion(
+                "$rootName${dyad.quality}",
+                dyad.rootPitchClass,
+                bassPitchClass,
+                musicalKey
+            )
+            return if (roman != null) "$chordLabel ($roman)" else chordLabel
         }
         return notes.joinToString(" - ") { noteName(it) }
     }
@@ -580,7 +587,13 @@ fun formatChordLabel(notes: List<Int>, musicalKey: Int): String {
     if (detected != null) {
         val rootName = pitchClassNameForKey(detected.rootPitchClass, musicalKey)
         val roman = romanNumeralForChord(detected.rootPitchClass, detected.quality, musicalKey)
-        return if (roman != null) "$rootName${detected.quality} ($roman)" else "$rootName${detected.quality}"
+        val chordLabel = appendSlashBassIfInversion(
+            "$rootName${detected.quality}",
+            detected.rootPitchClass,
+            bassPitchClass,
+            musicalKey
+        )
+        return if (roman != null) "$chordLabel ($roman)" else chordLabel
     }
 
     return notes.joinToString(" - ") { noteName(it) }
@@ -594,12 +607,18 @@ fun formatChordLabel(notes: List<Int>, musicalKey: Int): String {
 fun formatChordLabelShort(notes: List<Int>, musicalKey: Int? = null): String {
     if (notes.isEmpty()) return "?"
     if (notes.size == 1) return noteName(notes.first())
+    val bassPitchClass = notes.minOrNull()?.let { ((it % 12) + 12) % 12 }
     if (notes.size == 2) {
         val dyad = detectChord(notes)
         if (dyad?.quality == "5") {
             val rootName = if (musicalKey != null) pitchClassNameForKey(dyad.rootPitchClass, musicalKey)
                            else KEY_NAMES[dyad.rootPitchClass]
-            return "$rootName${dyad.quality}"
+            return appendSlashBassIfInversion(
+                "$rootName${dyad.quality}",
+                dyad.rootPitchClass,
+                bassPitchClass,
+                musicalKey
+            )
         }
         return "${noteName(notes.first())}-${noteName(notes.last())}"
     }
@@ -607,9 +626,26 @@ fun formatChordLabelShort(notes: List<Int>, musicalKey: Int? = null): String {
     if (detected != null) {
         val rootName = if (musicalKey != null) pitchClassNameForKey(detected.rootPitchClass, musicalKey)
                        else KEY_NAMES[detected.rootPitchClass]
-        return "$rootName${detected.quality}"
+        return appendSlashBassIfInversion(
+            "$rootName${detected.quality}",
+            detected.rootPitchClass,
+            bassPitchClass,
+            musicalKey
+        )
     }
     return notes.take(2).joinToString("-") { noteName(it) }
+}
+
+private fun appendSlashBassIfInversion(
+    chordLabel: String,
+    rootPitchClass: Int,
+    bassPitchClass: Int?,
+    musicalKey: Int?
+): String {
+    if (bassPitchClass == null || bassPitchClass == rootPitchClass) return chordLabel
+    val bassName = if (musicalKey != null) pitchClassNameForKey(bassPitchClass, musicalKey)
+                   else KEY_NAMES[bassPitchClass]
+    return "$chordLabel/$bassName"
 }
 
 private fun pitchClassNameForKey(pitchClass: Int, musicalKey: Int): String {
