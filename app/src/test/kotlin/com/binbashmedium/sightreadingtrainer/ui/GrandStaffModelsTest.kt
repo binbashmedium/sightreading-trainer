@@ -617,4 +617,35 @@ class GrandStaffModelsTest {
             labels[0].name.contains("5")
         )
     }
+
+    @Test
+    fun `buildMeasureChordLabels uses progressionLabelNotes for progression steps`() {
+        val steps = listOf(
+            ExerciseStep(
+                notes = listOf(60),
+                progressionLabelNotes = listOf(60, 64, 67)
+            ),
+            ExerciseStep(
+                notes = listOf(65),
+                progressionLabelNotes = listOf(65, 69, 72)
+            ),
+            ExerciseStep(
+                notes = listOf(67),
+                progressionLabelNotes = listOf(67, 71, 74)
+            )
+        )
+        val stepBeats = listOf(0f, 1f, 2f)
+
+        val labels = buildMeasureChordLabels(
+            steps = steps,
+            stepBeats = stepBeats,
+            handMode = HandMode.RIGHT,
+            musicalKey = 0
+        )
+
+        assertEquals(3, labels.size)
+        assertTrue(labels[0].name.startsWith("CM"))
+        assertTrue(labels[1].name.startsWith("FM"))
+        assertTrue(labels[2].name.startsWith("GM"))
+    }
 }

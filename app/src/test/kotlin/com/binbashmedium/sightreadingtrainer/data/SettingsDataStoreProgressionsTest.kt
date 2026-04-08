@@ -15,6 +15,9 @@
 package com.binbashmedium.sightreadingtrainer.data
 
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseMode
+import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -42,6 +45,33 @@ class SettingsDataStoreProgressionsTest {
         assertEquals(
             setOf(ChordProgression.I_IV_V_I, ChordProgression.II_V_I, ChordProgression.I_III_IV_V),
             parseSelectedProgressions(raw)
+        )
+    }
+
+    @Test
+    fun `parseExerciseMode migrates legacy PROGRESSIONS exercise type`() {
+        assertEquals(
+            ExerciseMode.PROGRESSIONS,
+            parseExerciseMode(null, setOf(ExerciseContentType.PROGRESSIONS))
+        )
+        assertEquals(
+            ExerciseMode.CLASSIC,
+            parseExerciseMode(null, setOf(ExerciseContentType.TRIADS))
+        )
+    }
+
+    @Test
+    fun `parseProgressionExerciseTypes migrates legacy chord modifiers and defaults to triads`() {
+        assertEquals(
+            setOf(ProgressionExerciseType.SEVENTHS, ProgressionExerciseType.ARPEGGIOS),
+            parseProgressionExerciseTypes(
+                null,
+                setOf(ExerciseContentType.PROGRESSIONS, ExerciseContentType.SEVENTHS, ExerciseContentType.ARPEGGIOS)
+            )
+        )
+        assertEquals(
+            setOf(ProgressionExerciseType.TRIADS),
+            parseProgressionExerciseTypes(null, setOf(ExerciseContentType.PROGRESSIONS))
         )
     }
 }

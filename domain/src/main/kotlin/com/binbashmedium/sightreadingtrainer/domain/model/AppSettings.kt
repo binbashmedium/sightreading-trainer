@@ -19,6 +19,7 @@ data class AppSettings(
     val timingToleranceMs: Int = 200,
     val chordWindowMs: Int = 50,
     val exerciseTimeMin: Int = 1,
+    val exerciseMode: ExerciseMode = ExerciseMode.CLASSIC,
     val exerciseTypes: Set<ExerciseContentType> = setOf(ExerciseContentType.SINGLE_NOTES),
     val handMode: HandMode = HandMode.RIGHT,
     val noteAccidentalsEnabled: Boolean = false,
@@ -35,6 +36,8 @@ data class AppSettings(
     val selectedKeys: Set<Int> = setOf(0),
     /** Active chord progressions used when [ExerciseContentType.PROGRESSIONS] is selected. */
     val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I),
+    /** Chord-shape options used while [exerciseMode] is [ExerciseMode.PROGRESSIONS]. */
+    val progressionExerciseTypes: Set<ProgressionExerciseType> = setOf(ProgressionExerciseType.TRIADS),
     /** Which note values (whole/half/quarter/eighth) may appear in generated measures.
      *  At least one must remain active; defaults to all four enabled. */
     val selectedNoteValues: Set<NoteValue> = NoteValue.entries.toSet(),
@@ -58,6 +61,11 @@ enum class ExerciseInputSource {
     DATABASE
 }
 
+enum class ExerciseMode {
+    CLASSIC,
+    PROGRESSIONS
+}
+
 enum class HandMode { LEFT, RIGHT, BOTH }
 
 enum class ExerciseContentType {
@@ -72,6 +80,13 @@ enum class ExerciseContentType {
     NINTHS,
     CLUSTERED_CHORDS,
     PROGRESSIONS
+}
+
+enum class ProgressionExerciseType {
+    TRIADS,
+    SEVENTHS,
+    NINTHS,
+    ARPEGGIOS
 }
 
 /**

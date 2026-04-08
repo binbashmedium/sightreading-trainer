@@ -2,6 +2,12 @@
 
 ## In Progress
 
+- [x] **Render Roman numeral on second line in chord labels** — when chord labels include functional text in parentheses (e.g. `CM (I)`), render the parenthesized part below the chord name in Verovio harm labels.
+- [x] **Progression-mode arpeggio event semantics cleanup** — choose progression per exercise, choose random voicing (triad/7th/9th) per progression step, apply 50/50 arpeggiation to that chosen chord as a full event, and avoid misleading chord labels on intermediate arpeggio tones.
+- [x] **Fix progression-mode chord labels to follow progression source chords** — render chord names from progression harmonic source (triad/7th/9th) instead of measure-level superset aggregation that can mislabel chords as 9/11 extensions.
+- [x] **Switch progression sequencing from measure-wise to chord-wise order** — advance through selected progression on every generated chord step regardless of whole/half/quarter/eighth subdivision, while keeping voicing/arpeggio options confined to the current progression chord.
+- [x] **Fix progression-mode chord order stability across measures** — ensure progression mode advances strictly in selected progression order per measure (even with mixed note values/arpeggios) so rendered harmony never jumps outside the chosen progression.
+- [x] **Split progression generation into dedicated mode + fix progression-shape coupling bug** — keep classic exercise types (single notes → clustered chords) as mode 1, treat progressions as mode 2 with persistent selected progression patterns and optional triad/7th/9th/arpeggio voicing modifiers; add regression/unit tests for the new behavior.
 - [x] **Fix MEI rhythmic grouping/beaming output** — ensure consecutive eighth notes are rendered as grouped/beamed values and quarter-note spacing isn't fragmented by unnecessary subdivisions/rest insertions.
 - [x] **Remove obsolete barline-gap generation constraint + fix coroutine opt-in warnings** — allow eighth-note measure patterns per settings/default and annotate coroutine tests with required `@OptIn(ExperimentalCoroutinesApi::class)`.
 - [x] **Add arpeggios/progressions selection regression tests** — verify note-value selection is also honored for ARPEGGIOS and PROGRESSIONS generation paths.

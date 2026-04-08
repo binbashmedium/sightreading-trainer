@@ -716,6 +716,30 @@ fun buildMeasureChordLabels(
     musicalKey: Int
 ): List<Chord> {
     if (steps.isEmpty() || stepBeats.isEmpty()) return emptyList()
+    if (steps.any { it.progressionLabelNotes != null }) {
+        return steps.mapIndexedNotNull { index, step ->
+            val labelNotes = step.progressionLabelNotes ?: return@mapIndexedNotNull null
+            if (labelNotes.isEmpty()) return@mapIndexedNotNull null
+            val detected = detectChord(labelNotes)
+                ?: detectChordSuperset(labelNotes)
+                ?: return@mapIndexedNotNull null
+            val rootName = pitchClassNameForKey(detected.rootPitchClass, musicalKey)
+            val roman = romanNumeralForChord(detected.rootPitchClass, detected.quality, musicalKey)
+            val label = if (roman != null) "$rootName${detected.quality} ($roman)" else "$rootName${detected.quality}"
+            val startBeat = stepBeats.getOrElse(index) { 0f }
+            val staff = if (labelNotes.all { staffForExercise(it, handMode) == StaffType.BASS }) {
+                StaffType.BASS
+            } else {
+                StaffType.TREBLE
+            }
+            Chord(
+                name = label,
+                notes = labelNotes.distinct(),
+                startBeat = startBeat,
+                staff = staff
+            )
+        }
+    }
     val notesByMeasure = linkedMapOf<Int, MutableList<Int>>()
     val stepsByMeasure = linkedMapOf<Int, MutableList<ExerciseStep>>()
 

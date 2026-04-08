@@ -32,9 +32,11 @@ import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseInputSource
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseMode
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
+import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
 
 @Composable
 fun SettingsScreen(
@@ -56,24 +58,57 @@ fun SettingsScreen(
         )
         Spacer(Modifier.height(16.dp))
 
-        // Difficulty (1–5)
-        Text("Exercise Types")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ExerciseContentType.entries.forEach { type ->
+        Text("Exercise Mode")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ExerciseMode.entries.forEach { mode ->
                 FilterChip(
-                    selected = type in settings.exerciseTypes,
-                    onClick = {
-                        val updatedTypes = settings.exerciseTypes.toMutableSet().apply {
-                            if (contains(type)) {
-                                if (size > 1) remove(type)
-                            } else {
-                                add(type)
-                            }
-                        }
-                        viewModel.updateSettings(settings.copy(exerciseTypes = updatedTypes))
-                    },
-                    label = { Text(type.name.replace('_', ' ')) }
+                    selected = settings.exerciseMode == mode,
+                    onClick = { viewModel.updateSettings(settings.copy(exerciseMode = mode)) },
+                    label = { Text(if (mode == ExerciseMode.CLASSIC) "Mode 1" else "Mode 2") }
                 )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text(if (settings.exerciseMode == ExerciseMode.CLASSIC) "Exercise Types (Mode 1)" else "Progression Voicings (Mode 2)")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (settings.exerciseMode == ExerciseMode.CLASSIC) {
+                ExerciseContentType.entries
+                    .filter { it != ExerciseContentType.PROGRESSIONS }
+                    .forEach { type ->
+                        FilterChip(
+                            selected = type in settings.exerciseTypes,
+                            onClick = {
+                                val updatedTypes = settings.exerciseTypes.toMutableSet().apply {
+                                    if (contains(type)) {
+                                        if (size > 1) remove(type)
+                                    } else {
+                                        add(type)
+                                    }
+                                }
+                                viewModel.updateSettings(settings.copy(exerciseTypes = updatedTypes))
+                            },
+                            label = { Text(type.name.replace('_', ' ')) }
+                        )
+                    }
+            } else {
+                ProgressionExerciseType.entries.forEach { type ->
+                    FilterChip(
+                        selected = type in settings.progressionExerciseTypes,
+                        onClick = {
+                            val updatedTypes = settings.progressionExerciseTypes.toMutableSet().apply {
+                                if (contains(type)) {
+                                    if (size > 1) remove(type)
+                                } else {
+                                    add(type)
+                                }
+                            }
+                            viewModel.updateSettings(settings.copy(progressionExerciseTypes = updatedTypes))
+                        },
+                        label = { Text(type.name.replace('_', ' ')) }
+                    )
+                }
             }
         }
 
@@ -101,7 +136,7 @@ fun SettingsScreen(
         )
 
         // Progression selector — shown only when PROGRESSIONS type is active
-        if (ExerciseContentType.PROGRESSIONS in settings.exerciseTypes) {
+        if (settings.exerciseMode == ExerciseMode.PROGRESSIONS) {
             Spacer(Modifier.height(16.dp))
             Text("Chord Progressions")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
