@@ -25,6 +25,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GrandStaffModelsTest {
+    private data class ChordQualityCase(
+        val quality: String,
+        val intervals: List<Int>,
+        val acceptableQualities: Set<String> = setOf(quality)
+    )
+
 
     @Test
     fun `formatElapsedTime returns mm ss`() {
@@ -131,6 +137,78 @@ class GrandStaffModelsTest {
         assertEquals("C11", formatChordLabelShort(listOf(60, 64, 67, 70, 74, 77)))
         assertEquals("C13", formatChordLabelShort(listOf(60, 64, 67, 70, 74, 81)))
         assertEquals("C7b9", formatChordLabelShort(listOf(60, 64, 67, 70, 73)))
+    }
+
+    @Test
+    fun `formatChordLabelShort detects extended chord quality matrix across roots and inversions`() {
+        val chordCases = listOf(
+            ChordQualityCase("5", listOf(0, 7)),
+            ChordQualityCase("M", listOf(0, 4, 7)),
+            ChordQualityCase("m", listOf(0, 3, 7)),
+            ChordQualityCase("b5", listOf(0, 4, 6)),
+            ChordQualityCase("aug", listOf(0, 4, 8)),
+            ChordQualityCase("dim", listOf(0, 3, 6)),
+            ChordQualityCase("sus2", listOf(0, 2, 7)),
+            ChordQualityCase("sus4", listOf(0, 5, 7)),
+            ChordQualityCase("6", listOf(0, 4, 7, 9), acceptableQualities = setOf("6", "add13")),
+            ChordQualityCase("m6", listOf(0, 3, 7, 9), acceptableQualities = setOf("m6", "madd13")),
+            ChordQualityCase("7", listOf(0, 4, 7, 10)),
+            ChordQualityCase("M7", listOf(0, 4, 7, 11)),
+            ChordQualityCase("m7b5", listOf(0, 3, 6, 10)),
+            ChordQualityCase("dim7", listOf(0, 3, 6, 9)),
+            ChordQualityCase("7b5", listOf(0, 4, 6, 10)),
+            ChordQualityCase("M7b5", listOf(0, 4, 6, 11)),
+            ChordQualityCase("dimM7", listOf(0, 3, 6, 11), acceptableQualities = setOf("dimM7", "mM7b5")),
+            ChordQualityCase("+7", listOf(0, 4, 8, 10)),
+            ChordQualityCase("+M7", listOf(0, 4, 8, 11)),
+            ChordQualityCase("7sus2", listOf(0, 2, 7, 10)),
+            ChordQualityCase("7sus4", listOf(0, 5, 7, 10)),
+            ChordQualityCase("M7sus2", listOf(0, 2, 7, 11)),
+            ChordQualityCase("M7sus4", listOf(0, 5, 7, 11)),
+            ChordQualityCase("add9", listOf(0, 2, 4, 7), acceptableQualities = setOf("add9", "add2", "Madd2")),
+            ChordQualityCase("madd9", listOf(0, 2, 3, 7), acceptableQualities = setOf("madd9", "madd2")),
+            ChordQualityCase("add4", listOf(0, 4, 5, 7), acceptableQualities = setOf("add4", "add11")),
+            ChordQualityCase("madd4", listOf(0, 3, 5, 7)),
+            ChordQualityCase("9", listOf(0, 2, 4, 7, 10)),
+            ChordQualityCase("M9", listOf(0, 2, 4, 7, 11)),
+            ChordQualityCase("mM9", listOf(0, 2, 3, 7, 11)),
+            ChordQualityCase("7#9", listOf(0, 3, 4, 7, 10)),
+            ChordQualityCase("6/9", listOf(0, 2, 4, 7, 9)),
+            ChordQualityCase("11", listOf(0, 2, 4, 5, 7, 10)),
+            ChordQualityCase("m11", listOf(0, 2, 3, 5, 7, 10)),
+            ChordQualityCase("M11", listOf(0, 2, 4, 5, 7, 11)),
+            ChordQualityCase("mM11", listOf(0, 2, 3, 5, 7, 11)),
+            ChordQualityCase("13", listOf(0, 2, 4, 7, 9, 10)),
+            ChordQualityCase("m13", listOf(0, 2, 3, 7, 9, 10)),
+            ChordQualityCase("M13", listOf(0, 2, 4, 7, 9, 11)),
+            ChordQualityCase("mM13", listOf(0, 2, 3, 7, 9, 11))
+        )
+
+        chordCases.forEach { chordCase ->
+            for (root in 0..11) {
+                val rootName = KEY_NAMES[root]
+                val notes = chordCase.intervals.map { 60 + root + it }
+                inversions(notes).forEachIndexed { inversion, inversionNotes ->
+                    val label = formatChordLabelShort(inversionNotes)
+                    val matchedQuality = chordCase.acceptableQualities.firstOrNull { suffix ->
+                        label == "$rootName$suffix"
+                    }
+                    assertTrue(
+                        "Expected ${chordCase.quality} for root $rootName in inversion $inversion " +
+                            "with notes $inversionNotes, got $label",
+                        matchedQuality != null
+                    )
+                }
+            }
+        }
+    }
+
+    private fun inversions(notes: List<Int>): List<List<Int>> {
+        val sorted = notes.sorted()
+        return sorted.indices.map { inversion ->
+            val lower = sorted.take(inversion).map { it + 12 }
+            (sorted.drop(inversion) + lower).sorted()
+        }
     }
 
     @Test

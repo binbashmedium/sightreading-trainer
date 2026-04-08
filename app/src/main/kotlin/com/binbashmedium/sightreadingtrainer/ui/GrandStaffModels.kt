@@ -504,27 +504,47 @@ private val CHORD_QUALITIES = mapOf(
     listOf(0, 7) to "5",
     listOf(0, 4, 7) to "M",
     listOf(0, 3, 7) to "m",
+    listOf(0, 4, 6) to "b5",
     listOf(0, 4, 8) to "aug",
+    listOf(0, 3, 6) to "dim",
     listOf(0, 2, 7) to "sus2",
     listOf(0, 5, 7) to "sus4",
+    // add2/add9 and madd2/madd9 share pitch classes in 12-TET set detection;
+    // we keep add9/madd9 as canonical labels.
     listOf(0, 2, 4, 7) to "add9",
     listOf(0, 2, 3, 7) to "madd9",
+    listOf(0, 4, 5, 7) to "add4",
+    listOf(0, 3, 5, 7) to "madd4",
     listOf(0, 4, 7, 9) to "6",
+    listOf(0, 2, 4, 7, 9) to "6/9",
     listOf(0, 3, 7, 9) to "m6",
-    listOf(0, 3, 6) to "dim",
+    listOf(0, 3, 7, 11) to "mM7",
+    listOf(0, 3, 6, 10) to "m7b5",
+    listOf(0, 3, 6, 11) to "dimM7",
+    listOf(0, 4, 8, 10) to "+7",
+    listOf(0, 4, 8, 11) to "+M7",
+    listOf(0, 4, 6, 10) to "7b5",
+    listOf(0, 4, 6, 11) to "M7b5",
+    listOf(0, 5, 7, 10) to "7sus4",
+    listOf(0, 2, 7, 10) to "7sus2",
+    listOf(0, 5, 7, 11) to "M7sus4",
+    listOf(0, 2, 7, 11) to "M7sus2",
     listOf(0, 3, 6, 9) to "dim7",
     listOf(0, 4, 7, 11) to "M7",
     listOf(0, 4, 7, 10) to "7",
     listOf(0, 3, 7, 10) to "m7",
-    listOf(0, 3, 6, 10) to "m7b5",
     listOf(0, 2, 4, 7, 11) to "M9",
     listOf(0, 2, 4, 7, 10) to "9",
+    listOf(0, 2, 3, 7, 11) to "mM9",
     listOf(0, 2, 3, 7, 10) to "m9",
+    listOf(0, 2, 4, 5, 7) to "add11",
     listOf(0, 2, 4, 5, 7, 11) to "M11",
     listOf(0, 2, 4, 5, 7, 10) to "11",
+    listOf(0, 2, 3, 5, 7, 11) to "mM11",
     listOf(0, 2, 3, 5, 7, 10) to "m11",
     listOf(0, 2, 4, 7, 9, 11) to "M13",
     listOf(0, 2, 4, 7, 9, 10) to "13",
+    listOf(0, 2, 3, 7, 9, 11) to "mM13",
     listOf(0, 2, 3, 7, 9, 10) to "m13",
     listOf(0, 1, 4, 7, 10) to "7b9",
     listOf(0, 3, 4, 7, 10) to "7#9",
@@ -612,15 +632,21 @@ fun romanNumeralForChord(rootPitchClass: Int, quality: String, musicalKey: Int):
 
     return when (quality) {
         "M7" -> "${baseRoman}maj7"
+        "mM7" -> "${baseRoman}m(maj7)"
         "7", "m7" -> "${baseRoman}7"
         "M9" -> "${baseRoman}maj9"
+        "mM9" -> "${baseRoman}m(maj9)"
         "9", "m9" -> "${baseRoman}9"
         "M11" -> "${baseRoman}maj11"
+        "mM11" -> "${baseRoman}m(maj11)"
         "11", "m11" -> "${baseRoman}11"
         "M13" -> "${baseRoman}maj13"
+        "mM13" -> "${baseRoman}m(maj13)"
         "13", "m13" -> "${baseRoman}13"
-        "7b9", "7#9", "7#11", "7b13" -> "${baseRoman}$quality"
-        "5", "6", "m6", "sus2", "sus4", "add9", "madd9", "aug", "dim7" -> "${baseRoman}$quality"
+        "7b9", "7#9", "7#11", "7b13", "7b5", "M7b5", "+7", "+M7", "7sus2",
+        "7sus4", "M7sus2", "M7sus4" -> "${baseRoman}$quality"
+        "5", "6", "m6", "6/9", "sus2", "sus4", "add4", "madd4", "add9", "madd9",
+        "add11", "b5", "aug", "dim7", "dimM7" -> "${baseRoman}$quality"
         else -> baseRoman
     }
 }

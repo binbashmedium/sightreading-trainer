@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **ChordDetection erweitern + Inversions-Matrix testen** — Akkord-Erkennung um zusätzliche Qualitäten (inkl. sus/add/altered/extended Varianten) erweitert und eine große Root×Inversion-Testmatrix mit erwarteten Akkordnamen ergänzt.
 - [x] **Render Roman numeral on second line in chord labels** — when chord labels include functional text in parentheses (e.g. `CM (I)`), render the parenthesized part below the chord name in Verovio harm labels.
 - [x] **Progression-mode arpeggio event semantics cleanup** — choose progression per exercise, choose random voicing (triad/7th/9th) per progression step, apply 50/50 arpeggiation to that chosen chord as a full event, and avoid misleading chord labels on intermediate arpeggio tones.
 - [x] **Fix progression-mode chord labels to follow progression source chords** — render chord names from progression harmonic source (triad/7th/9th) instead of measure-level superset aggregation that can mislabel chords as 9/11 extensions.
