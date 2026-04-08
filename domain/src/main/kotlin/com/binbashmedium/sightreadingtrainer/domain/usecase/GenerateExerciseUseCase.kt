@@ -238,6 +238,7 @@ class GenerateExerciseUseCase {
             result += sourceChord.copy(
                 notes = rendered,
                 noteAccidentals = List(rendered.size) { NoteAccidental.NONE },
+                progressionLabelNotes = sourceChord.progressionLabelNotes ?: sourceChord.notes,
                 noteValue = noteValue
             )
         }
@@ -266,6 +267,7 @@ class GenerateExerciseUseCase {
             ExerciseStep(
                 notes = notes,
                 noteAccidentals = List(notes.size) { NoteAccidental.NONE },
+                progressionLabelNotes = notes,
                 contentType = ExerciseContentType.PROGRESSIONS
             )
         }

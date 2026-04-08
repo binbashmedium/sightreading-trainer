@@ -62,6 +62,8 @@ enum class OrnamentType {
 data class ExerciseStep(
     val notes: List<Int> = emptyList(),
     val noteAccidentals: List<NoteAccidental> = List(notes.size) { NoteAccidental.NONE },
+    /** Optional harmonic source used for chord-label rendering (e.g. progression roots). */
+    val progressionLabelNotes: List<Int>? = null,
     val pedalAction: PedalAction = PedalAction.NONE,
     val contentType: ExerciseContentType? = null,
     val noteValue: NoteValue = NoteValue.QUARTER,

@@ -45,6 +45,7 @@ When note accidentals are disabled, generated notes are constrained to the curre
 - ARPEGGIOS (can split chords into single-note runs)
 
 In Mode 2, selected progression names and chord order are preserved strictly (every generated chord step advances through the selected progression cycle in order); note-value patterns only change rhythmic duration and spacing of those ordered chord steps.
+For chord-name rendering, progression-generated steps carry their harmonic source as label notes so arpeggiated/single-note realization does not get mislabeled by measure-level aggregate chord detection.
 
 ### Hand-mode behavior
 
