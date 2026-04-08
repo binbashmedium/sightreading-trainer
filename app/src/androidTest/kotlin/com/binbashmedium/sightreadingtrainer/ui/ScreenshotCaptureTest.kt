@@ -149,15 +149,15 @@ class ScreenshotCaptureTest {
             waitFor("Start Practice")
             composeTestRule.onNodeWithText("Start Practice").performClick()
 
-            // Wait for the practice header to appear ("New Exercise" button)
+            // Wait for practice controls and trigger a real exercise render
+            // so the screenshot actually contains notes on the staff.
             waitFor("New Exercise", timeoutMs = 20_000)
+            composeTestRule.onNodeWithText("New Exercise").performClick()
 
-            // Brief pause for GPU compositing to settle, then capture the
-            // initial practice state (empty staff + "New Exercise" button).
-            // We intentionally do NOT click "New Exercise" here: triggering a
-            // full exercise render would start WASM execution which is likely to
-            // OOM on the 2-core CI emulator even in landscape mode.
-            Thread.sleep(2_000)
+            // If loading appears, wait for it to disappear before capture.
+            // This increases the chance that Verovio has finished painting.
+            waitUntilGone("Loading exercise…", timeoutMs = 45_000)
+            Thread.sleep(3_000)
             captureScreen("screenshot_practice.png")
         } finally {
             device.setOrientationNatural()
@@ -170,6 +170,13 @@ class ScreenshotCaptureTest {
         composeTestRule.waitUntil(timeoutMillis = timeoutMs) {
             composeTestRule.onAllNodesWithText(text)
                 .fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun waitUntilGone(text: String, timeoutMs: Long = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = timeoutMs) {
+            composeTestRule.onAllNodesWithText(text)
+                .fetchSemanticsNodes().isEmpty()
         }
     }
 

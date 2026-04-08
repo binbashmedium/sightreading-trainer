@@ -2,6 +2,7 @@
 
 ## In Progress
 
+- [x] **Practice-Screenshot mit sichtbaren Noten erzwingen** — Screenshot-Test angepasst: „New Exercise“ wird aktiv ausgelöst, auf Ende des Loading-Overlays gewartet und erst dann capturiert.
 - [x] **Lokales Android-SDK für Screenshot-Checks einrichten** — Android SDK lokal installiert und Build/AndroidTest-APK erfolgreich gebaut; benötigte Env-Variablen/Packages dokumentiert.
 - [ ] **Follow-up: CodeQL autobuild + screenshot refresh from Claude export** — reproduce requested branch changes, run local checks, refresh screenshots, and verify merge-from-main state.
 - [x] **CI compile regression after MIDI deprecation cleanup** — fixed AndroidMidiManager API 33+ callback registration to use the required transport + executor + callback signature so app debug/release Kotlin compilation can proceed.
