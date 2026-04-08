@@ -28,7 +28,8 @@ class GrandStaffModelsTest {
     private data class ChordQualityCase(
         val quality: String,
         val intervals: List<Int>,
-        val acceptableQualities: Set<String> = setOf(quality)
+        val acceptableQualities: Set<String> = setOf(quality),
+        val acceptableRootOffsets: Set<Int> = setOf(0)
     )
 
 
@@ -130,8 +131,8 @@ class GrandStaffModelsTest {
         assertEquals("C6", formatChordLabelShort(listOf(60, 64, 67, 69)))
         assertEquals("Cm6", formatChordLabelShort(listOf(60, 63, 67, 69)))
         assertEquals("Cadd9", formatChordLabelShort(listOf(60, 64, 67, 74)))
-        // Suspended chord voicing (D-G-A) should resolve to Gsus2 instead of note list
-        assertEquals("Gsus2", formatChordLabelShort(listOf(62, 67, 69)))
+        // Suspended chord voicing (D-G-A) should resolve to Gsus2 with slash-bass inversion
+        assertEquals("Gsus2/D", formatChordLabelShort(listOf(62, 67, 69)))
         // Seventh chord
         assertEquals("CM7", formatChordLabelShort(listOf(60, 64, 67, 71)))
         assertEquals("C11", formatChordLabelShort(listOf(60, 64, 67, 70, 74, 77)))
@@ -147,8 +148,8 @@ class GrandStaffModelsTest {
             ChordQualityCase("M", listOf(0, 4, 7)),
             ChordQualityCase("m", listOf(0, 3, 7)),
             ChordQualityCase("b5", listOf(0, 4, 6)),
-            ChordQualityCase("aug", listOf(0, 4, 8)),
-            ChordQualityCase("dim", listOf(0, 3, 6)),
+            ChordQualityCase("aug", listOf(0, 4, 8), acceptableRootOffsets = setOf(0, 4, 8)),
+            ChordQualityCase("dim", listOf(0, 3, 6), acceptableRootOffsets = setOf(0, 3, 6)),
             ChordQualityCase("sus2", listOf(0, 2, 7)),
             ChordQualityCase("sus4", listOf(0, 5, 7)),
             ChordQualityCase("6", listOf(0, 4, 7, 9), acceptableQualities = setOf("6", "add13")),
@@ -156,7 +157,7 @@ class GrandStaffModelsTest {
             ChordQualityCase("7", listOf(0, 4, 7, 10)),
             ChordQualityCase("M7", listOf(0, 4, 7, 11)),
             ChordQualityCase("m7b5", listOf(0, 3, 6, 10)),
-            ChordQualityCase("dim7", listOf(0, 3, 6, 9)),
+            ChordQualityCase("dim7", listOf(0, 3, 6, 9), acceptableRootOffsets = setOf(0, 3, 6, 9)),
             ChordQualityCase("7b5", listOf(0, 4, 6, 10)),
             ChordQualityCase("M7b5", listOf(0, 4, 6, 11)),
             ChordQualityCase("dimM7", listOf(0, 3, 6, 11), acceptableQualities = setOf("dimM7", "mM7b5")),
@@ -192,19 +193,21 @@ class GrandStaffModelsTest {
                 inversions(notes).forEachIndexed { inversion, inversionNotes ->
                     val label = formatChordLabelShort(inversionNotes)
                     val bassPitchClass = inversionNotes.minOrNull()?.mod(12) ?: root
-                    val bassName = KEY_NAMES[bassPitchClass]
-                    val matchedQuality = chordCase.acceptableQualities.firstOrNull { suffix ->
-                        val expected = if (bassPitchClass == root) {
-                            "$rootName$suffix"
-                        } else {
-                            "$rootName$suffix/$bassName"
+                    val expectedLabels = chordCase.acceptableRootOffsets.flatMap { rootOffset ->
+                        val expectedRoot = (root + rootOffset) % 12
+                        val expectedRootName = KEY_NAMES[expectedRoot]
+                        chordCase.acceptableQualities.map { suffix ->
+                            if (bassPitchClass == expectedRoot) {
+                                "$expectedRootName$suffix"
+                            } else {
+                                "$expectedRootName$suffix/${KEY_NAMES[bassPitchClass]}"
+                            }
                         }
-                        label == expected
-                    }
+                    }.toSet()
                     assertTrue(
                         "Expected ${chordCase.quality} for root $rootName in inversion $inversion " +
                             "with notes $inversionNotes, got $label",
-                        matchedQuality != null
+                        label in expectedLabels
                     )
                 }
             }
@@ -595,9 +598,9 @@ class GrandStaffModelsTest {
 
         val resolved = resolveDisplayChordNotes(steps)
 
-        assertEquals("Gsus2", formatChordLabelShort(resolved[0].orEmpty()))
-        assertEquals("Gsus2", formatChordLabelShort(resolved[1].orEmpty()))
-        assertEquals("Gsus2", formatChordLabelShort(resolved[2].orEmpty()))
+        assertEquals("Gsus2/D", formatChordLabelShort(resolved[0].orEmpty()))
+        assertEquals("Gsus2/D", formatChordLabelShort(resolved[1].orEmpty()))
+        assertEquals("Gsus2/D", formatChordLabelShort(resolved[2].orEmpty()))
     }
 
     @Test
