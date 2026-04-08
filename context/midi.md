@@ -63,6 +63,23 @@ Algorithm:
 
 Output: `SharedFlow<domain.PerformanceInput>`.
 
+## Chord naming/detection for UI labels
+
+Harmonic naming for rendered labels is implemented in `app/ui/GrandStaffModels.kt` (`detectChord` + `detectChordSuperset`).
+The detection now covers a broad set of triad/extended/altered qualities, including:
+
+- triads & suspensions: `M`, `m`, `b5`, `aug`, `dim`, `sus2`, `sus4`, `5`
+- sixth/seventh variants: `6`, `m6`, `7`, `M7`, `m7b5`, `dim7`, `7b5`, `M7b5`, `dimM7`, `+7`, `+M7`
+- suspended sevenths: `7sus2`, `7sus4`, `M7sus2`, `M7sus4`
+- added tones: `add4`, `madd4`, `add9`, `madd9`, `6/9`
+- extensions: `9`, `M9`, `mM9`, `11`, `m11`, `M11`, `mM11`, `13`, `m13`, `M13`, `mM13`
+- altered dominant forms: `7b9`, `7#9`, `7#11`, `7b13`
+
+Detection is pitch-class-set based (root + quality from modulo-12 classes), so enharmonic/add-tone aliases that share the same set (e.g. `add2`/`add9`) use one canonical label in output.
+
+When a detected chord is in inversion (lowest played pitch class differs from detected root),
+the rendered chord label now uses slash-bass notation, e.g. `CM/E`, `G7/F`, `Dm/A`.
+
 ## Staff Split Mapping (UI)
 
 Grand staff rendering uses pitch split at middle C:
@@ -74,5 +91,4 @@ Implemented in UI helper `midiToGrandStaffY(...)` in `GrandStaffModels.kt`.
 ## Known Limitations
 
 - Only one MIDI port (index 0) is opened.
-- No explicit reconnect flow for disconnect/reconnect events.
 - MIDI channel information is not currently used for hand assignment.

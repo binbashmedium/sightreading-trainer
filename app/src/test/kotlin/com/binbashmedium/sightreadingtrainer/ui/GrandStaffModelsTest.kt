@@ -25,6 +25,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GrandStaffModelsTest {
+    private data class ChordQualityCase(
+        val quality: String,
+        val intervals: List<Int>,
+        val acceptableQualities: Set<String> = setOf(quality),
+        val acceptableRootOffsets: Set<Int> = setOf(0)
+    )
+
 
     @Test
     fun `formatElapsedTime returns mm ss`() {
@@ -124,13 +131,97 @@ class GrandStaffModelsTest {
         assertEquals("C6", formatChordLabelShort(listOf(60, 64, 67, 69)))
         assertEquals("Cm6", formatChordLabelShort(listOf(60, 63, 67, 69)))
         assertEquals("Cadd9", formatChordLabelShort(listOf(60, 64, 67, 74)))
-        // Suspended chord voicing (D-G-A) should resolve to Gsus2 instead of note list
-        assertEquals("Gsus2", formatChordLabelShort(listOf(62, 67, 69)))
+        // Suspended chord voicing (D-G-A) should resolve to Gsus2 with slash-bass inversion
+        assertEquals("Gsus2/D", formatChordLabelShort(listOf(62, 67, 69)))
         // Seventh chord
         assertEquals("CM7", formatChordLabelShort(listOf(60, 64, 67, 71)))
         assertEquals("C11", formatChordLabelShort(listOf(60, 64, 67, 70, 74, 77)))
         assertEquals("C13", formatChordLabelShort(listOf(60, 64, 67, 70, 74, 81)))
         assertEquals("C7b9", formatChordLabelShort(listOf(60, 64, 67, 70, 73)))
+        assertEquals("CM/E", formatChordLabelShort(listOf(64, 67, 72)))
+    }
+
+    @Test
+    fun `formatChordLabelShort detects extended chord quality matrix across roots and inversions`() {
+        val chordCases = listOf(
+            ChordQualityCase("5", listOf(0, 7)),
+            ChordQualityCase("M", listOf(0, 4, 7)),
+            ChordQualityCase("m", listOf(0, 3, 7)),
+            ChordQualityCase("b5", listOf(0, 4, 6)),
+            ChordQualityCase("aug", listOf(0, 4, 8), acceptableRootOffsets = setOf(0, 4, 8)),
+            ChordQualityCase("dim", listOf(0, 3, 6), acceptableRootOffsets = setOf(0, 3, 6)),
+            // Highly ambiguous suspended/add voicings are covered by focused tests below.
+            ChordQualityCase(
+                "6",
+                listOf(0, 4, 7, 9),
+                acceptableQualities = setOf("6", "add13", "m7"),
+                acceptableRootOffsets = setOf(0, 9)
+            ),
+            ChordQualityCase(
+                "m6",
+                listOf(0, 3, 7, 9),
+                acceptableQualities = setOf("m6", "madd13", "m7b5"),
+                acceptableRootOffsets = setOf(0, 9)
+            ),
+            ChordQualityCase("7", listOf(0, 4, 7, 10)),
+            ChordQualityCase("M7", listOf(0, 4, 7, 11)),
+            ChordQualityCase(
+                "m7b5",
+                listOf(0, 3, 6, 10),
+                acceptableQualities = setOf("m7b5", "m6", "madd13"),
+                acceptableRootOffsets = setOf(0, 3)
+            ),
+            ChordQualityCase("dim7", listOf(0, 3, 6, 9), acceptableRootOffsets = setOf(0, 3, 6, 9)),
+            ChordQualityCase("7b5", listOf(0, 4, 6, 10), acceptableRootOffsets = setOf(0, 6)),
+            ChordQualityCase("M7b5", listOf(0, 4, 6, 11)),
+            ChordQualityCase("dimM7", listOf(0, 3, 6, 11), acceptableQualities = setOf("dimM7", "mM7b5")),
+            ChordQualityCase("+7", listOf(0, 4, 8, 10)),
+            ChordQualityCase("+M7", listOf(0, 4, 8, 11)),
+            // Highly ambiguous suspended-7 voicings are covered by focused tests below.
+            ChordQualityCase("add9", listOf(0, 2, 4, 7), acceptableQualities = setOf("add9", "add2", "Madd2")),
+            ChordQualityCase("madd9", listOf(0, 2, 3, 7), acceptableQualities = setOf("madd9", "madd2")),
+            // add4/madd4 are omitted from the matrix due strong alias overlap.
+            ChordQualityCase("9", listOf(0, 2, 4, 7, 10)),
+            ChordQualityCase("M9", listOf(0, 2, 4, 7, 11)),
+            ChordQualityCase("mM9", listOf(0, 2, 3, 7, 11)),
+            ChordQualityCase("7#9", listOf(0, 3, 4, 7, 10)),
+            ChordQualityCase("6/9", listOf(0, 2, 4, 7, 9))
+        )
+
+        chordCases.forEach { chordCase ->
+            for (root in 0..11) {
+                val rootName = KEY_NAMES[root]
+                val notes = chordCase.intervals.map { 60 + root + it }
+                inversions(notes).forEachIndexed { inversion, inversionNotes ->
+                    val label = formatChordLabelShort(inversionNotes)
+                    val bassPitchClass = inversionNotes.minOrNull()?.mod(12) ?: root
+                    val expectedLabels = chordCase.acceptableRootOffsets.flatMap { rootOffset ->
+                        val expectedRoot = (root + rootOffset) % 12
+                        val expectedRootName = KEY_NAMES[expectedRoot]
+                        chordCase.acceptableQualities.map { suffix ->
+                            if (bassPitchClass == expectedRoot) {
+                                "$expectedRootName$suffix"
+                            } else {
+                                "$expectedRootName$suffix/${KEY_NAMES[bassPitchClass]}"
+                            }
+                        }
+                    }.toSet()
+                    assertTrue(
+                        "Expected ${chordCase.quality} for root $rootName in inversion $inversion " +
+                            "with notes $inversionNotes, got $label",
+                        label in expectedLabels
+                    )
+                }
+            }
+        }
+    }
+
+    private fun inversions(notes: List<Int>): List<List<Int>> {
+        val sorted = notes.sorted()
+        return sorted.indices.map { inversion ->
+            val lower = sorted.take(inversion).map { it + 12 }
+            (sorted.drop(inversion) + lower).sorted()
+        }
     }
 
     @Test
@@ -324,9 +415,9 @@ class GrandStaffModelsTest {
         assertEquals("C4", formatChordLabel(listOf(60), 0))
         assertEquals("C4 - E4", formatChordLabel(listOf(60, 64), 0))
         assertEquals("CM (I)", formatChordLabel(listOf(60, 64, 67), 0))
-        assertEquals("CM (I)", formatChordLabel(listOf(64, 67, 72), 0))
+        assertEquals("CM/E (I)", formatChordLabel(listOf(64, 67, 72), 0))
         assertEquals("CM7 (Imaj7)", formatChordLabel(listOf(60, 64, 67, 71), 0))
-        assertEquals("CM7 (Imaj7)", formatChordLabel(listOf(64, 67, 71, 72), 0))
+        assertEquals("CM7/E (Imaj7)", formatChordLabel(listOf(64, 67, 71, 72), 0))
         assertEquals("CM9 (Imaj9)", formatChordLabel(listOf(60, 64, 67, 71, 74), 0))
         assertEquals("G9 (V9)", formatChordLabel(listOf(67, 71, 74, 77, 81), 0))
     }
@@ -509,9 +600,9 @@ class GrandStaffModelsTest {
 
         val resolved = resolveDisplayChordNotes(steps)
 
-        assertEquals("Gsus2", formatChordLabelShort(resolved[0].orEmpty()))
-        assertEquals("Gsus2", formatChordLabelShort(resolved[1].orEmpty()))
-        assertEquals("Gsus2", formatChordLabelShort(resolved[2].orEmpty()))
+        assertEquals("Gsus2/D", formatChordLabelShort(resolved[0].orEmpty()))
+        assertEquals("Gsus2/D", formatChordLabelShort(resolved[1].orEmpty()))
+        assertEquals("Gsus2/D", formatChordLabelShort(resolved[2].orEmpty()))
     }
 
     @Test
