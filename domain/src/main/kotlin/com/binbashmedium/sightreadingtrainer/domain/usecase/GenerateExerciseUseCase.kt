@@ -36,6 +36,11 @@ class GenerateExerciseUseCase {
         NINTH
     }
 
+    private data class ProgressionPlan(
+        val chordSteps: List<ExerciseStep>,
+        val arpeggiosEnabled: Boolean
+    )
+
     companion object {
         val KEY_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
         /** Fixed exercise length: 4 rows × 4 measures = one portrait page. */
@@ -98,7 +103,16 @@ class GenerateExerciseUseCase {
         val selectedTypes = settings.exerciseTypes.ifEmpty { setOf(ExerciseContentType.SINGLE_NOTES) }
 
         // Progression steps are ordered (not shuffled) and built separately.
-        val progressionSteps = buildProgressionSteps(settings, generatedKey, rightRoot, leftRoot, random)
+        val progressionPlan = buildProgressionPlan(settings, generatedKey, rightRoot, leftRoot, random)
+        val progressionSteps = progressionPlan?.let { plan ->
+            applyProgressionMeasurePatterns(
+                progressionSteps = plan.chordSteps,
+                numMeasures = DEFAULT_EXERCISE_MEASURES,
+                selectedNoteValues = settings.selectedNoteValues.ifEmpty { NoteValue.entries.toSet() },
+                arpeggiosEnabled = plan.arpeggiosEnabled,
+                random = random
+            )
+        }.orEmpty()
 
         val nonProgressionTypes = if (settings.exerciseMode == ExerciseMode.PROGRESSIONS) {
             emptySet()
@@ -186,45 +200,86 @@ class GenerateExerciseUseCase {
         return result
     }
 
-    /** Builds ordered steps for all selected [ChordProgression]s (no shuffle). */
-    private fun buildProgressionSteps(
+    /**
+     * Progression-mode rendering:
+     * - One harmonic source chord per measure, in selected progression order.
+     * - Measure pattern controls rhythmic subdivision only.
+     * - Optional arpeggio mode turns the single chord into per-step single notes
+     *   but never changes the harmonic measure order.
+     */
+    private fun applyProgressionMeasurePatterns(
+        progressionSteps: List<ExerciseStep>,
+        numMeasures: Int,
+        selectedNoteValues: Set<NoteValue>,
+        arpeggiosEnabled: Boolean,
+        random: Random
+    ): List<ExerciseStep> {
+        if (progressionSteps.isEmpty()) return emptyList()
+
+        val selectedOnlyPatterns = MEASURE_PATTERNS.filter { pattern ->
+            pattern.all { nv -> nv in selectedNoteValues }
+        }
+        val effectivePatterns = if (selectedOnlyPatterns.isNotEmpty()) selectedOnlyPatterns else MEASURE_PATTERNS
+
+        val result = mutableListOf<ExerciseStep>()
+        repeat(numMeasures) { measureIndex ->
+            val sourceChord = progressionSteps[measureIndex % progressionSteps.size]
+            val pattern = effectivePatterns.random(random)
+            val renderedNotes = if (arpeggiosEnabled && random.nextBoolean()) {
+                arpeggiatedNotesForPattern(sourceChord.notes, pattern.size, random)
+            } else {
+                List(pattern.size) { sourceChord.notes }
+            }
+
+            pattern.forEachIndexed { index, noteValue ->
+                val rendered = renderedNotes[index]
+                result += sourceChord.copy(
+                    notes = rendered,
+                    noteAccidentals = List(rendered.size) { NoteAccidental.NONE },
+                    noteValue = noteValue
+                )
+            }
+        }
+        return result
+    }
+
+    /** Builds ordered progression chord steps for a single selected progression (no shuffle). */
+    private fun buildProgressionPlan(
         settings: AppSettings,
         generatedKey: Int,
         rightRoot: Int,
         leftRoot: Int,
         random: Random
-    ): List<ExerciseStep> {
-        if (settings.exerciseMode != ExerciseMode.PROGRESSIONS) return emptyList()
+    ): ProgressionPlan? {
+        if (settings.exerciseMode != ExerciseMode.PROGRESSIONS) return null
 
         val selectedProgs = settings.selectedProgressions.ifEmpty { setOf(ChordProgression.I_IV_V_I) }
         val progression = selectedProgs.toList().random(random)
         val chordStyles = progressionStylesForSettings(settings.progressionExerciseTypes)
         val arpeggiosEnabled = ProgressionExerciseType.ARPEGGIOS in settings.progressionExerciseTypes
 
-        val steps = progression.chords.flatMap { triadOffsets ->
+        val chordSteps = progression.chords.map { triadOffsets ->
             val style = chordStyles.random(random)
             val styledOffsets = progressionOffsetsForStyle(triadOffsets.first(), style)
             val notes = progressionNotesForHandMode(styledOffsets, settings.handMode, rightRoot, leftRoot)
-            val renderedSteps = if (arpeggiosEnabled && random.nextBoolean()) {
-                arpeggiateProgressionChord(notes, random)
-            } else {
-                listOf(notes)
-            }
-            renderedSteps.map { renderedNotes ->
-                ExerciseStep(
-                    notes = renderedNotes,
-                    noteAccidentals = List(renderedNotes.size) { NoteAccidental.NONE },
-                    contentType = ExerciseContentType.PROGRESSIONS
-                )
-            }
+            ExerciseStep(
+                notes = notes,
+                noteAccidentals = List(notes.size) { NoteAccidental.NONE },
+                contentType = ExerciseContentType.PROGRESSIONS
+            )
         }
 
-        return if (!settings.noteAccidentalsEnabled) {
-            steps.map { step ->
+        val constrainedSteps = if (!settings.noteAccidentalsEnabled) {
+            chordSteps.map { step ->
                 val cn = step.notes.map { constrainNoteToScale(it, generatedKey) }
                 step.copy(notes = cn, noteAccidentals = List(cn.size) { NoteAccidental.NONE })
             }
-        } else steps
+        } else chordSteps
+
+        return ProgressionPlan(
+            chordSteps = constrainedSteps,
+            arpeggiosEnabled = arpeggiosEnabled
+        )
     }
 
     private fun progressionStylesForSettings(types: Set<ProgressionExerciseType>): List<ProgressionChordStyle> {
@@ -294,14 +349,17 @@ class GenerateExerciseUseCase {
         return (leftNotes + rightNotes).sorted()
     }
 
-    private fun arpeggiateProgressionChord(notes: List<Int>, random: Random): List<List<Int>> {
+    private fun arpeggiatedNotesForPattern(notes: List<Int>, stepCount: Int, random: Random): List<List<Int>> {
         val sortedNotes = notes.sorted()
-        if (sortedNotes.size <= 1) return listOf(sortedNotes)
+        if (sortedNotes.size <= 1) return List(stepCount) { sortedNotes }
 
         val contour = ARPEGGIO_CONTOURS.random(random)
-        val noteIndices = contour.filter { it < sortedNotes.size }
-        val effectiveIndices = if (noteIndices.isNotEmpty()) noteIndices else sortedNotes.indices.toList()
-        return effectiveIndices.map { noteIndex -> listOf(sortedNotes[noteIndex]) }
+        val filtered = contour.filter { it < sortedNotes.size }
+        val effectiveIndices = if (filtered.isNotEmpty()) filtered else sortedNotes.indices.toList()
+        return List(stepCount) { idx ->
+            val noteIndex = effectiveIndices[idx % effectiveIndices.size]
+            listOf(sortedNotes[noteIndex])
+        }
     }
 
     /** Builds shuffled material for all non-progression types (existing logic). */

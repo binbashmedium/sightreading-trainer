@@ -556,6 +556,37 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
+    fun `progression mode keeps selected progression order measure by measure`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseMode = ExerciseMode.PROGRESSIONS,
+                handMode = HandMode.RIGHT,
+                selectedKeys = setOf(0),
+                selectedProgressions = setOf(ChordProgression.II_V_I),
+                progressionExerciseTypes = setOf(ProgressionExerciseType.TRIADS),
+                selectedNoteValues = setOf(NoteValue.QUARTER)
+            ),
+            forcedKey = 0,
+            random = Random(11)
+        )
+
+        val measureRoots = exercise.steps
+            .chunked(4)
+            .map { measure -> measure.first().notes.minOrNull() ?: -1 }
+
+        val expectedCycle = listOf(62, 67, 60) // ii - V - I in C
+        measureRoots.forEachIndexed { index, root ->
+            assertEquals(expectedCycle[index % expectedCycle.size], root)
+        }
+
+        // Each quarter-note step inside a measure must keep the same harmonic source chord.
+        exercise.steps.chunked(4).forEach { measure ->
+            val firstChord = measure.first().notes
+            assertTrue(measure.all { it.notes == firstChord })
+        }
+    }
+
+    @Test
     fun `progression mode ignores classic exercise types and keeps progression material only`() {
         val exercise = useCase.execute(
             AppSettings(
@@ -664,6 +695,35 @@ class GenerateExerciseUseCaseTest {
             }
 
         assertNotNull(mixed)
+    }
+
+    @Test
+    fun `progression arpeggios stay inside current progression chord per measure`() {
+        val exercise = useCase.execute(
+            AppSettings(
+                exerciseMode = ExerciseMode.PROGRESSIONS,
+                handMode = HandMode.RIGHT,
+                selectedKeys = setOf(0),
+                selectedProgressions = setOf(ChordProgression.II_V_I),
+                progressionExerciseTypes = setOf(ProgressionExerciseType.TRIADS, ProgressionExerciseType.ARPEGGIOS),
+                selectedNoteValues = setOf(NoteValue.QUARTER)
+            ),
+            forcedKey = 0,
+            random = Random(12)
+        )
+
+        val expectedChordSets = listOf(
+            setOf(62, 65, 69), // ii
+            setOf(67, 71, 74), // V
+            setOf(60, 64, 67)  // I
+        )
+
+        exercise.steps.chunked(4).forEachIndexed { measureIndex, measure ->
+            val expected = expectedChordSets[measureIndex % expectedChordSets.size]
+            measure.forEach { step ->
+                assertTrue(step.notes.all { it in expected })
+            }
+        }
     }
 
     // ── Note value selection ──────────────────────────────────────────────────
