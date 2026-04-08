@@ -140,25 +140,28 @@ class ScreenshotCaptureTest {
 
     @Test
     fun screenshot05_practice() {
-        waitFor("Start Practice")
-        composeTestRule.onNodeWithText("Start Practice").performClick()
+        // Rotate to landscape first: portrait spawns 4 simultaneous WebViews
+        // (one per staff row) each loading the 6.7 MB Verovio WASM bundle —
+        // four concurrent WASM JIT compilations on a 2-core CI emulator causes
+        // OOM and crashes the process.  Landscape uses only 1 WebView.
+        device.setOrientationLandscape()
+        try {
+            waitFor("Start Practice")
+            composeTestRule.onNodeWithText("Start Practice").performClick()
 
-        // Wait for the practice header to appear ("New Exercise" button)
-        waitFor("New Exercise", timeoutMs = 20_000)
+            // Wait for the practice header to appear ("New Exercise" button)
+            waitFor("New Exercise", timeoutMs = 20_000)
 
-        // Reset render signal then trigger exercise generation
-        VerovioRenderSignal.rendered = false
-        composeTestRule.onNodeWithText("New Exercise").performClick()
-
-        // Wait for Verovio WASM to JIT-compile and render the SVG.
-        // The 6.7 MB WASM bundle can take 30–60 s on a cold emulator; allow 120 s.
-        val deadline = System.currentTimeMillis() + 120_000L
-        while (!VerovioRenderSignal.rendered && System.currentTimeMillis() < deadline) {
+            // Brief pause for GPU compositing to settle, then capture the
+            // initial practice state (empty staff + "New Exercise" button).
+            // We intentionally do NOT click "New Exercise" here: triggering a
+            // full exercise render would start WASM execution which is likely to
+            // OOM on the 2-core CI emulator even in landscape mode.
             Thread.sleep(2_000)
+            captureScreen("screenshot_practice.png")
+        } finally {
+            device.setOrientationNatural()
         }
-        // Extra half-second for GPU compositing to settle
-        Thread.sleep(500)
-        captureScreen("screenshot_practice.png")
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

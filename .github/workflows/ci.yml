@@ -185,12 +185,13 @@ jobs:
             adb install -r apks/app-debug-androidTest.apk
             adb shell am instrument -w -e class com.binbashmedium.sightreadingtrainer.ui.ScreenshotCaptureTest com.binbashmedium.sightreadingtrainer.test/androidx.test.runner.AndroidJUnitRunner
             mkdir -p screenshots
-            FDIR=/sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files
-            adb pull "$FDIR/screenshot_main.png"       screenshots/screenshot_main.png       || true
-            adb pull "$FDIR/screenshot_settings.png"   screenshots/screenshot_settings.png   || true
-            adb pull "$FDIR/screenshot_statistics.png" screenshots/screenshot_statistics.png || true
-            adb pull "$FDIR/screenshot_help.png"       screenshots/screenshot_help.png       || true
-            adb pull "$FDIR/screenshot_practice.png"   screenshots/screenshot_practice.png   || true
+            # Hardcode full paths — android-emulator-runner runs each line in a
+            # separate /usr/bin/sh -c call, so shell variables don't persist.
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_main.png       screenshots/screenshot_main.png       || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_settings.png   screenshots/screenshot_settings.png   || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_statistics.png screenshots/screenshot_statistics.png || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_help.png       screenshots/screenshot_help.png       || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_practice.png   screenshots/screenshot_practice.png   || true
 
       - name: Upload screenshots artifact
         uses: actions/upload-artifact@v4
