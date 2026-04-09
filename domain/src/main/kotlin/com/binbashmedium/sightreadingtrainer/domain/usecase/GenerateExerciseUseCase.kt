@@ -26,6 +26,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
+import com.binbashmedium.sightreadingtrainer.domain.model.ScaleType
 import kotlin.random.Random
 
 class GenerateExerciseUseCase {
@@ -57,7 +58,6 @@ class GenerateExerciseUseCase {
         )
         /** Total beats in one 4/4 measure. */
         const val BEATS_PER_MEASURE = 4f
-        private val SCALE_7 = listOf(0, 2, 4, 5, 7, 9, 11)
         private val SINGLE_NOTE_MOTION = listOf(0, 2, 4, 7, 5, 9, 11, 12, 7, 4, 9, 5, 11, 14)
         private val THIRDS = listOf(0 to 4, 2 to 5, 4 to 7, 5 to 9, 7 to 11, 9 to 12, 11 to 14)
         private val FIFTHS = listOf(0 to 7, 2 to 9, 4 to 11, 5 to 12, 7 to 14, 9 to 16, 11 to 18)
@@ -98,12 +98,13 @@ class GenerateExerciseUseCase {
         random: Random = Random.Default
     ): Exercise {
         val generatedKey = (forcedKey ?: settings.selectedKeys.ifEmpty { setOf(0) }.toList().random(random)).coerceIn(0, 11)
+        val scaleIntervals = settings.selectedScaleType.intervals
         val rightRoot = 60 + generatedKey
         val leftRoot = 48 + generatedKey
         val selectedTypes = settings.exerciseTypes.ifEmpty { setOf(ExerciseContentType.SINGLE_NOTES) }
 
         // Progression steps are ordered (not shuffled) and built separately.
-        val progressionPlan = buildProgressionPlan(settings, generatedKey, rightRoot, leftRoot, random)
+        val progressionPlan = buildProgressionPlan(settings, scaleIntervals, rightRoot, leftRoot, random)
         val progressionSteps = progressionPlan?.let { plan ->
             applyProgressionStepPatterns(
                 progressionSteps = plan.chordSteps,
@@ -120,7 +121,7 @@ class GenerateExerciseUseCase {
             selectedTypes - ExerciseContentType.PROGRESSIONS
         }
         // Remaining non-progression types are shuffled as before.
-        val shuffledMaterial = buildShuffledMaterial(nonProgressionTypes, settings, generatedKey, rightRoot, leftRoot, random)
+        val shuffledMaterial = buildShuffledMaterial(nonProgressionTypes, settings, scaleIntervals, rightRoot, leftRoot, random)
 
         val materialPool = if (progressionSteps.isNotEmpty()) {
             buildMaterialPool(progressionSteps, shuffledMaterial, MATERIAL_POOL_SIZE)
@@ -130,15 +131,16 @@ class GenerateExerciseUseCase {
             // Fallback: shouldn't normally happen, but be safe.
             buildMaterialPool(
                 emptyList(),
-                patternsForType(ExerciseContentType.SINGLE_NOTES, settings.handMode, rightRoot, leftRoot, random),
+                patternsForType(ExerciseContentType.SINGLE_NOTES, settings.handMode, rightRoot, leftRoot, random, scaleIntervals),
                 MATERIAL_POOL_SIZE
             )
         }
 
         val mixedExercise = applyMeasurePatterns(materialPool, DEFAULT_EXERCISE_MEASURES, settings.selectedNoteValues.ifEmpty { NoteValue.entries.toSet() }, random)
-        val accidentalsApplied = applyGeneratedAccidentals(mixedExercise, settings.noteAccidentalsEnabled)
+        val scaleConstrained = applyScaleConstraint(mixedExercise, generatedKey, scaleIntervals)
+        val accidentalsApplied = applyGeneratedAccidentals(scaleConstrained, settings.noteAccidentalsEnabled)
         val pedalApplied = applyPedalMarks(accidentalsApplied, settings.pedalEventsEnabled)
-        val rangeApplied = applyNoteRanges(pedalApplied, settings, generatedKey)
+        val rangeApplied = applyNoteRanges(pedalApplied, settings)
         val ornamentsApplied = applyOrnaments(rangeApplied, settings.selectedOrnaments, random)
 
         return Exercise(steps = ornamentsApplied, musicalKey = generatedKey, handMode = settings.handMode)
@@ -263,7 +265,7 @@ class GenerateExerciseUseCase {
     /** Builds ordered progression chord steps for a single selected progression (no shuffle). */
     private fun buildProgressionPlan(
         settings: AppSettings,
-        generatedKey: Int,
+        scaleIntervals: List<Int>,
         rightRoot: Int,
         leftRoot: Int,
         random: Random
@@ -277,7 +279,7 @@ class GenerateExerciseUseCase {
 
         val chordSteps = progression.chords.map { triadOffsets ->
             val style = chordStyles.random(random)
-            val styledOffsets = progressionOffsetsForStyle(triadOffsets.first(), style)
+            val styledOffsets = progressionOffsetsForStyle(triadOffsets.first(), style, scaleIntervals)
             val notes = progressionNotesForHandMode(styledOffsets, settings.handMode, rightRoot, leftRoot)
             ExerciseStep(
                 notes = notes,
@@ -287,15 +289,8 @@ class GenerateExerciseUseCase {
             )
         }
 
-        val constrainedSteps = if (!settings.noteAccidentalsEnabled) {
-            chordSteps.map { step ->
-                val cn = step.notes.map { constrainNoteToScale(it, generatedKey) }
-                step.copy(notes = cn, noteAccidentals = List(cn.size) { NoteAccidental.NONE })
-            }
-        } else chordSteps
-
         return ProgressionPlan(
-            chordSteps = constrainedSteps,
+            chordSteps = chordSteps,
             arpeggiosEnabled = arpeggiosEnabled
         )
     }
@@ -316,22 +311,23 @@ class GenerateExerciseUseCase {
 
     private fun progressionOffsetsForStyle(
         rootOffset: Int,
-        style: ProgressionChordStyle
+        style: ProgressionChordStyle,
+        scaleIntervals: List<Int>
     ): List<Int> = when (style) {
-        ProgressionChordStyle.TRIAD -> diatonicStackOffsets(rootOffset, tones = 3)
-        ProgressionChordStyle.SEVENTH -> diatonicStackOffsets(rootOffset, tones = 4)
-        ProgressionChordStyle.NINTH -> diatonicStackOffsets(rootOffset, tones = 5)
+        ProgressionChordStyle.TRIAD -> diatonicStackOffsets(rootOffset, tones = 3, scaleIntervals = scaleIntervals)
+        ProgressionChordStyle.SEVENTH -> diatonicStackOffsets(rootOffset, tones = 4, scaleIntervals = scaleIntervals)
+        ProgressionChordStyle.NINTH -> diatonicStackOffsets(rootOffset, tones = 5, scaleIntervals = scaleIntervals)
     }
 
-    private fun diatonicStackOffsets(rootOffset: Int, tones: Int): List<Int> {
+    private fun diatonicStackOffsets(rootOffset: Int, tones: Int, scaleIntervals: List<Int>): List<Int> {
         val rootPitchClass = ((rootOffset % 12) + 12) % 12
-        val rootScaleIndex = SCALE_7.indexOf(rootPitchClass)
+        val rootScaleIndex = scaleIntervals.indexOf(rootPitchClass)
         if (rootScaleIndex < 0) return listOf(rootOffset)
 
         return (0 until tones).map { toneIndex ->
             val scaleIndex = rootScaleIndex + toneIndex * 2
-            val octaveShift = scaleIndex / SCALE_7.size
-            SCALE_7[scaleIndex % SCALE_7.size] + octaveShift * 12
+            val octaveShift = scaleIndex / scaleIntervals.size
+            scaleIntervals[scaleIndex % scaleIntervals.size] + octaveShift * 12
         }
     }
 
@@ -381,7 +377,7 @@ class GenerateExerciseUseCase {
     private fun buildShuffledMaterial(
         types: Set<ExerciseContentType>,
         settings: AppSettings,
-        generatedKey: Int,
+        scaleIntervals: List<Int>,
         rightRoot: Int,
         leftRoot: Int,
         random: Random
@@ -389,13 +385,13 @@ class GenerateExerciseUseCase {
         if (types.isEmpty()) return emptyList()
 
         val materialByType = types.associateWith { type ->
-            patternsForType(type, settings.handMode, rightRoot, leftRoot, random)
+            patternsForType(type, settings.handMode, rightRoot, leftRoot, random, scaleIntervals)
         }.filterValues { it.isNotEmpty() }
 
         val effectiveMaterialByType = if (materialByType.isEmpty()) {
             mapOf(
                 ExerciseContentType.SINGLE_NOTES to patternsForType(
-                    ExerciseContentType.SINGLE_NOTES, settings.handMode, rightRoot, leftRoot, random
+                    ExerciseContentType.SINGLE_NOTES, settings.handMode, rightRoot, leftRoot, random, scaleIntervals
                 )
             )
         } else materialByType
@@ -404,14 +400,7 @@ class GenerateExerciseUseCase {
             .shuffled(random)
             .map { entry -> entry.value.random(random) }
 
-        val material = seededMix + effectiveMaterialByType.values.flatten().shuffled(random)
-
-        return if (!settings.noteAccidentalsEnabled) {
-            material.map { step ->
-                val cn = step.notes.map { constrainNoteToScale(it, generatedKey) }
-                step.copy(notes = cn, noteAccidentals = List(cn.size) { NoteAccidental.NONE })
-            }
-        } else material
+        return seededMix + effectiveMaterialByType.values.flatten().shuffled(random)
     }
 
     private fun patternsForType(
@@ -419,7 +408,8 @@ class GenerateExerciseUseCase {
         handMode: HandMode,
         rightRoot: Int,
         leftRoot: Int,
-        random: Random
+        random: Random,
+        scaleIntervals: List<Int>
     ): List<ExerciseStep> = when (type) {
         ExerciseContentType.SINGLE_NOTES -> sequenceForHandMode(
             handMode,
@@ -428,9 +418,9 @@ class GenerateExerciseUseCase {
             random
         )
         ExerciseContentType.OCTAVES -> when (handMode) {
-            HandMode.RIGHT -> SCALE_7.map { i -> ExerciseStep(notes = listOf(rightRoot + i, rightRoot + i + 12)) }
-            HandMode.LEFT -> SCALE_7.map { i -> ExerciseStep(notes = listOf(leftRoot + i - 12, leftRoot + i)) }
-            HandMode.BOTH -> SCALE_7.map { i -> ExerciseStep(notes = listOf(leftRoot + i, rightRoot + i)) }
+            HandMode.RIGHT -> scaleIntervals.map { i -> ExerciseStep(notes = listOf(rightRoot + i, rightRoot + i + 12)) }
+            HandMode.LEFT -> scaleIntervals.map { i -> ExerciseStep(notes = listOf(leftRoot + i - 12, leftRoot + i)) }
+            HandMode.BOTH -> scaleIntervals.map { i -> ExerciseStep(notes = listOf(leftRoot + i, rightRoot + i)) }
         }
         ExerciseContentType.THIRDS -> sequenceForHandMode(
             handMode,
@@ -617,8 +607,7 @@ class GenerateExerciseUseCase {
      */
     private fun applyNoteRanges(
         steps: List<ExerciseStep>,
-        settings: AppSettings,
-        key: Int
+        settings: AppSettings
     ): List<ExerciseStep> {
         val bassMin = settings.bassNoteRangeMin.coerceIn(28, 72)
         val bassMax = settings.bassNoteRangeMax.coerceIn(bassMin, 72)
@@ -668,6 +657,19 @@ class GenerateExerciseUseCase {
         }
     }
 
+    private fun applyScaleConstraint(
+        steps: List<ExerciseStep>,
+        key: Int,
+        scaleIntervals: List<Int>
+    ): List<ExerciseStep> = steps.map { step ->
+        val constrained = step.notes.map { constrainNoteToScale(it, key, scaleIntervals) }
+        if (constrained == step.notes) step
+        else step.copy(
+            notes = constrained,
+            noteAccidentals = List(constrained.size) { NoteAccidental.NONE }
+        )
+    }
+
     private fun clampMidiToRange(midi: Int, range: Pair<Int, Int>): Int {
         val (min, max) = range
         if (midi in min..max) return midi
@@ -696,8 +698,9 @@ class GenerateExerciseUseCase {
         else -> null
     }
 
-    private fun constrainNoteToScale(note: Int, key: Int): Int {
-        val scalePitchClasses = SCALE_7.map { (it + key) % 12 }.toSet()
+    private fun constrainNoteToScale(note: Int, key: Int, scaleIntervals: List<Int>): Int {
+        val intervals = scaleIntervals.ifEmpty { ScaleType.MAJOR.intervals }
+        val scalePitchClasses = intervals.map { (it + key) % 12 }.toSet()
         if ((note % 12 + 12) % 12 in scalePitchClasses) return note
 
         val quickCandidates = listOf(1, -1, 2, -2)
