@@ -15,6 +15,7 @@
 package com.binbashmedium.sightreadingtrainer.ui
 
 import android.annotation.SuppressLint
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -29,6 +30,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
+
+/**
+ * Set to `true` by the JavaScript bridge whenever Verovio finishes painting an SVG into the DOM.
+ * Instrumented screenshot tests poll this flag (in the same process) to wait for actual rendering
+ * rather than relying on a fixed sleep — the 6.7 MB WASM can take 30–60 s to JIT on a cold
+ * emulator, far longer than any reasonable hard-coded delay.
+ */
+object VerovioRenderSignal {
+    @Volatile
+    var rendered: Boolean = false
+}
+
+/** Bridge exposed to JavaScript as `window.Android`. */
+private class RenderBridge {
+    @JavascriptInterface
+    fun onRendered() {
+        VerovioRenderSignal.rendered = true
+    }
+}
 
 /**
  * Renders a segment of the grand staff using Verovio via an embedded WebView.
@@ -68,6 +88,8 @@ fun VerovioStaffView(
             @Suppress("DEPRECATION")
             settings.allowFileAccessFromFileURLs = true
             settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
+            // Expose the render-complete bridge so staff.html can signal Android.onRendered().
+            addJavascriptInterface(RenderBridge(), "Android")
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView,

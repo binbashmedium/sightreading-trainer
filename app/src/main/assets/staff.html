@@ -43,6 +43,10 @@
       if (showCursor) {
         drawCursor();
       }
+      // Notify the Android host that the SVG is now in the DOM.
+      if (typeof Android !== 'undefined' && Android.onRendered) {
+        Android.onRendered();
+      }
     }
 
     /**

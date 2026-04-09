@@ -37,6 +37,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
+import com.binbashmedium.sightreadingtrainer.domain.model.ScaleType
 
 @Composable
 fun SettingsScreen(
@@ -181,6 +182,19 @@ fun SettingsScreen(
                         viewModel.updateSettings(settings.copy(selectedKeys = updatedKeys))
                     },
                     label = { Text(keyName) }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("Skala")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ScaleType.entries.forEach { scaleType ->
+                FilterChip(
+                    selected = settings.selectedScaleType == scaleType,
+                    onClick = { viewModel.updateSettings(settings.copy(selectedScaleType = scaleType)) },
+                    label = { Text(scaleType.displayName) }
                 )
             }
         }

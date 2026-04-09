@@ -2,6 +2,18 @@
 
 ## In Progress
 
+- [x] **Skalenmodus-Auswahl (Dur/Harmonisch Moll/Melodisch Moll/Pentatonik/Blues) in Settings ergänzen** — Single-Select-UI unter den Grundtönen (C, C#, D, …) hinzugefügt; Standard ist Dur.
+- [x] **Generator auf ausgewählten Skalenmodus begrenzen** — Übungstöne werden nun anhand des gewählten Modus (Dur/Harmonisch Moll/Melodisch Moll/Pentatonik/Blues) im gewählten Key gefiltert/eingeschränkt.
+- [x] **Tests + Context-Dateien aktualisieren** — Unit-Tests für Skalenmodus-Parsing/Generator ergänzt und `/context`-Dokumentation synchronisiert.
+
+- [x] **Kover-Report mit 0 Coverage beheben** — Root-Projekt aggregiert nun explizit `:domain` und `:app` über Kover-Dependencies, damit die Gesamt-Reports nicht mehr nur das leere Root-Projekt abdecken.
+- [x] **CI-Coverage-Ausführung auf korrekte Aggregation ausrichten** — Coverage-Step führt Tests und Kover-Reports in einem gemeinsamen Gradle-Aufruf aus, damit instrumentierte Ausführung + Report-Erzeugung konsistent zusammenlaufen.
+- [ ] **Validierung der Kover-Tasks und Build-Tasks durchführen** — `:domain:test` + `:domain:koverXmlReport` erfolgreich (nicht-leerer XML-Report verifiziert); Gesamt-`test`, Root-Kover-Reports und `assembleDebug` bleiben ohne Android SDK (`ANDROID_HOME`/`sdk.dir`) in dieser Umgebung blockiert.
+
+- [x] **Kover Coverage für Multi-Module einrichten** — Gradle-Konfiguration für `:domain` und `:app` so ergänzen, dass XML- und HTML-Coverage-Reports erzeugt werden.
+- [x] **CI um Coverage-Tasks und Artifact-Upload erweitern** — bestehenden CI-Workflow minimal-invasiv anpassen, Coverage in den Testlauf integrieren und Reports als Artifact hochladen.
+- [ ] **Lokale Validierung inkl. Tests, Coverage und APK-Build durchführen** — `:domain:test` läuft erfolgreich; `./gradlew test`, `./gradlew koverXmlReport koverHtmlReport` und `./gradlew assembleDebug` sind in dieser Umgebung ohne Android SDK (`ANDROID_HOME`/`sdk.dir`) blockiert.
+
 - [x] **Release-Screenshot-Upload auf Emulator-Screenshots umstellen** — `validation/screenshots20` gelöscht; Release-Upload nutzt jetzt `fastlane/metadata/android/*/images/phoneScreenshots/*.png` (Emulator-/Screengrab-Screenshots) statt Validation-Bildern.
 - [x] **Release-Workflow: Screenshots als Artifact mit hochladen** — Screenshot-Upload bleibt aktiv und hängt jetzt Emulator-/Fastlane-Screenshots zusätzlich zur `app-release.aab` an Release/Artifacts an.
 - [x] **CI-fail in GrandStaffModelsTest reproduzieren und beheben** — failing Root×Inversion-Matrix lokal mit `:app:test` verifiziert, Ursache isoliert und Testkriterien für mehrdeutige Akkordmengen korrigiert.

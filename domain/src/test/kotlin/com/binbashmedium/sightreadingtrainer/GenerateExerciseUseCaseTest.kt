@@ -24,6 +24,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
 import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
+import com.binbashmedium.sightreadingtrainer.domain.model.ScaleType
 import com.binbashmedium.sightreadingtrainer.domain.usecase.GenerateExerciseUseCase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -274,6 +275,53 @@ class GenerateExerciseUseCaseTest {
                 )
             )
             assertTrue(exercise.musicalKey in setOf(1, 7))
+        }
+    }
+
+    @Test
+    fun `selected scale mode constrains generated pitch classes in classic mode`() {
+        ScaleType.entries.forEachIndexed { seed, scaleType ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseMode = ExerciseMode.CLASSIC,
+                    exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES, ExerciseContentType.TRIADS),
+                    handMode = HandMode.BOTH,
+                    selectedKeys = setOf(0),
+                    selectedScaleType = scaleType,
+                    noteAccidentalsEnabled = false
+                ),
+                random = Random(30_000 + seed)
+            )
+
+            val allowedPitchClasses = scaleType.intervals.map { it % 12 }.toSet()
+            assertTrue(
+                "Found notes outside ${scaleType.name}: ${exercise.expectedNotes.flatten()}",
+                exercise.expectedNotes.flatten().all { ((it % 12) + 12) % 12 in allowedPitchClasses }
+            )
+        }
+    }
+
+    @Test
+    fun `selected scale mode constrains generated pitch classes in progression mode`() {
+        ScaleType.entries.forEachIndexed { seed, scaleType ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseMode = ExerciseMode.PROGRESSIONS,
+                    handMode = HandMode.RIGHT,
+                    selectedKeys = setOf(0),
+                    selectedScaleType = scaleType,
+                    selectedProgressions = setOf(ChordProgression.I_IV_V_I),
+                    progressionExerciseTypes = setOf(ProgressionExerciseType.TRIADS),
+                    noteAccidentalsEnabled = false
+                ),
+                random = Random(31_000 + seed)
+            )
+
+            val allowedPitchClasses = scaleType.intervals.map { it % 12 }.toSet()
+            assertTrue(
+                "Found progression notes outside ${scaleType.name}",
+                exercise.expectedNotes.flatten().all { ((it % 12) + 12) % 12 in allowedPitchClasses }
+            )
         }
     }
 
