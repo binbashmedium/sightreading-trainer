@@ -127,3 +127,5 @@
 - [x] **Renderer aligned with notation rules** — chord noteheads grouped onto a single stem; middle-line stem direction rules from PDF reference; clustered chords, broader note motion.
 - [x] **Exercise type multi-selection** — old 5-level difficulty model replaced with multi-select exercise content types.
 - [x] **Multi-key selection pool** — settings support selecting multiple keys; one generated key chosen per exercise.
+
+- [x] **Fix MIDI multi-message detection regression (chords/blues play)** — Android MIDI parser now iterates all 3-byte messages in each onSend packet (instead of only the first), preventing dropped chord tones that caused yellow extras + cursor shift; added `MidiMessageParserTest` coverage and updated `context/midi.md`.
