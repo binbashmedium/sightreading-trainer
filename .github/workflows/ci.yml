@@ -14,6 +14,9 @@
 
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: ["**"]
@@ -25,12 +28,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
-  test:
-    name: Unit tests
+  build:
+    name: Build & Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,11 +48,8 @@ jobs:
       - name: Override Java home for Gradle
         run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
 
-      - name: Run domain unit tests
-        run: ./gradlew :domain:test --no-daemon
-
-      - name: Run app unit tests
-        run: ./gradlew :app:test --no-daemon
+      - name: Run unit tests + generate coverage reports
+        run: ./gradlew :domain:test :app:test koverXmlReport koverHtmlReport --no-daemon
 
       - name: Upload test results
         if: always()
@@ -64,105 +61,72 @@ jobs:
             app/build/reports/tests/
           retention-days: 14
 
-  build-debug:
-    name: Build debug APK
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          distribution: temurin
-          java-version: 21
+          name: coverage-report
+          path: |
+            build/reports/kover/report.xml
+            build/reports/kover/html/
+          if-no-files-found: warn
+          retention-days: 14
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Build debug APK + test APK
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
 
-      - name: Make gradlew executable
-        run: chmod +x gradlew
-
-      - name: Override Java home for Gradle
-        run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
-
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon
-
-      - name: Upload debug APK (artifact)
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
 
-  release-bundle:
-    name: Build release AAB (upload on release)
-    if: github.event_name == 'release'
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
+      - name: Upload debug test APK
+        uses: actions/upload-artifact@v4
         with:
-          distribution: temurin
-          java-version: 21
-
-      - uses: gradle/actions/setup-gradle@v4
-
-      - name: Make gradlew executable
-        run: chmod +x gradlew
-
-      - name: Override Java home for Gradle
-        run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
+          name: app-debug-androidTest
+          path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          retention-days: 14
 
       - name: Restore upload keystore from Base64 secret
+        if: github.event_name == 'release'
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "Missing required secret: KEYSTORE_BASE64" >&2
-            exit 1
+            echo "Missing required secret: KEYSTORE_BASE64" >&2; exit 1
           fi
           if [ -z "$KEYSTORE_PASSWORD" ]; then
-            echo "Missing required secret: KEYSTORE_PASSWORD" >&2
-            exit 1
+            echo "Missing required secret: KEYSTORE_PASSWORD" >&2; exit 1
           fi
           if [ -z "$KEY_ALIAS" ]; then
-            echo "Missing required secret: KEY_ALIAS" >&2
-            exit 1
+            echo "Missing required secret: KEY_ALIAS" >&2; exit 1
           fi
-          python - <<'PY'
-          import base64
-          import binascii
-          import os
-          import pathlib
-          import re
-          import sys
-
+          python - <<'PY2'
+          import base64, binascii, os, pathlib, re, sys
           raw = os.environ["KEYSTORE_BASE64"]
           cleaned = re.sub(r"\s+", "", raw)
           try:
               decoded = base64.b64decode(cleaned, validate=False)
           except binascii.Error as exc:
-              print(f"Invalid KEYSTORE_BASE64: {exc}", file=sys.stderr)
-              sys.exit(1)
+              print(f"Invalid KEYSTORE_BASE64: {exc}", file=sys.stderr); sys.exit(1)
           if not decoded:
-              print("Decoded keystore is empty", file=sys.stderr)
-              sys.exit(1)
+              print("Decoded keystore is empty", file=sys.stderr); sys.exit(1)
           pathlib.Path("/tmp/upload-keystore.jks").write_bytes(decoded)
-          PY
+          PY2
           keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" >/dev/null
-          if ! keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
-            echo "Key alias '$KEY_ALIAS' not found in keystore. Available aliases:" >&2
+          if ! keytool -list -keystore /tmp/upload-keystore.jks \
+               -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            echo "Key alias '$KEY_ALIAS' not found. Available:" >&2
             keytool -list -keystore /tmp/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" >&2
             exit 1
           fi
 
       - name: Build release app bundle
+        if: github.event_name == 'release'
         env:
           KEYSTORE_PATH: /tmp/upload-keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -170,10 +134,89 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew :app:bundleRelease --no-daemon
 
-      - name: Upload AAB to GitHub release
+      - name: Upload release AAB
         if: github.event_name == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
+  screenshots:
+    name: Capture all-screen screenshots (emulator)
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Download app APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug
+          path: apks
+
+      - name: Download test APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-androidTest
+          path: apks
+
+      - name: Enable KVM for hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run all-screen screenshot test on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_5
+          disable-animations: true
+          script: |
+            adb install -r apks/app-debug.apk
+            adb install -r apks/app-debug-androidTest.apk
+            adb shell am instrument -w -e class com.binbashmedium.sightreadingtrainer.ui.ScreenshotCaptureTest com.binbashmedium.sightreadingtrainer.test/androidx.test.runner.AndroidJUnitRunner
+            mkdir -p screenshots
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_main.png       screenshots/screenshot_main.png       || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_settings.png   screenshots/screenshot_settings.png   || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_statistics.png screenshots/screenshot_statistics.png || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_help.png       screenshots/screenshot_help.png       || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_practice.png   screenshots/screenshot_practice.png   || true
+
+      - name: Upload screenshots artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-screenshots
+          path: screenshots/
+          retention-days: 14
+
+  publish-release:
+    name: Publish release to GitHub
+    needs: [build, screenshots]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release-aab
+          path: release
+
+      - name: Download screenshots
+        uses: actions/download-artifact@v4
+        with:
+          name: app-screenshots
+          path: release/screenshots
+        continue-on-error: true
+
+      - name: Upload AAB and screenshots to GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/bundle/release/app-release.aab
-            fastlane/metadata/android/*/images/phoneScreenshots/*.png
+            release/app-release.aab
+            release/screenshots/*.png

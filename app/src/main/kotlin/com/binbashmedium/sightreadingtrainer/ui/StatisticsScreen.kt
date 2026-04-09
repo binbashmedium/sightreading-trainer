@@ -42,7 +42,14 @@ fun StatisticsScreen(
     viewModel: StatisticsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    StatisticsScreenContent(state = state, onBack = { navController.popBackStack() })
+}
 
+@Composable
+internal fun StatisticsScreenContent(
+    state: StatisticsUiState,
+    onBack: () -> Unit = {}
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -69,7 +76,7 @@ fun StatisticsScreen(
         item {
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedButton(
-                onClick = { navController.popBackStack() },
+                onClick = onBack,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Back")

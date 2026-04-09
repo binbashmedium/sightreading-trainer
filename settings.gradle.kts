@@ -12,7 +12,7 @@ pluginManagement {
     }
 
     plugins {
-        id("com.android.application") version "8.8.0"
+        id("com.android.application") version "8.13.2"
         id("org.jetbrains.kotlin.android") version "2.1.21"
         id("org.jetbrains.kotlin.plugin.compose") version "2.1.21"
         id("com.google.dagger.hilt.android") version "2.57.1"
@@ -37,7 +37,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.8.0")
+        classpath("com.android.tools.build:gradle:8.13.2")
     }
 }
 

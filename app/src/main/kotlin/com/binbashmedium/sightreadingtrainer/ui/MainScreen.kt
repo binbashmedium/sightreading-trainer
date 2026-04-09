@@ -36,6 +36,23 @@ fun MainScreen(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
+    MainScreenContent(
+        settings = settings,
+        onStartPractice = { navController.navigate("practice") },
+        onSettings = { navController.navigate("settings") },
+        onStatistics = { navController.navigate("statistics") },
+        onHelp = { navController.navigate("help") }
+    )
+}
+
+@Composable
+internal fun MainScreenContent(
+    settings: com.binbashmedium.sightreadingtrainer.domain.model.AppSettings,
+    onStartPractice: () -> Unit = {},
+    onSettings: () -> Unit = {},
+    onStatistics: () -> Unit = {},
+    onHelp: () -> Unit = {}
+) {
     val typeSummary = formatExerciseTypeSummary(settings.exerciseTypes)
     val keySummary = settings.selectedKeys.sorted().joinToString(", ") { KEY_NAMES[it] }
 
@@ -72,7 +89,7 @@ fun MainScreen(
         Spacer(Modifier.height(16.dp))
 
         Button(
-            onClick = { navController.navigate("practice") },
+            onClick = onStartPractice,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.start_practice))
@@ -81,7 +98,7 @@ fun MainScreen(
         Spacer(Modifier.height(8.dp))
 
         OutlinedButton(
-            onClick = { navController.navigate("settings") },
+            onClick = onSettings,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.settings))
@@ -90,7 +107,7 @@ fun MainScreen(
         Spacer(Modifier.height(8.dp))
 
         OutlinedButton(
-            onClick = { navController.navigate("statistics") },
+            onClick = onStatistics,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Statistics")
@@ -99,7 +116,7 @@ fun MainScreen(
         Spacer(Modifier.height(8.dp))
 
         OutlinedButton(
-            onClick = { navController.navigate("help") },
+            onClick = onHelp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Help")

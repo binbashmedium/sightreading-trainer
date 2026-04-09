@@ -32,11 +32,9 @@ import com.binbashmedium.sightreadingtrainer.domain.model.AppSettings
 import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseInputSource
-import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseMode
 import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
-import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
 
 @Composable
 fun SettingsScreen(
@@ -45,7 +43,21 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsState()
     val devices by viewModel.availableMidiDevices.collectAsState()
+    SettingsScreenContent(
+        settings = settings,
+        availableDevices = devices,
+        onSettingsChange = { viewModel.updateSettings(it) },
+        onBack = { navController.popBackStack() }
+    )
+}
 
+@Composable
+internal fun SettingsScreenContent(
+    settings: AppSettings,
+    availableDevices: List<String> = emptyList(),
+    onSettingsChange: (AppSettings) -> Unit = {},
+    onBack: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -58,57 +70,24 @@ fun SettingsScreen(
         )
         Spacer(Modifier.height(16.dp))
 
-        Text("Exercise Mode")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ExerciseMode.entries.forEach { mode ->
-                FilterChip(
-                    selected = settings.exerciseMode == mode,
-                    onClick = { viewModel.updateSettings(settings.copy(exerciseMode = mode)) },
-                    label = { Text(if (mode == ExerciseMode.CLASSIC) "Mode 1" else "Mode 2") }
-                )
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Text(if (settings.exerciseMode == ExerciseMode.CLASSIC) "Exercise Types (Mode 1)" else "Progression Voicings (Mode 2)")
+        // Difficulty (1–5)
+        Text("Exercise Types")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (settings.exerciseMode == ExerciseMode.CLASSIC) {
-                ExerciseContentType.entries
-                    .filter { it != ExerciseContentType.PROGRESSIONS }
-                    .forEach { type ->
-                        FilterChip(
-                            selected = type in settings.exerciseTypes,
-                            onClick = {
-                                val updatedTypes = settings.exerciseTypes.toMutableSet().apply {
-                                    if (contains(type)) {
-                                        if (size > 1) remove(type)
-                                    } else {
-                                        add(type)
-                                    }
-                                }
-                                viewModel.updateSettings(settings.copy(exerciseTypes = updatedTypes))
-                            },
-                            label = { Text(type.name.replace('_', ' ')) }
-                        )
-                    }
-            } else {
-                ProgressionExerciseType.entries.forEach { type ->
-                    FilterChip(
-                        selected = type in settings.progressionExerciseTypes,
-                        onClick = {
-                            val updatedTypes = settings.progressionExerciseTypes.toMutableSet().apply {
-                                if (contains(type)) {
-                                    if (size > 1) remove(type)
-                                } else {
-                                    add(type)
-                                }
+            ExerciseContentType.entries.forEach { type ->
+                FilterChip(
+                    selected = type in settings.exerciseTypes,
+                    onClick = {
+                        val updatedTypes = settings.exerciseTypes.toMutableSet().apply {
+                            if (contains(type)) {
+                                if (size > 1) remove(type)
+                            } else {
+                                add(type)
                             }
-                            viewModel.updateSettings(settings.copy(progressionExerciseTypes = updatedTypes))
-                        },
-                        label = { Text(type.name.replace('_', ' ')) }
-                    )
-                }
+                        }
+                        onSettingsChange(settings.copy(exerciseTypes = updatedTypes))
+                    },
+                    label = { Text(type.name.replace('_', ' ')) }
+                )
             }
         }
 
@@ -119,7 +98,7 @@ fun SettingsScreen(
             ExerciseInputSource.entries.forEach { source ->
                 FilterChip(
                     selected = settings.exerciseInputSource == source,
-                    onClick = { viewModel.updateSettings(settings.copy(exerciseInputSource = source)) },
+                    onClick = { onSettingsChange(settings.copy(exerciseInputSource = source)) },
                     label = { Text(source.name.lowercase().replaceFirstChar { it.uppercase() }) }
                 )
             }
@@ -130,13 +109,13 @@ fun SettingsScreen(
         Text("Exercise Time: ${settings.exerciseTimeMin} min")
         Slider(
             value = settings.exerciseTimeMin.toFloat(),
-            onValueChange = { viewModel.updateSettings(settings.copy(exerciseTimeMin = it.toInt())) },
+            onValueChange = { onSettingsChange(settings.copy(exerciseTimeMin = it.toInt())) },
             valueRange = 1f..10f,
             steps = 8
         )
 
         // Progression selector — shown only when PROGRESSIONS type is active
-        if (settings.exerciseMode == ExerciseMode.PROGRESSIONS) {
+        if (ExerciseContentType.PROGRESSIONS in settings.exerciseTypes) {
             Spacer(Modifier.height(16.dp))
             Text("Chord Progressions")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -151,7 +130,7 @@ fun SettingsScreen(
                                     add(prog)
                                 }
                             }
-                            viewModel.updateSettings(settings.copy(selectedProgressions = updated))
+                            onSettingsChange(settings.copy(selectedProgressions = updated))
                         },
                         label = { Text(prog.displayName) }
                     )
@@ -178,7 +157,7 @@ fun SettingsScreen(
                                 add(index)
                             }
                         }
-                        viewModel.updateSettings(settings.copy(selectedKeys = updatedKeys))
+                        onSettingsChange(settings.copy(selectedKeys = updatedKeys))
                     },
                     label = { Text(keyName) }
                 )
@@ -201,7 +180,7 @@ fun SettingsScreen(
                                 add(nv)
                             }
                         }
-                        viewModel.updateSettings(settings.copy(selectedNoteValues = updated))
+                        onSettingsChange(settings.copy(selectedNoteValues = updated))
                     },
                     label = { Text(nv.name.lowercase().replaceFirstChar { it.uppercase() }) }
                 )
@@ -216,7 +195,7 @@ fun SettingsScreen(
             HandMode.entries.forEach { mode ->
                 FilterChip(
                     selected = settings.handMode == mode,
-                    onClick = { viewModel.updateSettings(settings.copy(handMode = mode)) },
+                    onClick = { onSettingsChange(settings.copy(handMode = mode)) },
                     label = { Text(mode.name) }
                 )
             }
@@ -233,7 +212,7 @@ fun SettingsScreen(
             Switch(
                 checked = settings.chordNamesEnabled,
                 onCheckedChange = {
-                    viewModel.updateSettings(settings.copy(chordNamesEnabled = it))
+                    onSettingsChange(settings.copy(chordNamesEnabled = it))
                 }
             )
         }
@@ -249,7 +228,7 @@ fun SettingsScreen(
             Switch(
                 checked = settings.noteAccidentalsEnabled,
                 onCheckedChange = {
-                    viewModel.updateSettings(settings.copy(noteAccidentalsEnabled = it))
+                    onSettingsChange(settings.copy(noteAccidentalsEnabled = it))
                 }
             )
         }
@@ -265,7 +244,7 @@ fun SettingsScreen(
             Switch(
                 checked = settings.pedalEventsEnabled,
                 onCheckedChange = {
-                    viewModel.updateSettings(settings.copy(pedalEventsEnabled = it))
+                    onSettingsChange(settings.copy(pedalEventsEnabled = it))
                 }
             )
         }
@@ -290,7 +269,7 @@ fun SettingsScreen(
                             settings.selectedOrnaments - type
                         else
                             settings.selectedOrnaments + type
-                        viewModel.updateSettings(settings.copy(selectedOrnaments = updated))
+                        onSettingsChange(settings.copy(selectedOrnaments = updated))
                     },
                     label = {
                         Text(when (type) {
@@ -315,7 +294,7 @@ fun SettingsScreen(
             value = settings.bassNoteRangeMin.toFloat(),
             onValueChange = {
                 val newMin = it.toInt().coerceAtMost(settings.bassNoteRangeMax - 12)
-                viewModel.updateSettings(settings.copy(bassNoteRangeMin = newMin))
+                onSettingsChange(settings.copy(bassNoteRangeMin = newMin))
             },
             valueRange = 28f..72f,
             steps = 43
@@ -325,7 +304,7 @@ fun SettingsScreen(
             value = settings.bassNoteRangeMax.toFloat(),
             onValueChange = {
                 val newMax = it.toInt().coerceAtLeast(settings.bassNoteRangeMin + 12)
-                viewModel.updateSettings(settings.copy(bassNoteRangeMax = newMax))
+                onSettingsChange(settings.copy(bassNoteRangeMax = newMax))
             },
             valueRange = 28f..72f,
             steps = 43
@@ -339,7 +318,7 @@ fun SettingsScreen(
             value = settings.trebleNoteRangeMin.toFloat(),
             onValueChange = {
                 val newMin = it.toInt().coerceAtMost(settings.trebleNoteRangeMax - 12)
-                viewModel.updateSettings(settings.copy(trebleNoteRangeMin = newMin))
+                onSettingsChange(settings.copy(trebleNoteRangeMin = newMin))
             },
             valueRange = 48f..93f,
             steps = 44
@@ -349,7 +328,7 @@ fun SettingsScreen(
             value = settings.trebleNoteRangeMax.toFloat(),
             onValueChange = {
                 val newMax = it.toInt().coerceAtLeast(settings.trebleNoteRangeMin + 12)
-                viewModel.updateSettings(settings.copy(trebleNoteRangeMax = newMax))
+                onSettingsChange(settings.copy(trebleNoteRangeMax = newMax))
             },
             valueRange = 48f..93f,
             steps = 44
@@ -361,7 +340,7 @@ fun SettingsScreen(
         Text("${stringResource(R.string.timing_tolerance)}: ${settings.timingToleranceMs} ms")
         Slider(
             value = settings.timingToleranceMs.toFloat(),
-            onValueChange = { viewModel.updateSettings(settings.copy(timingToleranceMs = it.toInt())) },
+            onValueChange = { onSettingsChange(settings.copy(timingToleranceMs = it.toInt())) },
             valueRange = 50f..500f
         )
 
@@ -371,7 +350,7 @@ fun SettingsScreen(
         Text("${stringResource(R.string.chord_window)}: ${settings.chordWindowMs} ms")
         Slider(
             value = settings.chordWindowMs.toFloat(),
-            onValueChange = { viewModel.updateSettings(settings.copy(chordWindowMs = it.toInt())) },
+            onValueChange = { onSettingsChange(settings.copy(chordWindowMs = it.toInt())) },
             valueRange = 20f..200f
         )
 
@@ -386,23 +365,23 @@ fun SettingsScreen(
             Text(stringResource(R.string.sound_enabled))
             Switch(
                 checked = settings.soundEnabled,
-                onCheckedChange = { viewModel.updateSettings(settings.copy(soundEnabled = it)) }
+                onCheckedChange = { onSettingsChange(settings.copy(soundEnabled = it)) }
             )
         }
 
         Spacer(Modifier.height(16.dp))
 
         // MIDI device selector
-        if (devices.isNotEmpty()) {
+        if (availableDevices.isNotEmpty()) {
             Text(stringResource(R.string.midi_device))
-            devices.forEach { deviceName ->
+            availableDevices.forEach { deviceName ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     RadioButton(
                         selected = settings.midiDeviceName == deviceName,
-                        onClick = { viewModel.updateSettings(settings.copy(midiDeviceName = deviceName)) }
+                        onClick = { onSettingsChange(settings.copy(midiDeviceName = deviceName)) }
                     )
                     Text(deviceName)
                 }
@@ -414,7 +393,7 @@ fun SettingsScreen(
         Spacer(Modifier.height(24.dp))
 
         OutlinedButton(
-            onClick = { navController.popBackStack() },
+            onClick = onBack,
             modifier = Modifier.fillMaxWidth()
         ) { Text("Back") }
     }
