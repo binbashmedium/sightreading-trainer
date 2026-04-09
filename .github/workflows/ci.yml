@@ -74,13 +74,9 @@ jobs:
             build/reports/kover/html/
           retention-days: 14
 
-  build-debug:
-    name: Build debug APK
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: |
