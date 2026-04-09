@@ -21,6 +21,11 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -29,8 +34,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  test:
-    name: Unit tests
+  build-test:
+    name: Build + Test + Upload
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +59,8 @@ jobs:
       - name: Run app unit tests
         run: ./gradlew :app:test --no-daemon
 
-      - name: Generate coverage reports (XML + HTML)
-        run: ./gradlew :domain:test :app:test koverXmlReport koverHtmlReport --no-daemon
+      - name: Build debug APK + androidTest APK
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
 
       - name: Upload test results
         if: always()
@@ -67,19 +72,75 @@ jobs:
             app/build/reports/tests/
           retention-days: 14
 
-      - name: Upload coverage report
-        if: always()
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: |
-            build/reports/kover/report.xml
-            build/reports/kover/html/
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
 
-  build-debug:
-    name: Build debug APK
-    needs: test
+      - name: Upload debug androidTest APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-androidTest
+          path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          retention-days: 14
+
+  screenshots:
+    name: Screenshots + Upload
+    needs: build-test
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Download app APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug
+          path: apks
+
+      - name: Download test APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-androidTest
+          path: apks
+
+      - name: Enable KVM for hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run screenshot instrumentation on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_5
+          disable-animations: true
+          script: |
+            adb install -r apks/app-debug.apk
+            adb install -r apks/app-debug-androidTest.apk
+            adb shell am instrument -w -e class com.binbashmedium.sightreadingtrainer.ui.ScreenshotCaptureTest com.binbashmedium.sightreadingtrainer.test/androidx.test.runner.AndroidJUnitRunner
+            mkdir -p screenshots
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_main.png       screenshots/screenshot_main.png       || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_settings.png   screenshots/screenshot_settings.png   || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_statistics.png screenshots/screenshot_statistics.png || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_help.png       screenshots/screenshot_help.png       || true
+            adb pull /sdcard/Android/data/com.binbashmedium.sightreadingtrainer/files/screenshot_practice.png   screenshots/screenshot_practice.png   || true
+
+      - name: Upload screenshots artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-screenshots
+          path: screenshots/
+          if-no-files-found: warn
+          retention-days: 14
+
+  coverage:
+    name: Code coverage + Upload
+    needs: build-test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,23 +158,25 @@ jobs:
       - name: Override Java home for Gradle
         run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Generate coverage reports (XML + HTML)
+        run: ./gradlew :domain:test :app:test koverXmlReport koverHtmlReport --no-daemon
 
-      - name: Upload debug APK (artifact)
+      - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: coverage-report
+          path: |
+            build/reports/kover/report.xml
+            build/reports/kover/html/
+          if-no-files-found: warn
           retention-days: 14
 
   release-bundle:
-    name: Build release AAB (upload on release)
+    name: Build release AAB
     if: github.event_name == 'release'
-    needs: test
+    needs: [build-test, screenshots, coverage]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -183,10 +246,46 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew :app:bundleRelease --no-daemon
 
-      - name: Upload AAB to GitHub release
-        if: github.event_name == 'release'
+      - name: Upload release AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
+  publish-release:
+    name: Publish release (AAB + screenshots + coverage)
+    if: github.event_name == 'release'
+    needs: [release-bundle, screenshots, coverage]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release-aab
+          path: release
+
+      - name: Download screenshots
+        uses: actions/download-artifact@v4
+        with:
+          name: app-screenshots
+          path: release/screenshots
+        continue-on-error: true
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: release/coverage
+        continue-on-error: true
+
+      - name: Upload AAB + screenshots + coverage to GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/bundle/release/app-release.aab
-            fastlane/metadata/android/*/images/phoneScreenshots/*.png
+            release/app-release.aab
+            release/screenshots/*.png
+            release/coverage/report.xml
+            release/coverage/html/**
