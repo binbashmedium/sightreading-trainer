@@ -30,6 +30,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.HandMode
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteValue
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
+import com.binbashmedium.sightreadingtrainer.domain.model.ScaleType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -62,6 +63,7 @@ class SettingsDataStore @Inject constructor(
         val WRONG_NOTE_STATS = stringPreferencesKey("wrong_note_stats")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val SELECTED_KEYS = stringPreferencesKey("selected_keys")
+        val SELECTED_SCALE_TYPE = stringPreferencesKey("selected_scale_type")
         val MUSICAL_KEY = intPreferencesKey("musical_key")
         val SELECTED_PROGRESSIONS = stringPreferencesKey("selected_progressions")
         val SELECTED_NOTE_VALUES = stringPreferencesKey("selected_note_values")
@@ -101,6 +103,7 @@ class SettingsDataStore @Inject constructor(
                 prefs[Keys.SELECTED_KEYS],
                 prefs[Keys.MUSICAL_KEY] ?: 0
             ),
+            selectedScaleType = parseScaleType(prefs[Keys.SELECTED_SCALE_TYPE]),
             selectedProgressions = parseProgressions(prefs[Keys.SELECTED_PROGRESSIONS]),
             progressionExerciseTypes = parseProgressionExerciseTypes(
                 prefs[Keys.PROGRESSION_EXERCISE_TYPES],
@@ -140,6 +143,7 @@ class SettingsDataStore @Inject constructor(
             prefs[Keys.WRONG_NOTE_STATS] = serializeStatsMap(settings.wrongNoteStats)
             prefs[Keys.SOUND_ENABLED] = settings.soundEnabled
             prefs[Keys.SELECTED_KEYS] = settings.selectedKeys.sorted().joinToString(",")
+            prefs[Keys.SELECTED_SCALE_TYPE] = settings.selectedScaleType.name
             prefs[Keys.MUSICAL_KEY] = settings.selectedKeys.minOrNull() ?: 0
             prefs[Keys.SELECTED_PROGRESSIONS] = serializeProgressions(settings.selectedProgressions)
             prefs[Keys.SELECTED_NOTE_VALUES] = settings.selectedNoteValues
@@ -244,6 +248,9 @@ internal fun parseSelectedOrnaments(raw: String?): Set<OrnamentType> =
 
 internal fun parseExerciseInputSource(raw: String?): ExerciseInputSource =
     ExerciseInputSource.entries.firstOrNull { it.name == raw?.trim() } ?: ExerciseInputSource.GENERATED
+
+internal fun parseScaleType(raw: String?): ScaleType =
+    ScaleType.entries.firstOrNull { it.name == raw?.trim() } ?: ScaleType.MAJOR
 
 internal fun parseExerciseMode(
     raw: String?,

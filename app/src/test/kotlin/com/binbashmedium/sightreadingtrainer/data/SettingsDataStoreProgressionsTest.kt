@@ -18,6 +18,7 @@ import com.binbashmedium.sightreadingtrainer.domain.model.ChordProgression
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseContentType
 import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseMode
 import com.binbashmedium.sightreadingtrainer.domain.model.ProgressionExerciseType
+import com.binbashmedium.sightreadingtrainer.domain.model.ScaleType
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -73,5 +74,19 @@ class SettingsDataStoreProgressionsTest {
             setOf(ProgressionExerciseType.TRIADS),
             parseProgressionExerciseTypes(null, setOf(ExerciseContentType.PROGRESSIONS))
         )
+    }
+
+    @Test
+    fun `parseScaleType defaults to MAJOR when input is null or invalid`() {
+        assertEquals(ScaleType.MAJOR, parseScaleType(null))
+        assertEquals(ScaleType.MAJOR, parseScaleType("INVALID"))
+    }
+
+    @Test
+    fun `parseScaleType parses known scale modes`() {
+        assertEquals(ScaleType.HARMONIC_MINOR, parseScaleType("HARMONIC_MINOR"))
+        assertEquals(ScaleType.MELODIC_MINOR, parseScaleType("MELODIC_MINOR"))
+        assertEquals(ScaleType.PENTATONIC, parseScaleType("PENTATONIC"))
+        assertEquals(ScaleType.BLUES, parseScaleType("BLUES"))
     }
 }
