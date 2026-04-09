@@ -76,7 +76,6 @@ jobs:
 
   build-debug:
     name: Build debug APK
-    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
