@@ -23,7 +23,8 @@ The generator chooses one key from the selected key pool (or an externally force
 Each generated step is tagged with its source exercise type (`ExerciseStep.contentType`) so runtime statistics can be grouped the same way as settings.
 
 Exercises now use timed steps that can carry note groups, explicit note accidentals, and optional sustain-pedal actions per beat.
-When note accidentals are disabled, generated notes are constrained to the current key's major scale, preventing out-of-scale labels (for example `Bb` in C major without an accidental).
+Generated notes are constrained to the selected scale mode (`MAJOR`, `HARMONIC_MINOR`, `MELODIC_MINOR`, `PENTATONIC`, `BLUES`) within the selected key.
+Default scale mode is `MAJOR` (Dur).
 
 ### Exercise mode pool
 

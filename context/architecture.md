@@ -24,7 +24,7 @@ domain/
     ExerciseStep.kt       - per-beat notes + per-note accidentals + optional pedal action
     MatchResult.kt        - sealed class: Correct | Incorrect | TooEarly | TooLate | Waiting
     PracticeState.kt      - session snapshot: exercise, timer, score, correct/wrong note counts, resultByBeat, bpm
-    AppSettings.kt        - all user-configurable settings + exerciseTimeSec + stats/highscore + selected key/type pools
+    AppSettings.kt        - all user-configurable settings + exerciseTimeSec + stats/highscore + selected key/type pools + selected scale mode
     PerformanceInput.kt   - grouped notes + pedal action passed to matching
     NoteValue.kt          - rhythmic duration enum (WHOLE/HALF/QUARTER/EIGHTH) with beats: Float helper
   usecase/

@@ -34,6 +34,8 @@ data class AppSettings(
     val soundEnabled: Boolean = true,
     /** Selectable pool of keys (0 = C, 1 = C#/Db, 2 = D, …, 11 = B). */
     val selectedKeys: Set<Int> = setOf(0),
+    /** Active scale mode used to constrain generated pitches. */
+    val selectedScaleType: ScaleType = ScaleType.MAJOR,
     /** Active chord progressions used when [ExerciseContentType.PROGRESSIONS] is selected. */
     val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I),
     /** Chord-shape options used while [exerciseMode] is [ExerciseMode.PROGRESSIONS]. */
@@ -64,6 +66,15 @@ enum class ExerciseInputSource {
 enum class ExerciseMode {
     CLASSIC,
     PROGRESSIONS
+}
+
+
+enum class ScaleType(val displayName: String, val intervals: List<Int>) {
+    MAJOR("Dur", listOf(0, 2, 4, 5, 7, 9, 11)),
+    HARMONIC_MINOR("Harmonisch Moll", listOf(0, 2, 3, 5, 7, 8, 11)),
+    MELODIC_MINOR("Melodisch Moll", listOf(0, 2, 3, 5, 7, 9, 11)),
+    PENTATONIC("Pentatonik", listOf(0, 2, 4, 7, 9)),
+    BLUES("Blues", listOf(0, 3, 5, 6, 7, 10))
 }
 
 enum class HandMode { LEFT, RIGHT, BOTH }

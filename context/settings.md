@@ -23,6 +23,8 @@ data class AppSettings(
     val soundEnabled: Boolean = true,
     /** Selectable pool of keys (0 = C … 11 = B). */
     val selectedKeys: Set<Int> = setOf(0),
+    /** Single-select scale mode for pitch filtering. */
+    val selectedScaleType: ScaleType = ScaleType.MAJOR,
     /** Active chord progressions used when PROGRESSIONS type is selected. */
     val selectedProgressions: Set<ChordProgression> = setOf(ChordProgression.I_IV_V_I),
     /** Mode-2 voicing options used for progression generation. */
@@ -52,6 +54,9 @@ enum class ExerciseContentType {
     CLUSTERED_CHORDS
 }
 enum class ProgressionExerciseType { TRIADS, SEVENTHS, NINTHS, ARPEGGIOS }
+enum class ScaleType {
+    MAJOR, HARMONIC_MINOR, MELODIC_MINOR, PENTATONIC, BLUES
+}
 ```
 
 ## Persistence
@@ -82,6 +87,7 @@ Settings are persisted using Jetpack DataStore (`Preferences`).
 - `noteAccidentalsEnabled`
 - `pedalEventsEnabled`
 - `selectedKeys` (0-11 pool; one key is chosen per exercise)
+- `selectedScaleType` (single-select: Dur, Harmonisch Moll, Melodisch Moll, Pentatonik, Blues)
 - `selectedProgressions` (used when `exerciseMode = PROGRESSIONS`)
 - `progressionExerciseTypes` (`TRIADS`/`SEVENTHS`/`NINTHS`/`ARPEGGIOS` mode-2 options)
 - `selectedNoteValues` (which note durations may appear in measures)
@@ -98,6 +104,7 @@ The screen includes:
 - exercise-time slider
 - chord-progression multi-select chips (shown only in Mode 2)
 - multi-select key chips
+- single-select scale chips below key chips (Dur default)
 - hand-mode chips
 - generated note-accidental toggle
 - generated pedal-mark toggle
