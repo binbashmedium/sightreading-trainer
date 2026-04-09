@@ -63,7 +63,7 @@ jobs:
         run: echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
 
       - name: Manual build for CodeQL
-        run: ./gradlew :domain:compileKotlin :app:compileDebugKotlin --no-daemon
+        run: ./gradlew clean :domain:compileKotlin :app:compileDebugKotlin --no-daemon --rerun-tasks --no-build-cache
 
       - name: Perform CodeQL Analysis (no SARIF upload)
         uses: github/codeql-action/analyze@v4
