@@ -175,7 +175,7 @@ jobs:
   release-bundle:
     name: Build release AAB
     if: github.event_name == 'release'
-    needs: [build-test, screenshots, coverage]
+    needs: [build-test, screenshots]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -254,9 +254,9 @@ jobs:
           retention-days: 14
 
   publish-release:
-    name: Publish release (AAB + screenshots + coverage)
+    name: Publish release (AAB + screenshots)
     if: github.event_name == 'release'
-    needs: [release-bundle, screenshots, coverage]
+    needs: [release-bundle, screenshots]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -274,18 +274,9 @@ jobs:
           path: release/screenshots
         continue-on-error: true
 
-      - name: Download coverage report
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-report
-          path: release/coverage
-        continue-on-error: true
-
-      - name: Upload AAB + screenshots + coverage to GitHub release
+      - name: Upload AAB + screenshots to GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             release/app-release.aab
             release/screenshots/*.png
-            release/coverage/report.xml
-            release/coverage/html/**
