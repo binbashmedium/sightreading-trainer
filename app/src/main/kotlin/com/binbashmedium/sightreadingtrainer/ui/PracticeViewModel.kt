@@ -67,8 +67,6 @@ internal fun computeHighScore(
 internal fun hasSessionTimedOut(state: PracticeState, nowMs: Long): Boolean =
     (nowMs - state.startTimeMs) >= state.sessionDurationSec * 1_000L
 
-internal fun shouldHideLoadingOnStaffRendered(state: PracticeState?): Boolean = state != null
-
 @HiltViewModel
 class PracticeViewModel @Inject constructor(
     private val practiceSessionUseCase: PracticeSessionUseCase,
@@ -113,8 +111,6 @@ class PracticeViewModel @Inject constructor(
 
     /** Called by the UI once Verovio has finished rendering to start the session timer. */
     fun onStaffRendered() {
-        val state = practiceSessionUseCase.state.value
-        if (!shouldHideLoadingOnStaffRendered(state)) return
         // Reset the session start time so the timer begins from when notes are visible.
         practiceSessionUseCase.resetStartTime()
         _isLoading.value = false

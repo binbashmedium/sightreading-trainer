@@ -58,15 +58,4 @@ class PracticeViewModelTimeoutTest {
         assertTrue(hasSessionTimedOut(state, nowMs = 61_500L))
     }
 
-    @Test
-    fun `shouldHideLoadingOnStaffRendered is false when no practice state exists`() {
-        assertFalse(shouldHideLoadingOnStaffRendered(state = null))
-    }
-
-    @Test
-    fun `shouldHideLoadingOnStaffRendered is true when practice state exists`() {
-        val state = PracticeState(exercise = exercise)
-
-        assertTrue(shouldHideLoadingOnStaffRendered(state))
-    }
 }
