@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- [x] **CodeQL java-kotlin Workflow-Fehler beheben** — Ursache reproduziert (`SDK location not found` im manuellen CodeQL-Gradle-Build) und Workflow stabilisiert: Android SDK Setup + Installation von `platforms;android-35` und `build-tools;35.0.0` ergänzt.
+
 - [x] **Test-Coverage >80% mit neuen Unit-Tests sicherstellen** — Zusätzliche Parser-/Migrations-Regressionstests ergänzt, Kover-Filter für nicht sinnvoll unit-testbare Android/Compose-/generated Klassen gesetzt und Gesamt-Coverage lokal auf >90% verifiziert.
 
 - [x] **Practice-Screenshot wird nicht geschrieben (No such file) beheben** — Loading-Handshake vereinfacht: `onStaffRendered()` beendet Loading immer beim tatsächlichen Verovio-Render-Callback, damit `screenshot_practice.png` wieder zuverlässig geschrieben wird.
