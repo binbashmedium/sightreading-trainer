@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- [x] **Bugfix: Loading-Ring im Exercise-Screen beendet sich nach erfolgreichem Noten-Rendern** — `onStaffRendered()` beendet den Loading-State jetzt zuverlässig, sobald Session-State und Render-Callback vorliegen; Regressionstest für die Stop-Logik ergänzt.
+
 - [x] **Test-Coverage >80% mit neuen Unit-Tests sicherstellen** — Zusätzliche Parser-/Migrations-Regressionstests ergänzt, Kover-Filter für nicht sinnvoll unit-testbare Android/Compose-/generated Klassen gesetzt und Gesamt-Coverage lokal auf >90% verifiziert.
 
 - [x] **Practice-Screenshot wird nicht geschrieben (No such file) beheben** — Loading-Handshake vereinfacht: `onStaffRendered()` beendet Loading immer beim tatsächlichen Verovio-Render-Callback, damit `screenshot_practice.png` wieder zuverlässig geschrieben wird.

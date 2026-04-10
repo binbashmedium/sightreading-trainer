@@ -114,6 +114,9 @@ class PracticeViewModel @Inject constructor(
     /** Called by the UI once Verovio has finished rendering to start the session timer. */
     fun onStaffRendered() {
         val hasState = practiceSessionUseCase.state.value != null
+        if (shouldStopLoadingOnRender(hasState, _isLoading.value)) {
+            _isLoading.value = false
+        }
         if (!shouldPrimeSessionStartOnRender(hasState, hasPrimedRenderStartTime)) return
         // Reset the session start time exactly once per session so page/rerender updates
         // do not restart the active timer.
@@ -230,6 +233,9 @@ class PracticeViewModel @Inject constructor(
 
 internal fun shouldPrimeSessionStartOnRender(hasState: Boolean, hasPrimedRenderStartTime: Boolean): Boolean =
     hasState && !hasPrimedRenderStartTime
+
+internal fun shouldStopLoadingOnRender(hasState: Boolean, isLoading: Boolean): Boolean =
+    hasState && isLoading
 
 private fun Map<String, Int>.mergeCounts(delta: Map<String, Int>): Map<String, Int> {
     if (delta.isEmpty()) return this
