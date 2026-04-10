@@ -14,7 +14,13 @@
 
 package com.binbashmedium.sightreadingtrainer.core.midi
 
+import com.binbashmedium.sightreadingtrainer.domain.model.Exercise
+import com.binbashmedium.sightreadingtrainer.domain.model.ExerciseStep
+import com.binbashmedium.sightreadingtrainer.domain.model.MatchResult
+import com.binbashmedium.sightreadingtrainer.domain.model.NoteEvent
+import com.binbashmedium.sightreadingtrainer.domain.model.PerformanceInput
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
+import com.binbashmedium.sightreadingtrainer.domain.usecase.PracticeSessionUseCase
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -69,5 +75,38 @@ class MidiMessageParserTest {
         val parsed = parseMidiInput(packet, offset = 3, count = 3)
 
         assertEquals(listOf(65 to 70), parsed.noteOnEvents)
+    }
+
+    @Test
+    fun `batched chord packet keeps session cursor aligned for expected chord`() {
+        val useCase = PracticeSessionUseCase()
+        val exercise = Exercise(
+            steps = listOf(
+                ExerciseStep(notes = listOf(60, 64, 67)),
+                ExerciseStep(notes = listOf(62))
+            )
+        )
+        useCase.startSession(exercise)
+
+        val packet = byteArrayOf(
+            0x90.toByte(), 60, 100,
+            0x90.toByte(), 64, 100,
+            0x90.toByte(), 67, 100
+        )
+        val parsed = parseMidiInput(packet, offset = 0, count = packet.size)
+        val input = PerformanceInput(
+            notes = parsed.noteOnEvents.map { (midi, velocity) ->
+                NoteEvent(midiNote = midi, velocity = velocity, timestamp = 1_000L)
+            },
+            pedalAction = PedalAction.NONE,
+            timestamp = 1_000L
+        )
+
+        val result = useCase.processInput(input)
+        val state = useCase.state.value!!
+
+        assertEquals(MatchResult.Correct, result)
+        assertEquals(1, state.exercise.currentIndex)
+        assertEquals(MatchResult.Correct, state.resultByBeat[0])
     }
 }
