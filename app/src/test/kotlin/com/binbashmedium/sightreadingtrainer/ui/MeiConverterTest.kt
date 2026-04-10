@@ -17,6 +17,7 @@ package com.binbashmedium.sightreadingtrainer.ui
 import com.binbashmedium.sightreadingtrainer.domain.model.NoteAccidental
 import com.binbashmedium.sightreadingtrainer.domain.model.OrnamentType
 import com.binbashmedium.sightreadingtrainer.domain.model.PedalAction
+import com.binbashmedium.sightreadingtrainer.domain.model.ScaleType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -682,6 +683,76 @@ class MeiConverterTest {
             pitchClass = 2  // D
         )
         assertEquals("Natural should be shown after in-measure flat", " accid=\"n\"", result)
+    }
+
+    @Test
+    fun `none accidental shows flat when required outside key signature`() {
+        val result = MeiConverter.visualAccidAttr(
+            accidental = NoteAccidental.NONE,
+            accidGes = "f",
+            keySigAlteredPitchClasses = emptySet(),
+            withinMeasureAccidentals = emptyMap(),
+            pitchClass = 3,
+            keySignatureDirection = null
+        )
+        assertEquals(" accid=\"f\"", result)
+    }
+
+    @Test
+    fun `none accidental is suppressed when key signature already implies it`() {
+        val result = MeiConverter.visualAccidAttr(
+            accidental = NoteAccidental.NONE,
+            accidGes = "s",
+            keySigAlteredPitchClasses = setOf(5),
+            withinMeasureAccidentals = emptyMap(),
+            pitchClass = 5,
+            keySignatureDirection = "s"
+        )
+        assertEquals("", result)
+    }
+
+    @Test
+    fun `scale tones render visual accidentals for non key signature alterations across keys`() {
+        val testScales = listOf(
+            ScaleType.PENTATONIC,
+            ScaleType.BLUES,
+            ScaleType.HARMONIC_MINOR,
+            ScaleType.MELODIC_MINOR
+        )
+        for (musicalKey in 0..11) {
+            val keySigAlteredPcs = MeiConverter.keySignatureAlteredPitchClasses(musicalKey)
+            testScales.forEach { scale ->
+                scale.intervals.forEachIndexed { idx, interval ->
+                    val midi = 60 + musicalKey + interval + (idx / 5) * 12
+                    val note = NoteEvent(
+                        midi = midi,
+                        startBeat = 0f,
+                        duration = 1f,
+                        expected = true,
+                        state = NoteState.NONE,
+                        accidental = NoteAccidental.NONE
+                    )
+                    val gameState = GameState(
+                        levelTitle = "t",
+                        elapsedTime = 0L,
+                        bpm = 0f,
+                        notes = listOf(note),
+                        chords = emptyList(),
+                        pedalMarks = emptyList(),
+                        currentBeat = 0f,
+                        musicalKey = musicalKey
+                    )
+                    val mei = MeiConverter.convert(gameState, 0f, BEATS_PER_MEASURE_UNITS)
+                    val pitchClass = ((midi % 12) + 12) % 12
+                    if (mei.contains("accid.ges=\"s\"") && pitchClass !in keySigAlteredPcs) {
+                        assertTrue("Missing visual sharp for key=$musicalKey scale=${scale.name} midi=$midi", mei.contains("accid=\"s\""))
+                    }
+                    if (mei.contains("accid.ges=\"f\"") && pitchClass !in keySigAlteredPcs) {
+                        assertTrue("Missing visual flat for key=$musicalKey scale=${scale.name} midi=$midi", mei.contains("accid=\"f\""))
+                    }
+                }
+            }
+        }
     }
 
     @Test

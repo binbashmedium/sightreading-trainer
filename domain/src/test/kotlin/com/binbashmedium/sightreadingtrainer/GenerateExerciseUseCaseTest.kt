@@ -326,6 +326,65 @@ class GenerateExerciseUseCaseTest {
     }
 
     @Test
+    fun `blues and minor and pentatonic scales stay within allowed pitch classes in classic mode`() {
+        val requestedModes = listOf(
+            ScaleType.BLUES,
+            ScaleType.HARMONIC_MINOR,
+            ScaleType.MELODIC_MINOR,
+            ScaleType.PENTATONIC
+        )
+
+        requestedModes.forEachIndexed { seed, scaleType ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseMode = ExerciseMode.CLASSIC,
+                    exerciseTypes = setOf(ExerciseContentType.SINGLE_NOTES, ExerciseContentType.TRIADS),
+                    handMode = HandMode.BOTH,
+                    selectedKeys = setOf(0),
+                    selectedScaleType = scaleType,
+                    noteAccidentalsEnabled = false
+                ),
+                random = Random(40_000 + seed)
+            )
+            val allowedPitchClasses = scaleType.intervals.map { it % 12 }.toSet()
+            assertTrue(
+                "Found notes outside ${scaleType.name}",
+                exercise.expectedNotes.flatten().all { ((it % 12) + 12) % 12 in allowedPitchClasses }
+            )
+        }
+    }
+
+    @Test
+    fun `blues and minor and pentatonic scales stay within allowed pitch classes in progression mode`() {
+        val requestedModes = listOf(
+            ScaleType.BLUES,
+            ScaleType.HARMONIC_MINOR,
+            ScaleType.MELODIC_MINOR,
+            ScaleType.PENTATONIC
+        )
+
+        requestedModes.forEachIndexed { seed, scaleType ->
+            val exercise = useCase.execute(
+                AppSettings(
+                    exerciseMode = ExerciseMode.PROGRESSIONS,
+                    handMode = HandMode.RIGHT,
+                    selectedKeys = setOf(0),
+                    selectedScaleType = scaleType,
+                    selectedProgressions = setOf(ChordProgression.I_IV_V_I),
+                    progressionExerciseTypes = setOf(ProgressionExerciseType.TRIADS),
+                    noteAccidentalsEnabled = false
+                ),
+                random = Random(41_000 + seed)
+            )
+            val allowedPitchClasses = scaleType.intervals.map { it % 12 }.toSet()
+            assertTrue(
+                "Found progression notes outside ${scaleType.name}",
+                exercise.expectedNotes.flatten().all { ((it % 12) + 12) % 12 in allowedPitchClasses }
+            )
+        }
+    }
+
+    @Test
     fun `octaves left hand stay in lower register`() {
         val exercise = useCase.execute(
             AppSettings(exerciseTypes = setOf(ExerciseContentType.OCTAVES), handMode = HandMode.LEFT)

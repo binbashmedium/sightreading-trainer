@@ -143,6 +143,7 @@ The standard accidental order and spacing are regression-tested against the nota
 Individual noteheads now render their own accidentals for black-key pitches, with staggered left columns for close-position chord spellings so adjacent accidentals do not collide.
 
 Generated note accidentals are now optional in settings and use explicit `#`, `b`, and `natural` symbols rather than being inferred only from pitch class at render time.
+Even when generated steps carry `NoteAccidental.NONE`, renderer-side notation now shows visual accidentals for non-key-signature tones (for example C Blues `Eb`, `Gb`, `Bb`) based on key-aware pitch spelling.
 
 ## Notehead And Stem Rules
 

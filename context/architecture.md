@@ -87,6 +87,7 @@ GrandStaffCanvas             draws the grand staff, clefs, notes, cursor, and la
 1. `PracticeScreen` starts a session on `LaunchedEffect(Unit)` by calling `PracticeViewModel.startSession()`.
 2. Domain `PracticeState` is transformed into UI `GameState` with `toGameState(nowMs)`.
 3. `HeaderCard` shows level title, elapsed time, live BPM, and score.
+   The session timer start is primed from the first successful staff render only once per session, so row/page changes do not reset elapsed time.
 4. `GrandStaffCanvas` draws a connected grand staff with staff lines behind the clefs, a dedicated clef area, the generated key signature, harmonic chord labels, pedal marks, note glyphs, stem-direction-aware chord groups, and a static cursor at the current expected step.
    Note/pedal coloring is now per-symbol from `PracticeState.inputByBeat` snapshots (matched expected = green, missing expected = red, extra played = yellow).
    Chord groups now preserve per-notehead color (mixed-state chords are not flattened to one color).

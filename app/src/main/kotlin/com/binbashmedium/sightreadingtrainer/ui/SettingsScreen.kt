@@ -188,7 +188,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        Text("Skala")
+        Text("Scale")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ScaleType.entries.forEach { scaleType ->
                 FilterChip(

@@ -127,3 +127,14 @@
 - [x] **Renderer aligned with notation rules** — chord noteheads grouped onto a single stem; middle-line stem direction rules from PDF reference; clustered chords, broader note motion.
 - [x] **Exercise type multi-selection** — old 5-level difficulty model replaced with multi-select exercise content types.
 - [x] **Multi-key selection pool** — settings support selecting multiple keys; one generated key chosen per exercise.
+
+- [x] **Fix MIDI multi-message detection regression (chords/blues play)** — Android MIDI parser now iterates all 3-byte messages in each onSend packet (instead of only the first), preventing dropped chord tones that caused yellow extras + cursor shift; added `MidiMessageParserTest` coverage and updated `context/midi.md`.
+
+- [x] **Scale-Modi-Testabdeckung explizit erweitert** — zusätzliche Regressionstests für Blues/Harmonisch Moll/Melodisch Moll/Pentatonik in Classic + Progressions ergänzt.
+
+- [x] **English terminology in settings/menu** — replaced German scale labels (Dur/Harmonisch Moll/Melodisch Moll/Pentatonik) with English names and changed Settings title from "Skala" to "Scale".
+- [x] **Add end-to-end style regression for chord-drop symptom** — added parser→session regression test for batched chord packets to ensure correct match and cursor alignment.
+
+- [x] **Fix accidental rendering across all scale modes** — `visualAccidAttr` now renders implied accidentals for non-key-signature tones with `NoteAccidental.NONE`; added cross-key/cross-scale regression tests in `MeiConverterTest`.
+
+- [x] **Fix timer reset on page change** — timer start is now primed only once per session render lifecycle; page/row changes no longer restart elapsed time.
