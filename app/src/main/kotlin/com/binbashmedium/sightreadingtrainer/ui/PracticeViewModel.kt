@@ -106,15 +106,14 @@ class PracticeViewModel @Inject constructor(
             sessionSettings = settings
             sessionKey = exercise.musicalKey
             practiceSessionUseCase.startSession(exercise, settings.exerciseTimeMin * 60)
-            _isLoading.value = false
         }
     }
 
     /** Called by the UI once Verovio has finished rendering to start the session timer. */
     fun onStaffRendered() {
-        val state = practiceSessionUseCase.state.value ?: return
         // Reset the session start time so the timer begins from when notes are visible.
         practiceSessionUseCase.resetStartTime()
+        _isLoading.value = false
     }
 
     /** Discard the current exercise and generate a fresh one. */

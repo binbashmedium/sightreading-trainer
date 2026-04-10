@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,10 +44,13 @@ object VerovioRenderSignal {
 }
 
 /** Bridge exposed to JavaScript as `window.Android`. */
-private class RenderBridge {
+private class RenderBridge(
+    private val onRenderedCallback: () -> Unit
+) {
     @JavascriptInterface
     fun onRendered() {
         VerovioRenderSignal.rendered = true
+        onRenderedCallback()
     }
 }
 
@@ -78,7 +82,7 @@ fun VerovioStaffView(
 ) {
     val context = LocalContext.current
     var pageLoaded by remember { mutableStateOf(false) }
-    var firstRenderFired by remember { mutableStateOf(false) }
+    var renderSignalCount by remember { mutableIntStateOf(0) }
 
     val webView = remember(context) {
         WebView(context).apply {
@@ -89,7 +93,12 @@ fun VerovioStaffView(
             settings.allowFileAccessFromFileURLs = true
             settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
             // Expose the render-complete bridge so staff.html can signal Android.onRendered().
-            addJavascriptInterface(RenderBridge(), "Android")
+            addJavascriptInterface(
+                RenderBridge {
+                    post { renderSignalCount++ }
+                },
+                "Android"
+            )
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView,
@@ -121,13 +130,15 @@ fun VerovioStaffView(
 
     LaunchedEffect(pageLoaded, mei, showCursor) {
         if (!pageLoaded) return@LaunchedEffect
+        VerovioRenderSignal.rendered = false
         val jsonMei = JSONObject.quote(mei)  // properly escapes the MEI string for JS
         val js = "renderMei($jsonMei, ${showCursor});"
         webView.evaluateJavascript(js, null)
-        if (!firstRenderFired) {
-            firstRenderFired = true
-            onFirstRender?.invoke()
-        }
+    }
+
+    LaunchedEffect(renderSignalCount) {
+        if (renderSignalCount == 0) return@LaunchedEffect
+        onFirstRender?.invoke()
     }
 
     AndroidView(

@@ -2,6 +2,10 @@
 
 ## In Progress
 
+- [x] **Practice-Screenshot wird nicht geschrieben (No such file) beheben** — Loading-Handshake vereinfacht: `onStaffRendered()` beendet Loading immer beim tatsächlichen Verovio-Render-Callback, damit `screenshot_practice.png` wieder zuverlässig geschrieben wird.
+
+- [x] **Exercise-Screenshot-Race/Leerseiten fixen** — Render-Completion-Signal und Loading-Flow im Practice/Verovio-Pfad korrigiert: Loading endet erst nach echtem JS-Render-Callback; Verovio-Render-Signal wird pro Render-Zyklus zurückgesetzt, um leere/unvollständige Exercise-Screenshots zu vermeiden.
+
 - [x] **Skalenmodus-Auswahl (Dur/Harmonisch Moll/Melodisch Moll/Pentatonik/Blues) in Settings ergänzen** — Single-Select-UI unter den Grundtönen (C, C#, D, …) hinzugefügt; Standard ist Dur.
 - [x] **Generator auf ausgewählten Skalenmodus begrenzen** — Übungstöne werden nun anhand des gewählten Modus (Dur/Harmonisch Moll/Melodisch Moll/Pentatonik/Blues) im gewählten Key gefiltert/eingeschränkt.
 - [x] **Tests + Context-Dateien aktualisieren** — Unit-Tests für Skalenmodus-Parsing/Generator ergänzt und `/context`-Dokumentation synchronisiert.

@@ -57,4 +57,5 @@ class PracticeViewModelTimeoutTest {
 
         assertTrue(hasSessionTimedOut(state, nowMs = 61_500L))
     }
+
 }
