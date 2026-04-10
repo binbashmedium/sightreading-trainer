@@ -70,10 +70,10 @@ enum class ExerciseMode {
 
 
 enum class ScaleType(val displayName: String, val intervals: List<Int>) {
-    MAJOR("Dur", listOf(0, 2, 4, 5, 7, 9, 11)),
-    HARMONIC_MINOR("Harmonisch Moll", listOf(0, 2, 3, 5, 7, 8, 11)),
-    MELODIC_MINOR("Melodisch Moll", listOf(0, 2, 3, 5, 7, 9, 11)),
-    PENTATONIC("Pentatonik", listOf(0, 2, 4, 7, 9)),
+    MAJOR("Major", listOf(0, 2, 4, 5, 7, 9, 11)),
+    HARMONIC_MINOR("Harmonic Minor", listOf(0, 2, 3, 5, 7, 8, 11)),
+    MELODIC_MINOR("Melodic Minor", listOf(0, 2, 3, 5, 7, 9, 11)),
+    PENTATONIC("Pentatonic", listOf(0, 2, 4, 7, 9)),
     BLUES("Blues", listOf(0, 3, 5, 6, 7, 10))
 }
 

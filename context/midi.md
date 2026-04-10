@@ -42,9 +42,11 @@ When device topology changes:
 This prevents silent MIDI failure after unplug/replug.
 
 ### Note parsing
-Raw bytes: `[status, note, velocity]`
+Raw bytes are parsed as 3-byte channel voice messages and may arrive batched in one packet.
 - `0x9_` + velocity > 0 => NOTE_ON event emitted
 - NOTE_ON with velocity 0 is treated as NOTE_OFF and ignored
+- Packets containing multiple MIDI messages are iterated message-by-message (instead of reading
+  only the first triple), which prevents dropped notes in fast/chord input.
 
 Emitted through `noteEvents: SharedFlow<domain.NoteEvent>`.
 

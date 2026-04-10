@@ -76,19 +76,13 @@ class AndroidMidiManager @Inject constructor(
     }
     private val midiReceiver = object : MidiReceiver() {
         override fun onSend(msg: ByteArray, offset: Int, count: Int, timestamp: Long) {
-            if (count < 3) return
-            val statusByte = msg[offset].toInt() and 0xFF
-            val isNoteOn = (statusByte and 0xF0) == 0x90
-            val isControlChange = (statusByte and 0xF0) == 0xB0
-            val data1 = msg[offset + 1].toInt() and 0xFF
-            val velocity = msg[offset + 2].toInt() and 0xFF
-            if (isNoteOn && velocity > 0) {
-                val midiNote = data1
+            val parsed = parseMidiInput(msg, offset, count)
+            parsed.noteOnEvents.forEach { (midiNote, velocity) ->
                 scope.launch {
                     _noteEvents.emit(NoteEvent(midiNote, velocity, System.currentTimeMillis()))
                 }
-            } else if (isControlChange && data1 == 64) {
-                val action = if (velocity >= 64) PedalAction.PRESS else PedalAction.RELEASE
+            }
+            parsed.pedalActions.forEach { action ->
                 scope.launch {
                     _pedalEvents.emit(PedalEvent(action, System.currentTimeMillis()))
                 }
