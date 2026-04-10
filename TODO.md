@@ -140,3 +140,9 @@
 
 - [x] **English terminology in settings/menu** — replaced German scale labels (Dur/Harmonisch Moll/Melodisch Moll/Pentatonik) with English names and changed Settings title from "Skala" to "Scale".
 - [x] **Add end-to-end style regression for chord-drop symptom** — added parser→session regression test for batched chord packets to ensure correct match and cursor alignment.
+
+- [x] **Fix accidental rendering across all scale modes** — `visualAccidAttr` now renders implied accidentals for non-key-signature tones with `NoteAccidental.NONE`; added cross-key/cross-scale regression tests in `MeiConverterTest`.
+
+- [x] **Fix timer reset on page change** — timer start is now primed only once per session render lifecycle; page/row changes no longer restart elapsed time.
+
+- [x] **Fix Kotlin expression-body return compile error in MeiConverter** — `visualAccidAttr` converted to block body and early returns removed from expression branch.

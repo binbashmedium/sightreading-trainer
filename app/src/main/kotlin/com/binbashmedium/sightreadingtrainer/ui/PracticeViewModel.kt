@@ -89,6 +89,7 @@ class PracticeViewModel @Inject constructor(
     private var chordCollectorJob: Job? = null
     private var sessionSettings: AppSettings? = null
     private var sessionKey: Int = 0
+    private var hasPrimedRenderStartTime: Boolean = false
 
     init {
         setupMidi()
@@ -99,6 +100,7 @@ class PracticeViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             _sessionResult.value = null
+            hasPrimedRenderStartTime = false
             practiceSessionUseCase.resetSession()   // clear stale state immediately
             chordDetector?.reset()
             val settings = settingsRepository.settings.first()
@@ -111,9 +113,12 @@ class PracticeViewModel @Inject constructor(
 
     /** Called by the UI once Verovio has finished rendering to start the session timer. */
     fun onStaffRendered() {
-        // Reset the session start time so the timer begins from when notes are visible.
+        val hasState = practiceSessionUseCase.state.value != null
+        if (!shouldPrimeSessionStartOnRender(hasState, hasPrimedRenderStartTime)) return
+        // Reset the session start time exactly once per session so page/rerender updates
+        // do not restart the active timer.
         practiceSessionUseCase.resetStartTime()
-        _isLoading.value = false
+        hasPrimedRenderStartTime = true
     }
 
     /** Discard the current exercise and generate a fresh one. */
@@ -207,6 +212,7 @@ class PracticeViewModel @Inject constructor(
     }
 
     fun stopSession() {
+        hasPrimedRenderStartTime = false
         practiceSessionUseCase.resetSession()
         _sessionResult.value = null
         chordDetector?.reset()
@@ -221,6 +227,9 @@ class PracticeViewModel @Inject constructor(
         stopSession()
     }
 }
+
+internal fun shouldPrimeSessionStartOnRender(hasState: Boolean, hasPrimedRenderStartTime: Boolean): Boolean =
+    hasState && !hasPrimedRenderStartTime
 
 private fun Map<String, Int>.mergeCounts(delta: Map<String, Int>): Map<String, Int> {
     if (delta.isEmpty()) return this
