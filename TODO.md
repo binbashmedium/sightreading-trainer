@@ -129,3 +129,5 @@
 - [x] **Multi-key selection pool** — settings support selecting multiple keys; one generated key chosen per exercise.
 
 - [x] **Fix MIDI multi-message detection regression (chords/blues play)** — Android MIDI parser now iterates all 3-byte messages in each onSend packet (instead of only the first), preventing dropped chord tones that caused yellow extras + cursor shift; added `MidiMessageParserTest` coverage and updated `context/midi.md`.
+
+- [x] **Scale-Modi-Testabdeckung explizit erweitert** — zusätzliche Regressionstests für Blues/Harmonisch Moll/Melodisch Moll/Pentatonik in Classic + Progressions ergänzt.
