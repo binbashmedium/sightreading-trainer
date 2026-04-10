@@ -108,7 +108,6 @@ class PracticeViewModel @Inject constructor(
             sessionSettings = settings
             sessionKey = exercise.musicalKey
             practiceSessionUseCase.startSession(exercise, settings.exerciseTimeMin * 60)
-            _isLoading.value = false
         }
     }
 
