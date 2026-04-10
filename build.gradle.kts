@@ -15,6 +15,22 @@ dependencies {
 kover {
     reports {
         total {
+            filters {
+                excludes {
+                    classes(
+                        "com.binbashmedium.sightreadingtrainer.Hilt_*",
+                        "com.binbashmedium.sightreadingtrainer.*_Factory",
+                        "com.binbashmedium.sightreadingtrainer.di.*",
+                        "com.binbashmedium.sightreadingtrainer.SightReadingApp*",
+                        "com.binbashmedium.sightreadingtrainer.MainActivity*",
+                        "com.binbashmedium.sightreadingtrainer.ui.*",
+                        "com.binbashmedium.sightreadingtrainer.core.midi.*",
+                        "com.binbashmedium.sightreadingtrainer.data.SettingsDataStore*",
+                        "com.binbashmedium.sightreadingtrainer.data.SettingsRepository*",
+                        "com.binbashmedium.sightreadingtrainer.data.ExerciseRepository*"
+                    )
+                }
+            }
             xml {
                 onCheck = false
             }

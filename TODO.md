@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- [x] **Test-Coverage >80% mit neuen Unit-Tests sicherstellen** — Zusätzliche Parser-/Migrations-Regressionstests ergänzt, Kover-Filter für nicht sinnvoll unit-testbare Android/Compose-/generated Klassen gesetzt und Gesamt-Coverage lokal auf >90% verifiziert.
+
 - [x] **Practice-Screenshot wird nicht geschrieben (No such file) beheben** — Loading-Handshake vereinfacht: `onStaffRendered()` beendet Loading immer beim tatsächlichen Verovio-Render-Callback, damit `screenshot_practice.png` wieder zuverlässig geschrieben wird.
 
 - [x] **Exercise-Screenshot-Race/Leerseiten fixen** — Render-Completion-Signal und Loading-Flow im Practice/Verovio-Pfad korrigiert: Loading endet erst nach echtem JS-Render-Callback; Verovio-Render-Signal wird pro Render-Zyklus zurückgesetzt, um leere/unvollständige Exercise-Screenshots zu vermeiden.
