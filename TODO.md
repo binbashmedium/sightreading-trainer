@@ -138,3 +138,5 @@
 - [x] **Fix accidental rendering across all scale modes** — `visualAccidAttr` now renders implied accidentals for non-key-signature tones with `NoteAccidental.NONE`; added cross-key/cross-scale regression tests in `MeiConverterTest`.
 
 - [x] **Fix timer reset on page change** — timer start is now primed only once per session render lifecycle; page/row changes no longer restart elapsed time.
+
+- [x] **Fix Kotlin expression-body return compile error in MeiConverter** — `visualAccidAttr` converted to block body and early returns removed from expression branch.

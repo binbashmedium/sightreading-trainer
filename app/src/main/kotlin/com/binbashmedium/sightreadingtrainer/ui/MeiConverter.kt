@@ -426,25 +426,32 @@ $measuresXml    </section>
         withinMeasureAccidentals: Map<Int, String> = emptyMap(),
         pitchClass: Int = -1,
         keySignatureDirection: String? = null
-    ): String = when (accidental) {
-        NoteAccidental.NATURAL -> {
-            // Show natural only if this pitch class was altered in the key signature
-            // or by an accidental earlier in the same measure.
-            val needsNatural = pitchClass >= 0 &&
+    ): String {
+        return when (accidental) {
+            NoteAccidental.NATURAL -> {
+                // Show natural only if this pitch class was altered in the key signature
+                // or by an accidental earlier in the same measure.
+                val needsNatural = pitchClass >= 0 &&
                     (pitchClass in keySigAlteredPitchClasses ||
-                     withinMeasureAccidentals.containsKey(pitchClass))
-            if (needsNatural) " accid=\"n\"" else ""
-        }
-        NoteAccidental.SHARP   -> if (accidGes == "s") " accid=\"s\"" else ""
-        NoteAccidental.FLAT    -> if (accidGes == "f") " accid=\"f\"" else ""
-        NoteAccidental.NONE    -> {
-            if (accidGes == null || pitchClass < 0) return ""
-            val previouslyAltered = withinMeasureAccidentals[pitchClass]
-            if (previouslyAltered == accidGes) return ""
-            val impliedByKeySignature = pitchClass in keySigAlteredPitchClasses &&
-                keySignatureDirection == accidGes
-            if (previouslyAltered == null && impliedByKeySignature) ""
-            else " accid=\"$accidGes\""
+                        withinMeasureAccidentals.containsKey(pitchClass))
+                if (needsNatural) " accid=\"n\"" else ""
+            }
+            NoteAccidental.SHARP -> if (accidGes == "s") " accid=\"s\"" else ""
+            NoteAccidental.FLAT -> if (accidGes == "f") " accid=\"f\"" else ""
+            NoteAccidental.NONE -> {
+                if (accidGes == null || pitchClass < 0) {
+                    ""
+                } else {
+                    val previouslyAltered = withinMeasureAccidentals[pitchClass]
+                    val impliedByKeySignature = pitchClass in keySigAlteredPitchClasses &&
+                        keySignatureDirection == accidGes
+                    if (previouslyAltered == accidGes || (previouslyAltered == null && impliedByKeySignature)) {
+                        ""
+                    } else {
+                        " accid=\"$accidGes\""
+                    }
+                }
+            }
         }
     }
 
