@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- [x] **Dokumentations-Sync (CLAUDE/context/README/TODO) prüfen und aktualisieren** — Kontextdateien mit aktuellem Code (Verovio-Rendering, Exercise-Source, Settings-Felder, Generator-/Progression-Verhalten) abgeglichen und veraltete Markdown-Angaben korrigiert.
+
 - [x] **Repository cleanup: `validation/` entfernen** — Nicht mehr benötigte Validierungsartefakte aus dem Repo gelöscht (`validation/` vollständig entfernt).
 - [x] **Context-Dokumente nach Cleanup synchron halten** — `/context`-Dateien geprüft und Architektur-Doku um den entfernten `validation/`-Ordner ergänzt.
 

@@ -1,233 +1,60 @@
 # Exercises
 
-## Exercise Model (`domain/model/Exercise.kt`)
+## Domain Model
 
-```kotlin
-data class Exercise(
-    val steps: List<ExerciseStep>,
-    val currentIndex: Int = 0,
-    val musicalKey: Int = 0,
-    val handMode: HandMode = HandMode.RIGHT
-)
-```
+`Exercise` is an immutable sequence of `ExerciseStep` values plus `currentIndex`, `musicalKey`, and `handMode`.
 
-`ExerciseStep` holds note groups plus optional per-note accidentals, optional pedal actions, and optional source `contentType`.
-`currentStep` returns the step at `currentIndex`, or `null` if complete.
-`isComplete` is true when `currentIndex >= steps.size`.
+`ExerciseStep` may contain:
+- `notes: List<Int>`
+- `noteValue: NoteValue` (`WHOLE`/`HALF`/`QUARTER`/`EIGHTH`)
+- optional accidentals per note
+- optional pedal action
+- optional ornament
+- optional progression label notes / source content type metadata
 
-## GenerateExerciseUseCase (`domain/usecase/GenerateExerciseUseCase.kt`)
+## Generation (`GenerateExerciseUseCase`)
 
-Creates an `Exercise` from current `AppSettings` using `exerciseMode`, selected content/voicing types, `handMode`, a selected-key pool, and `DEFAULT_EXERCISE_MEASURES = 16`.
+The generator builds one exercise page of fixed length:
+- `DEFAULT_EXERCISE_MEASURES = 16`
+- `MATERIAL_POOL_SIZE = 128`
 
-The generator chooses one key from the selected key pool (or an externally forced key for in-session rollover), transposes the material by that key, then builds `DEFAULT_EXERCISE_MEASURES = 16` measures. Each measure is assigned a random uniform note-value pattern (WHOLE, 2×HALF, 4×QUARTER, 8×EIGHTH) via `applyMeasurePatterns()`. A raw material pool of up to `MATERIAL_POOL_SIZE = 128` steps is generated first (enough for worst-case 16 measures × 8 eighths).
-Each generated step is tagged with its source exercise type (`ExerciseStep.contentType`) so runtime statistics can be grouped the same way as settings.
+Each measure gets one uniform rhythmic pattern from:
+- `1 × WHOLE`
+- `2 × HALF`
+- `4 × QUARTER`
+- `8 × EIGHTH`
 
-Exercises now use timed steps that can carry note groups, explicit note accidentals, and optional sustain-pedal actions per beat.
-Generated notes are constrained to the selected scale mode (`MAJOR`, `HARMONIC_MINOR`, `MELODIC_MINOR`, `PENTATONIC`, `BLUES`) within the selected key.
-Default scale mode is `MAJOR` (Dur).
+Patterns are filtered by `selectedNoteValues` first (strict preference), with safe fallback if selection is invalid/empty.
 
-### Exercise mode pool
+## Exercise Modes
 
-**Mode 1 (Classic):** uses `exerciseTypes` and mixes selected material:
-- single notes
-- octaves
-- thirds
-- fifths
-- sixths
-- triads
-- sevenths
-- ninths
-- clustered chords
+### Mode 1 — `CLASSIC`
+Mixes selected `exerciseTypes` (single notes, intervals, triads, sevenths, ninths, clustered chords, arpeggios).
 
-**Mode 2 (Progressions):** ignores classic type mixing and generates only ordered progression steps from `selectedProgressions`, with voicing modifiers from `progressionExerciseTypes`:
-- TRIADS
-- SEVENTHS
-- NINTHS
-- ARPEGGIOS (can split chords into single-note runs)
+### Mode 2 — `PROGRESSIONS`
+Uses `selectedProgressions` + `progressionExerciseTypes` (triads/sevenths/ninths/arpeggios).
+Progression order is advanced **chord-by-chord** and preserved through the generated sequence; rhythm patterns only change spacing/duration.
 
-In Mode 2, selected progression names and chord order are preserved strictly (every generated chord step advances through the selected progression cycle in order); note-value patterns only change rhythmic duration and spacing of those ordered chord steps.
-For chord-name rendering, progression-generated steps carry their harmonic source as label notes; in arpeggiated progression events, only the event-start step carries the chord label while continuation notes remain unlabeled, avoiding misleading repeated chord names on single passing tones. Labels that include Roman numerals (e.g. `CM (I)`) are emitted with a line break so the parenthesized function is rendered on the next line.
+## Scale/Key/Range Constraints
 
-### Hand-mode behavior
+Generation uses:
+- one selected key from `selectedKeys`
+- active `selectedScaleType` (Major, Harmonic Minor, Melodic Minor, Pentatonic, Blues)
+- bass/treble range clamps from settings
 
-- `HandMode.RIGHT` uses treble-range material.
-- `HandMode.LEFT` uses left-hand material and renders on the bass staff.
-- `HandMode.BOTH` alternates or combines left/right source material so the exercise spans both staves.
+Then post-processes accidentals, pedal marks, and ornaments according to settings.
 
-### Key constants
+## Source Abstraction
 
-```kotlin
-GenerateExerciseUseCase.KEY_NAMES  // ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"]
-```
+`ExerciseRepository` loads from `ExerciseSource`:
+- `GeneratedExerciseSource`
+- `DatabaseExerciseSource`
 
-Also exposed from `app/ui/GrandStaffModels.kt` as top-level `KEY_NAMES` for UI use.
+If database source yields no steps, repository falls back to generated output.
 
-## Practice UI Data Model (app layer)
+## UI Mapping
 
-Practice rendering is driven by the UI model in
-`app/src/main/kotlin/com/binbashmedium/sightreadingtrainer/ui/GrandStaffModels.kt`:
+`PracticeScreen.toGameState(nowMs)` maps `PracticeState` into `GameState`.
+Beat positions are cumulative (sum of previous `NoteValue.uiBeatUnits`), including cursor position.
 
-```kotlin
-enum class NoteState { NONE, CORRECT, WRONG, LATE }
-enum class StaffType { TREBLE, BASS }
-
-data class NoteEvent(
-  val midi: Int,
-  val startBeat: Float,
-  val duration: Float,
-  val expected: Boolean,
-  val state: NoteState = NoteState.NONE,
-  val staff: StaffType = StaffType.TREBLE,
-  val accidental: NoteAccidental = NoteAccidental.NONE,
-  val ornament: OrnamentType = OrnamentType.NONE
-)
-
-data class Chord(val name: String, val notes: List<Int>, val startBeat: Float,
-                 val staff: StaffType = StaffType.TREBLE)
-
-data class GameState(
-  val levelTitle: String,
-  val elapsedTime: Long,
-  val bpm: Float,
-  val notes: List<NoteEvent>,
-  val chords: List<Chord>,
-  val pedalMarks: List<PedalMark>,
-  val currentBeat: Float,
-  val musicalKey: Int = 0
-)
-```
-
-## Staff Assignment
-
-`staffForExercise(midi, handMode)` assigns staff during `toGameState(...)`:
-
-- `HandMode.RIGHT` forces treble staff.
-- `HandMode.LEFT` forces bass staff.
-- `HandMode.BOTH` uses pitch split: `midi >= 60` -> treble, `midi < 60` -> bass.
-
-## Staff Position Formula
-
-`midiToDiatonicStep(midi)` converts a MIDI note to a diatonic step number (C-1=0, C4=28, E4=30).
-
-`staffLineYForStep(step, staff, trebleTopY, bassTopY, lineSpacing)` is the shared vertical-position helper:
-- Treble: `Y = (trebleTopY + 4*lineSpacing) - (step - 30) * lineSpacing/2`
-- Bass:   `Y = (bassTopY  + 4*lineSpacing) - (step - 18) * lineSpacing/2`
-
-The clefs are anchored to:
-- Treble clef -> G4 line (`TREBLE_G_LINE_STEP = 32`)
-- Bass clef -> F3 line (`BASS_F_LINE_STEP = 24`)
-
-Ledger lines are drawn by `ledgerStepsBelow` / `ledgerStepsAbove`.
-
-Current status: the treble clef now uses the same scale ratio as the bass clef, which brought it much closer to the proportion in `mocks/img.png` while keeping the corrected vertical placement. Latest fixes already in place:
-- `CLEF_AREA_WIDTH_RATIO` raised to 3.8 to eliminate key-signature/clef overlap.
-- `BASS_CLEF_BASELINE_FROM_TOP_RATIO` raised to 0.92 so the glyph renders below the A line.
-- Spurious programmatic dot circles removed; the Unicode 𝄢 glyph already includes the two dots.
-- `ACCIDENTAL_TEXT_SIZE_RATIO` increased to 2.2 and `ACCIDENTAL_SPACING_RATIO` to 0.75 for proportional key signatures.
-- `BASS_CLEF_TEXT_SIZE_RATIO` reduced to 4.0 for correct glyph proportions.
-- Cluster notehead displacement raised to `lineSpacing * 1.1` (one notehead width) per PDF page 6.
-- Stem X for chord groups now anchors to the non-displaced noteheads (min x for upstem, max x for downstem).
-- `Chord.staff` field added; labels render **above** the treble staff or **below** the bass staff.
-- Label text size is dynamic (`beatWidth * 0.5f` clamped to `lineSpacing * 0.42f`) to prevent overlap.
-- `formatChordLabelShort` used for labels (no Roman numeral) to save horizontal space.
-Extracted PDF pages live under `validation/pdf-ref/`, device validation screenshots under `validation/screenshots20/`.
-
-## Key Signature Rendering
-
-`KEY_SIGNATURES[musicalKey]` returns `(sharps, flats)` for the generated key used by the current exercise.
-Accidental glyphs are drawn at standard treble/bass staff positions using:
-- `TREBLE_SHARP_STEPS`, `TREBLE_FLAT_STEPS`
-- `BASS_SHARP_STEPS`, `BASS_FLAT_STEPS`
-
-The standard accidental order and spacing are regression-tested against the notation reference.
-Individual noteheads now render their own accidentals for black-key pitches, with staggered left columns for close-position chord spellings so adjacent accidentals do not collide.
-
-Generated note accidentals are now optional in settings and use explicit `#`, `b`, and `natural` symbols rather than being inferred only from pitch class at render time.
-Even when generated steps carry `NoteAccidental.NONE`, renderer-side notation now shows visual accidentals for non-key-signature tones (for example C Blues `Eb`, `Gb`, `Bb`) based on key-aware pitch spelling.
-
-## Notehead And Stem Rules
-
-The app now applies these notation rules in pure helpers:
-- notes on or above the middle line stem down
-- notes below the middle line stem up
-- chords use a single stem per staff/start-beat group
-- stem direction for chords is controlled by the note farthest from the middle line; ties default to downstem
-- seconds on one stem displace one notehead to avoid collisions
-- ledger-line notes extend stems far enough to reach at least the middle line
-
-## Mapping from Domain to UI State
-
-`PracticeScreen.toGameState(nowMs)` maps `PracticeState` to `GameState`:
-- `levelTitle` reflects the generated key chosen from the selected key pool
-- `elapsedTime` = wall-clock elapsed since session start
-- `score` and `bpm` come directly from `PracticeState`
-- note colors and extra played-note overlays come from `PracticeState.inputByBeat[beatIndex]`:
-  - matched expected notes -> green
-  - missing expected notes -> red
-  - extra played notes -> additional yellow noteheads
-  - mixed-state chords render mixed notehead colors in the same beat (no blanket first-note color)
-- `currentBeat` = `exercise.currentIndex * 2f` (static, input-driven cursor; `BEATS_PER_STEP = 2f`)
-
-## Note Values
-
-Each `ExerciseStep` carries a `noteValue: NoteValue` (default `QUARTER`). `NoteValue` is `WHOLE`, `HALF`, `QUARTER`, or `EIGHTH` with:
-- `beats: Float` — musical beats (WHOLE=4, HALF=2, QUARTER=1, EIGHTH=0.5)
-- `uiBeatUnits: Float` — UI coordinate width = `beats * BEATS_PER_STEP`
-
-Beat positions are computed **cumulatively**: `stepBeat = sum of uiBeatUnits of all prior steps`. The current beat for the cursor is `sum of uiBeatUnits for steps 0..<currentIndex`.
-
-`NoteEvent.duration` in the UI model is set to `step.noteValue.beats` so `durationToGlyphType()` maps to the correct glyph (hollow oval for WHOLE/HALF, filled for QUARTER/EIGHTH, flag for EIGHTH).
-
-## Portrait Page Layout
-
-In portrait mode, `GrandStaffCanvas` is called once per row with `startBeat`/`endBeat` to filter content. The page is determined by `beatToPage(currentBeat)` and `pageStartBeat(page)`. Each page contains `ROWS_PER_PAGE = 4` rows of `BEATS_PER_ROW = 32f` beat-units (4 measures). Exercise length is `DEFAULT_EXERCISE_MEASURES = 16` measures — exactly one portrait page (4 rows × 4 measures).
-
-## Landscape Page Layout
-
-In landscape mode, a single `GrandStaffCanvas` shows a 4-measure window (`BEATS_PER_ROW = 32f` beat-units). The visible window is determined by `landscapePage = (currentBeat / BEATS_PER_ROW).toInt()`, advancing automatically as the cursor moves forward. This matches the portrait row width.
-
-## Session Lifecycle
-
-Any played step input (notes and optional pedal), correct or wrong, advances `exercise.currentIndex` by 1.
-Pedal-only inputs (no notes) do not advance the exercise; they only update pedal state for the next played note/chord check.
-When a chunk is complete before timeout, a new chunk is generated in the same key and the session continues.
-Timeout finalization is now checked from both input handling and the UI timer tick (`PracticeViewModel.finalizeIfTimedOut(...)`), so session completion is persisted even when no new MIDI events arrive after time expires.
-When session time is up, `PracticeScreen` shows `SessionCompleteOverlay` with final score, highscore, and correct/wrong note counts.
-Expected pedal symbols are colored independently from note correctness (green/red), and unexpected pedal actions are rendered as additional yellow pedal marks.
-
-Sustain-pedal press and release events are now represented directly on exercise steps so they can be checked alongside notes in the session pipeline.
-
-## Chord Labels
-
-Rendered chord labels should use harmonic names and roman numerals only when the notes form an actual chord, for example:
-- `CM (I)`
-- `Dm7 (ii7)`
-- `GM9 (V9)`
-
-Single notes should render as note names only and should not show harmonic chord labels.
-Clustered chord voicings and inversions should still resolve to their harmonic chord labels rather than falling back to raw note names.
-For chord-name display, consecutive single-note runs (including `ARPEGGIOS` and mixed single-note passages) that complete a detectable chord now use that chord label (for example C-E-G[-E] shows `CM`) instead of changing label per single note.
-Suspended triads are also recognized for labeling (for example D-G-A resolves to `Gsus2`).
-Additional supported labels now include power/sixth/add/extended/altered forms such as `C5`, `C6`, `Cm6`, `Cadd9`, `C11`, `C13`, `C7b9`, `C7#9`, `C7#11`, and `C7b13`.
-Chord root spellings are key-signature aware for display (`F#` preferred in sharp keys, `Gb` preferred in flat keys).
-Chord labels are now generated measure-wise from all notes in the bar (`buildMeasureChordLabels`), producing one harmonic label per measure with tolerant matching for extra passing tones.
-When `detectChord` and `detectChordSuperset` both fail (e.g. the combined pitch-class set contains no ≥3-note chord subset), `buildMeasureChordLabels` falls back to `resolveDisplayChordNotes` on the measure's steps: if any consecutive sub-run of single-note steps forms a detectable chord (including 2-note power chords when only 2 steps remain), that chord is used as the measure label.
-If a measure cannot be resolved to a known harmonic quality by any of the three methods, no chord label is shown (instead of fallback note-name text).
-Ambiguous suspended pitch sets are resolved deterministically with `sus2` priority over `sus4` for stable labeling.
-
-## Extending Exercises
-
-1. Add generation logic in `GenerateExerciseUseCase`.
-2. Ensure the output is a list of `ExerciseStep` entries (notes + optional accidentals + optional pedal action).
-3. Update tests for the new hand-mode or exercise-length behavior if the pattern changes.
-
-## Validation Artifacts
-
-Recent device captures for notation and exercise-generation validation live under `validation/`, including:
-- `validation/accidentals-arpeggios-check.png`
-- `validation/accidentals-arpeggios-practice.png`
-- `validation/validation-run1.png`
-- `validation/validation-run2.png`
-- `validation/validation-run3.png`
-- `validation/validation-run4.png`
-- `validation/validation-run5.png`
+Chord labels are derived from harmonic detection helpers in `GrandStaffModels.kt`, including inversion slash notation and progression-aware label notes.
