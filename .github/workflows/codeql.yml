@@ -69,9 +69,7 @@ jobs:
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
       - name: Manual build for CodeQL
-        env:
-          ORG_GRADLE_PROJECT_org.gradle.java.home: ${{ env.JAVA_HOME }}
-        run: ./gradlew clean :app:assembleDebug --no-daemon --rerun-tasks --no-build-cache --stacktrace
+        run: ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" clean :app:assembleDebug --no-daemon --rerun-tasks --no-build-cache --stacktrace
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

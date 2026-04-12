@@ -37,7 +37,7 @@ APK output: `app/build/outputs/apk/debug/app-debug.apk`
 | KSP | 2.1.21-2.0.2 |
 | Hilt | 2.57.1 |
 | Compose BOM | 2025.05.01 |
-| Java | 21 (set via `org.gradle.java.home` in gradle.properties) |
+| Java | 21 (provided by `JAVA_HOME`/CI runner setup) |
 
 **Critical:** `kotlin.plugin.compose` plugin is mandatory for Kotlin 2.x (replaces the old `composeOptions {}`). Do not remove it. See `settings.gradle.kts` comments for why AGP appears in both `pluginManagement` and `buildscript` — this is intentional and required for KGP/AGP classloader compatibility.
 
