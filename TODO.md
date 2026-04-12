@@ -2,6 +2,9 @@
 
 ## In Progress
 
+- [x] **Repository cleanup: `validation/` entfernen** — Nicht mehr benötigte Validierungsartefakte aus dem Repo gelöscht (`validation/` vollständig entfernt).
+- [x] **Context-Dokumente nach Cleanup synchron halten** — `/context`-Dateien geprüft und Architektur-Doku um den entfernten `validation/`-Ordner ergänzt.
+
 - [x] **Bugfix: Loading-Ring im Exercise-Screen beendet sich nach erfolgreichem Noten-Rendern** — `onStaffRendered()` beendet den Loading-State jetzt zuverlässig, sobald Session-State und Render-Callback vorliegen; Regressionstest für die Stop-Logik ergänzt.
 
 - [x] **Test-Coverage >80% mit neuen Unit-Tests sicherstellen** — Zusätzliche Parser-/Migrations-Regressionstests ergänzt, Kover-Filter für nicht sinnvoll unit-testbare Android/Compose-/generated Klassen gesetzt und Gesamt-Coverage lokal auf >90% verifiziert.
