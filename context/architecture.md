@@ -140,6 +140,11 @@ fun rowMeasureLabel(rowStartBeat: Float): Int  // 1-based measure number for a r
 
 `GrandStaffCanvas` draws vertical bar lines at every `beatsPerMeasure` interval within the visible beat range. The final bar line is drawn thicker (3f stroke) at `endBeat`; intermediate bar lines use 1.5f stroke.
 
+## Repository Hygiene
+
+Der frühere Ordner `validation/` mit manuellen Prüf-Artefakten wurde aus dem Repository entfernt.
+Aktuelle technische Dokumentation liegt in `context/` und laufende Aufgaben in `TODO.md`.
+
 ## Dependency Injection
 
 Hilt is used with `SingletonComponent` for app-scoped dependencies.

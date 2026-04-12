@@ -2,6 +2,9 @@
 
 ## In Progress
 
+- [x] **Repository cleanup: `validation/` entfernen** — Nicht mehr benötigte Validierungsartefakte aus dem Repo gelöscht (`validation/` vollständig entfernt).
+- [x] **Context-Dokumente nach Cleanup synchron halten** — `/context`-Dateien geprüft und Architektur-Doku um den entfernten `validation/`-Ordner ergänzt.
+
 - [x] **CodeQL java-kotlin Workflow-Fehler beheben** — Ursache reproduziert (`SDK location not found` im manuellen CodeQL-Gradle-Build) und Workflow stabilisiert: Android SDK Setup + Installation von `platforms;android-35` und `build-tools;35.0.0` ergänzt.
 - [x] **Bugfix: Loading-Ring im Exercise-Screen beendet sich nach erfolgreichem Noten-Rendern** — `onStaffRendered()` beendet den Loading-State jetzt zuverlässig, sobald Session-State und Render-Callback vorliegen; Regressionstest für die Stop-Logik ergänzt.
 
