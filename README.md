@@ -6,8 +6,8 @@ An Android app that helps pianists and keyboard players build fluent music sight
 
 - Grand staff notation (treble + bass clef) with key signatures, accidentals, and ledger lines
 - Real-time MIDI note matching with per-notehead color feedback (green = correct, red = wrong, yellow = extra)
-- Exercise types: single notes, intervals, triads, arpeggios, clustered chords, sustain-pedal exercises
-- Multi-key practice, configurable hand mode (left / right / both), adjustable exercise length and time limit
+- Exercise types: single notes, intervals, triads, sevenths/ninths, arpeggios, clustered chords, progression mode, sustain-pedal exercises
+- Multi-key practice, configurable hand mode (left / right / both), fixed 16-measure exercise pages, and configurable session time limit
 - Timed session mode with automatic exercise rollover
 - Session statistics screen
 - Auto-reconnect for USB and Bluetooth MIDI devices
@@ -172,33 +172,6 @@ Den ausgegebenen String vollständig als Secret `KEYSTORE_BASE64` in GitHub eint
 
 > Wichtig: Der Keystore darf **niemals** ins Repository committed werden.
 
-## Local Android environment setup (for screenshot/instrumentation checks)
+## Screenshot / instrumentation notes
 
-If you want to run the screenshot instrumentation flow locally (similar to CI), set up an Android SDK and export these variables:
-
-```bash
-export ANDROID_SDK_ROOT=/path/to/android-sdk
-export ANDROID_HOME=$ANDROID_SDK_ROOT
-export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator:$PATH
-echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-```
-
-Install required SDK components:
-
-```bash
-yes | sdkmanager --licenses
-sdkmanager \
-  "platform-tools" \
-  "platforms;android-34" \
-  "build-tools;34.0.0" \
-  "emulator" \
-  "system-images;android-34;google_apis;x86_64"
-```
-
-Then at minimum verify test APK buildability:
-
-```bash
-./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
-```
-
-Note: running emulator-based screenshot tests reliably usually requires hardware acceleration (KVM on Linux).
+For emulator-based screenshot tests, install emulator + system image components matching your local setup and ensure hardware acceleration (KVM on Linux) is available.

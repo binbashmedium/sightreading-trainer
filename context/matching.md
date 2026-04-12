@@ -67,9 +67,10 @@ fun execute(
 
 ## Cursor Behavior
 
-The red cursor sits at `exercise.currentIndex * 2f` beats for the active chunk. When a chunk
-completes before the configured session timer ends, `PracticeViewModel` generates another chunk
-in the same key and continues the session.
+The red cursor position is derived from cumulative note-value widths
+(sum of `uiBeatUnits` for steps before `currentIndex`) so mixed rhythms
+(whole/half/quarter/eighth) advance correctly. When a chunk completes
+before timer end, `PracticeViewModel` generates the next chunk in the same key.
 
 ## Future Matching Modes
 
