@@ -103,7 +103,7 @@ No open gaps — all previously listed items have been resolved.
 
 ## Keep all Context files upda to date
 
-Context files up to date. They are located in /context
+Context files up to date. They are located in /context. Also the README.md
 
 ## At the end all test needs to pass. Additional tests must be added when new logic is added.
 ## Also a apk must be compiled
