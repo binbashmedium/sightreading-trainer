@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- [x] **CodeQL-Upload-Konflikt mit GitHub Default Setup beheben** — `github/codeql-action/analyze@v4` schlägt beim SARIF-Upload fehl (`advanced configurations ... when the default setup is enabled`); Workflow auf artifact-only SARIF-Ausgabe umgestellt, damit der Job trotz aktivem Default-Setup grün läuft.
+
 - [x] **Hardcoded `org.gradle.java.home` entfernen (CI/CodeQL-Fix nach Review)** — Host-spezifischen JDK-Pfad aus `gradle.properties` entfernt und CodeQL-Build auf `JAVA_HOME`-basierten `-Dorg.gradle.java.home` Parameter umgestellt; `:app:assembleDebug` validiert (Java-Home-Fehler behoben, verbleibender Blocker hier lokal nur fehlendes Android SDK).
 
 - [x] **CodeQL java-kotlin Scan stabilisieren** — Workflow vereinfacht/gehärtet: offizielles Gradle-Build statt nur Kotlin-Compile-Tasks, explizites `local.properties` mit `sdk.dir`, Java-Home-Override ohne Repo-Datei-Mutation, und SARIF-Upload wieder an GitHub Code Scanning aktiviert.

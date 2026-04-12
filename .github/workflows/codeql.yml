@@ -71,7 +71,17 @@ jobs:
       - name: Manual build for CodeQL
         run: ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" clean :app:assembleDebug --no-daemon --rerun-tasks --no-build-cache --stacktrace
 
-      - name: Perform CodeQL Analysis
+      - name: Perform CodeQL Analysis (no SARIF upload)
         uses: github/codeql-action/analyze@v4
         with:
+          upload: false
+          output: sarif-results
           category: "/language:${{ matrix.language }}"
+
+      - name: Upload CodeQL SARIF as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-sarif-${{ matrix.language }}
+          path: sarif-results/*.sarif
+          if-no-files-found: error
+          retention-days: 14
