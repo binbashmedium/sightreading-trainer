@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- [x] **CodeQL java-kotlin Scan stabilisieren** — Workflow vereinfacht/gehärtet: offizielles Gradle-Build statt nur Kotlin-Compile-Tasks, explizites `local.properties` mit `sdk.dir`, Java-Home-Override ohne Repo-Datei-Mutation, und SARIF-Upload wieder an GitHub Code Scanning aktiviert.
+
 - [x] **Dokumentations-Sync (CLAUDE/context/README/TODO) prüfen und aktualisieren** — Kontextdateien mit aktuellem Code (Verovio-Rendering, Exercise-Source, Settings-Felder, Generator-/Progression-Verhalten) abgeglichen und veraltete Markdown-Angaben korrigiert.
 
 - [x] **Repository cleanup: `validation/` entfernen** — Nicht mehr benötigte Validierungsartefakte aus dem Repo gelöscht (`validation/` vollständig entfernt).
