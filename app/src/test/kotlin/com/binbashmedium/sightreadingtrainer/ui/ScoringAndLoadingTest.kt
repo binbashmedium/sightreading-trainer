@@ -106,6 +106,13 @@ class ScoringAndLoadingTest {
     // ── GameState no longer has score field ──────────────────────────────────
 
     @Test
+    fun `shouldStopLoadingOnRender returns true only when state exists and loading is active`() {
+        assertTrue(shouldStopLoadingOnRender(hasState = true, isLoading = true))
+        assertEquals(false, shouldStopLoadingOnRender(hasState = false, isLoading = true))
+        assertEquals(false, shouldStopLoadingOnRender(hasState = true, isLoading = false))
+    }
+
+    @Test
     fun `generateExampleGameState has no score field and has expected fields`() {
         val state = generateExampleGameState(1_700_000_000_000L)
         assertTrue(state.levelTitle.isNotEmpty())
