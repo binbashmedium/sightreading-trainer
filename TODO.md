@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- [x] **Nightly OCR Goldset Emulator-Crash (AndroidJUnitRunner ClassNotFound) lokal reproduzieren und beheben** — explizite `androidx.test:runner`-Abhängigkeit ergänzt, Android SDK lokal installiert (platform-tools, android-35, build-tools 35.0.0, system-image), APK + androidTest APK erfolgreich gebaut; `connectedDebugAndroidTest` in dieser Umgebung erwartbar ohne laufendes Gerät/Emulator blockiert (`No connected devices`).
+
 - [x] **CodeQL aus Repository entfernt** — `.github/workflows/codeql.yml` gelöscht, damit kein eigener CodeQL-Run mehr ausgeführt wird.
 
 - [x] **CodeQL java-kotlin wird im Security-Tab nicht aktualisiert** — Ursache bestätigt: `analyze` lief mit `upload: false`; Upload wieder aktiviert (`upload: true`), damit `language:java-kotlin`-Ergebnisse im Security-Tab aktualisiert werden.
